@@ -1,0 +1,20 @@
+# Gitleaks over de hele git-historie (de CI-job "Kwetsbaarheden en geheimen"). De standaardregels,
+# plus de valse bevindingen van dit project, per patroon en met de reden. Een nieuwe valse bevinding
+# komt hier met zijn reden bij; een echte wordt ingetrokken bij de dienst waar hij vandaan komt en
+# uit de historie gehaald, niet hier weggezet. Zie docs/handleiding/02-github.md.
+#
+# Dit bestand is van het project en blijft staan bij een update van het template.
+
+title = "Geheimen in de historie"
+
+[extend]
+useDefault = true
+
+# Een valse bevinding zet je zo uit, met de reden erboven:
+#
+# [[allowlists]]
+# description = "Geen geheim: een verzonnen waarde in een test"
+# regexTarget = "match"
+# regexes = [
+#   '''de-letterlijke-tekst-van-de-vondst''',
+# ]

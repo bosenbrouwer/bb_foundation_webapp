@@ -29,11 +29,15 @@ half uur de eerste keer.
    **Controle:** "template.lock.json geschreven" en een lijst met wat je nu doet. Daarna
    `pnpm doctor`: Node, git, het template, `.env.local` en de database tegen `SEED_TARGET`, zonder
    iets aan te raken. Geen regel op ACTIE.
-4. `pnpm db:status`. De regel over de wegwerpbranch moet verschijnen en de branch moet `dev` zijn.
+4. `pnpm db:status`. De eerste regel is "Verbonden met endpoint" met een endpoint-id: dat moet het
+   id van `dev` zijn, en achter `SEED_TARGET` staat "(komt overeen)". Het script noemt geen branch
+   bij naam; het endpoint-id is hoe je ziet waar je zit. Zolang de database leeg is, eindigt het met
+   "SEED_TARGET wijst hierheen. Er staan nog geen gebruikers in, dus draai pnpm db:seed."
    Daarna `pnpm db:migrate` (de baseline en wat de modules genereerden), `pnpm db:bootstrap` (de
    organisatie) en `pnpm db:seed` (de dev-accounts).
-   **Controle:** `pnpm db:status` noemt alle migraties; de seed zegt wat hij aanmaakte en is
-   idempotent (een tweede keer verandert niets).
+   **Controle:** `pnpm db:status` zegt bij Migraties dat er evenveel zijn toegepast als de code kent,
+   en eindigt nu met "Dit is je wegwerpbranch." De seed zegt wat hij aanmaakte en is idempotent (een
+   tweede keer verandert niets).
 4b. `pnpm db:app-login`. Dat maakt op `dev` de inlogrol `<slug>_app` (lid van `app_rw`, de rol van
    de app) met een nieuw wachtwoord en zet `DATABASE_URL_APP` in `.env.local`. Vanaf dan werken
    `pnpm dev` en de e2e als die rol, net als productie: een recht dat de rol mist, vind je zo hier
@@ -41,15 +45,38 @@ half uur de eerste keer.
    het productie-endpoint en zonder `PRODUCTION_DB_ENDPOINT`.
    **Controle:** `pnpm doctor` zegt "De app werkt lokaal als de rol van de app", en
    `pnpm check:grants` is groen.
+4c. Vul de branch `seed` op dezelfde manier: nu één keer, en opnieuw als de seed verandert. Elke
+   preview komt uit `seed` (04, stap 2), dus wat daar staat, staat straks in elke preview: het
+   schema, de organisatie en de dev-accounts, en geen echte gegevens.
+   - Zet in `.env.local` tijdelijk drie regels om naar `seed`: `DATABASE_URL` en
+     `DATABASE_URL_UNPOOLED` (de pooled en de direct string van `seed`, via **Connect** in de
+     Neon-console, zoals in 04, stap 5) en `SEED_TARGET` (het endpoint-id van `seed`). Bewaar de
+     regels van `dev`, bijvoorbeeld met een `#` ervoor.
+   - `pnpm db:status`: het endpoint-id moet dat van `seed` zijn, met "(komt overeen)" achter
+     `SEED_TARGET`.
+   - `pnpm db:migrate`, `pnpm db:bootstrap` en `pnpm db:seed`.
+   - Zet `.env.local` terug op `dev` en draai `pnpm db:app-login` opnieuw, zoals na elke wijziging
+     van `.env.local`.
+
+   Deze opdrachten werken als eigenaar, over `DATABASE_URL_UNPOOLED`. De app zelf (`pnpm dev`) en
+   `pnpm invite` lezen eerst `DATABASE_URL_APP`, en die wijst nog naar `dev`. Wil je de app lokaal
+   tegen `seed` draaien (09, inloggen op de preview met een wachtwoord), zet dan ook voor die regel
+   tijdelijk een `#`.
+   **Controle:** `pnpm db:status` toont weer het endpoint-id van `dev` en eindigt met "Dit is je
+   wegwerpbranch."
 5. `pnpm setup:hooks` voor de commit-hook die een em-dash weigert, en `pnpm dev`. Open
    http://localhost:3000. Onderaan het inlogscherm staat de dev-login: kies een dev-account en
    eventueel andere rollen.
    **Controle:** na inloggen zie je de rail met de versie linksonder en, als beheerder, Beheer.
-6. De batterij: `pnpm typecheck && pnpm lint && pnpm test && pnpm check:contrast && pnpm template:verify`,
-   dan `pnpm db:roundtrip` (migraties heen en terug), de checks `pnpm check:core`, `pnpm check:grants`
-   (en per module), en de e2e `pnpm e2e:all` (bouwt en test tegen `next start` op poort 3100).
-   **Controle:** alles groen. Dit is wat Claude ook draait; wat een database nodig heeft draai jij
-   als Claude dat vraagt.
+6. De batterij. `pnpm check:all` draait alles achter elkaar, goedkoopste eerst, en sluit af met een
+   tabel voor de rubriek Bewijs van de release notes. Los kan ook: `pnpm typecheck`, `pnpm lint`,
+   `pnpm test`, `pnpm check:secrets`, `pnpm check:licenses` (geen GPL of AGPL in wat naar productie
+   gaat), `pnpm check:migrations`, `pnpm check:drift`, `pnpm check:contrast`, `pnpm template:verify`
+   en `pnpm build`; dan `pnpm db:roundtrip` (migraties heen en terug), de checks `pnpm check:core`,
+   `pnpm check:grants` (en per module), en de e2e `pnpm e2e:all` (bouwt en test tegen `next start`
+   op poort 3100).
+   **Controle:** alles groen, en geen stap overgeslagen. Dit is wat Claude ook draait; wat een
+   database nodig heeft draai jij als Claude dat vraagt.
 
 ## Waarom zo
 
@@ -61,8 +88,10 @@ laden, dus hij kan nooit in een deploy terechtkomen, ook niet buiten Vercel. `SE
 ## Beveiliging
 
 - `.env.local` bevat geheimen. Nooit committen, nooit delen, nooit in de chat.
-- De dev-accounts (`<rol>@dev.invalid`) bestaan alleen op `dev`; op productie worden ze niet
-  aangemaakt.
+- De dev-accounts komen uit `auth.devUsers` in `project.config.json` (in de standaard
+  `dev@voorbeeld.invalid`). `pnpm db:seed` zet ze alleen op de branch uit `SEED_TARGET`, dus op `dev`
+  en op `seed`, en weigert op productie. Op een preview staan ze er als rij, maar de dev-login werkt
+  alleen lokaal: er is daar niet mee in te loggen.
 - Wie de machine deelt, deelt de sessie: log uit als je weggaat.
 
 ## Kosten
@@ -89,13 +118,17 @@ De dev-branch van Neon heeft een eigen compute die wakker is terwijl je werkt en
 | `pnpm db:app-login` weigert | `PRODUCTION_DB_ENDPOINT` ontbreekt in `.env.local`, of `DATABASE_URL` wijst naar productie; allebei met opzet |
 | "permission denied" in `pnpm dev` of de e2e, terwijl de scripts werken | De app werkt als de rol van de app en die mist een recht of een regel: `pnpm check:grants` wijst de tabel aan. Een eigen tabel zonder `appRowAccess()` is de gebruikelijke oorzaak |
 | `pnpm doctor` zegt LATER over `DATABASE_URL_APP` | De app werkt nog als eigenaar; draai stap 4b |
+| `.env.local` wijst naar `seed`, maar `pnpm dev` of `pnpm invite` werkt toch op `dev` | `DATABASE_URL_APP` wijst nog naar `dev`, en de app leest die het eerst; zet er tijdelijk een `#` voor (stap 4c) |
 | Een pnpm-script faalt met "is not recognized" en een half pad | Een `&` in de gebruikersnaam van Windows breekt geneste `pnpm`; de scripts van het template roepen daarom `node` rechtstreeks aan. Schrijf eigen scripts net zo |
 | `next build` faalt op een ontbrekende BUILD_ID | `next build` is gestart met een `--env-file`-vlag; de scripts doen dat bewust niet |
 
 ## Vul in
 
+Noteer dit in `docs/inrichting.md`, niet in dit bestand (zie `00-checklist.md`).
+
 | Wat | Waarde |
 |---|---|
 | Node- en pnpm-versie | |
 | Endpoint-id van `dev` (`SEED_TARGET`) | |
+| Datum waarop `seed` voor het laatst is gevuld | |
 | Datum ingericht | |

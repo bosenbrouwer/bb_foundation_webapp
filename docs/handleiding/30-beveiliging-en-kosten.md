@@ -9,7 +9,7 @@ zodat je het in een kwartier kunt nalopen. Doe dat maandelijks (kosten en verval
 
 | Wat | Hoe |
 |---|---|
-| Inloggen | Via Microsoft (rollen uit de tenant) of met wachtwoord plus tweestapsverificatie, vergrendeling na vijf pogingen |
+| Inloggen | Via Microsoft (rollen uit de tenant; een deploy start niet zonder de eigen tenant in de issuer) of met wachtwoord plus tweestapsverificatie, vergrendeling na vijf pogingen |
 | Rechten | Een matrix in de code; elke mutatie controleert het recht in de server action en het filter zit in de query |
 | Sessies | Een JWT van acht uur, getekend met `AUTH_SECRET`; wisselen logt iedereen uit |
 | Geheimen | Alleen in Vercel (Sensitive) en `.env.local`; de huisregel weigert een waarde in `.env.example` |
@@ -17,8 +17,9 @@ zodat je het in een kwartier kunt nalopen. Doe dat maandelijks (kosten en verval
 | Audit | Elke mutatie een regel die nooit meer verandert, met wie, wat, wanneer en vanwaar |
 | Server actions | Elke action begint met de sessie, vóór de invoer (huisregel `session-first`); alles wat van buiten te raken is, heeft een rem per adres of per account |
 | Buitenkant | Security headers (een CSP met een nonce per verzoek, zodat alleen onze eigen scripts draaien; nosniff; geen framing), cronroutes dicht zonder token, downloads via de server met het recht erbij |
-| Mail en bestanden | Tekst van buiten als citaat; de inhoud van een bestand nagekeken voordat hij de opslag in gaat |
-| AI | Alleen de velden van een prompt gaan mee, als gegevens; elke aanroep via de server met een recht; de inhoud wordt niet bewaard |
+| Mail en bestanden | Tekst van buiten als citaat; de inhoud van een bestand nagekeken voordat hij de opslag in gaat. Een Teams-bericht gaat buiten productie alleen naar een testkanaal |
+| AI | Alleen de velden van een prompt gaan mee, als gegevens; elke aanroep via de server met een recht; de inhoud wordt niet bewaard; wat het model zegt, staat als platte tekst op het scherm; in een test gaat nooit een echte aanroep |
+| Previews | De database van een preview komt uit de branch `seed`: het schema en de seed, geen echte gegevens. Alleen `main` en `release/next` rollen uit |
 | Dev-login | Alleen lokaal, met `APP_ENV=local`; weigert in elke andere omgeving te laden |
 | Sessie | Hoogstens acht uur vanaf het inlogmoment, hoe vaak hij ook ververst wordt |
 | Koppelen op e-mail | Alleen een dev-account uit de seed; een tweede identiteit met hetzelfde adres neemt geen account over |
@@ -34,8 +35,13 @@ zodat je het in een kwartier kunt nalopen. Doe dat maandelijks (kosten en verval
 - [ ] Bij een vermoeden van een lek: het betreffende geheim wisselen (06), en in de audit log kijken
       wat er gebeurde.
 - [ ] `public/.well-known/security.txt` klopt (het adres waar iemand een lek kan melden).
-- [ ] De pull requests van Dependabot meenemen in een ronde, en een rode audit of geheimenscan in de
-      CI meteen oppakken (02).
+- [ ] De pull requests van Dependabot meenemen in een ronde, en een rode audit, geheimenscan of
+      licentiecheck in de CI meteen oppakken. Een melding van Gitleaks over de historie is advies en
+      maakt de run niet rood: beoordeel hem toch (02).
+- [ ] `seed` is de default branch van het Neon-project, en een preview toont geen gegevens van
+      productie (04, 09).
+- [ ] Met de module ai: geen prompt stuurt tekst van klanten mee, en de privacyverklaring noemt elke
+      toepassing bij naam (24).
 - [ ] `DATABASE_URL_APP` staat op Production en `pg_stat_activity` toont de inlogrol van de app (04).
 - [ ] De Data API van Neon staat uit op elke branch. Controle in de SQL Editor: `select relname from
       pg_class where relrowsecurity and relnamespace = 'public'::regnamespace;` noemt elke tabel, en
@@ -47,8 +53,9 @@ zodat je het in een kwartier kunt nalopen. Doe dat maandelijks (kosten en verval
 ## Het wachtwoord van de eigenaar draaien
 
 Bij een Neon-project dat via de Vercel Marketplace is afgenomen (de organisatie heet in Neon "Vercel:
-..."), beheert de integratie `DATABASE_URL` en `DATABASE_URL_UNPOOLED`, en die zijn met de hand niet te
-wijzigen. Twee knoppen lijken bedoeld om het wachtwoord van de eigenaar te draaien en zijn allebei
+..."), beheert de integratie `DATABASE_URL` en `DATABASE_URL_UNPOOLED`, en de regels van Production
+en Preview zijn met de hand niet te wijzigen (alleen de regel van Development zet je zelf, op `dev`:
+06, stap 3). Twee knoppen lijken bedoeld om het wachtwoord van de eigenaar te draaien en zijn allebei
 onveilig gebleken: **gebruik niet Rotate secrets** in Vercel (Storage), die pakt volgens meerdere
 meldingen in 2026 de laatst aangemaakte branch in plaats van productie; en **Reset password** in Neon
 alleen maakt het oude wachtwoord meteen ongeldig terwijl Vercel het nieuwe niet overneemt. Zo wel:
@@ -96,10 +103,12 @@ Geen bedragen hier: die veranderen. Het bedrag per dienst uit je eigen budget st
 - [ ] Bij Vercel: geen preview zonder pull request; Web Analytics en Observability uit als je ze niet
       gebruikt (03).
 - [ ] Zodra er echte gebruikers zijn: Vercel naar Pro met Spend Management, en de wachtrijcrons naar
-      elk kwartier (23).
+      elk kwartier in werkuren, niet de klok rond (23, stap 4).
 - [ ] Een weggelopen rekening is bijna altijd een vergeten plafond of een compute die niet slaapt.
 
 ## Vul in
+
+Noteer dit in `docs/inrichting.md`, niet in dit bestand (zie `00-checklist.md`).
 
 | Wat | Waarde |
 |---|---|

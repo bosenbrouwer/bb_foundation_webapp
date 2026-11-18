@@ -6,8 +6,9 @@ specificatie, het datamodel, de rechten en de schermen uit af. Een goed plan kos
 elke ronde daarna een misverstand. **Tijd:** een uur voor een eerste versie, en daarna een kwartier
 per wijziging.
 
-**Doe dit na** handleiding 01. **Daarna kun je** de startprompt aan Claude geven: uit een wizard (die
-vraagt dezelfde dingen), of de startprompt hieronder.
+**Doe dit na** handleiding 01. **Daarna kun je** de startprompt aan Claude geven. Er zijn twee
+routes: met een wizard (die vraagt dezelfde dingen als deze handleiding) of met de hand; ze staan
+onderaan, bij "De startprompt".
 
 ## Vier regels
 
@@ -71,18 +72,29 @@ sinds de vorige ronde.
 
 ## De startprompt
 
-Een wizard maakt de startprompt voor je, met de configuratie en het plan erin. Zonder wizard zet je
-eerst zelf twee bestanden klaar: `project.config.json` (kopieer `examples/default.project.config.json`
-en pas het aan; `pnpm template:validate` controleert het) en `docs/PROJECTPLAN.md`. Commit en Sync,
-want `pnpm template:apply` weigert op een werkmap met wijzigingen. Plak dan in het Claude-paneel:
+Er zijn twee routes. Ze lopen anders, dus kies er één en haal ze niet door elkaar.
+
+**Met een wizard.** De wizard maakt één startprompt, met de configuratie, het plan en je checklist
+erin. Plak die in het Claude-paneel. Claude zet drie bestanden neer (`project.config.json`,
+`docs/PROJECTPLAN.md` en je checklist `docs/handleiding/00-checklist-<slug>.md`) en stopt. Jij doet
+Commit en Sync en zegt "gedaan"; dan past Claude het template toe en schrijft de eerste
+specificatie. De startprompt hieronder gebruik je in deze route niet.
+
+**Met de hand.** Zet eerst zelf twee bestanden klaar: `project.config.json` (kopieer
+`examples/default.project.config.json` en pas het aan; `pnpm template:validate` controleert het) en
+`docs/PROJECTPLAN.md`. Commit en Sync, want `pnpm template:apply` weigert op een werkmap met
+wijzigingen. Plak dan in het Claude-paneel:
 
     Lees CLAUDE.md, docs/WERKWIJZE.md, project.config.json en docs/PROJECTPLAN.md. Draai pnpm install
     en pnpm template:apply, en volg de slottekst. Lever daarna als v0.02 de eerste specificatie op,
     zonder iets te bouwen. Git doe ik zelf.
 
+In deze route zet Claude geen bestanden voor je klaar en is er geen tussenstop waarop je "gedaan"
+zegt. De checklist kopieer je zelf naar `docs/inrichting.md` (`00-checklist.md` zegt bovenaan hoe).
+
 ## Wat Claude ermee doet
 
-Op de startprompt leest Claude het plan, `CLAUDE.md` en de documenten van het template, en levert
+In beide routes leest Claude het plan, `CLAUDE.md` en de documenten van het template, en levert
 als eerste versie (`v0.02`) een `docs/SPEC.md` met het datamodel en de kernflows, de rechtenmatrix,
 een roadmap met de fasen, en de besluiten die uit het plan volgen, zonder iets te bouwen. Daar lees
 je op na: klopt het met wat je bedoelde? Pas dan begint het bouwen, per ronde.

@@ -19,8 +19,10 @@ iets ziet.
 met een bruikbare tekst weigert. Lege bestanden weigeren. Groter: rechtstreeks van browser naar
 opslag met een SAS voor precies één blob, een apart besluit.
 
-**Afgedwongen door.** `lib/config/next-base.ts` (`bodySizeLimit`) en `MAX_UPLOAD_BYTES` in
-`lib/files/blob.ts` van module files; `lib/files/purposes.ts` zet per doel een eigen, lagere grens.
+**Afgedwongen door.** `lib/config/next-base.ts` (`bodySizeLimit`) en, in module files, `maxBytes`
+per doel in `lib/files/purposes.ts` (standaard vier megabyte): `uploadBlob` in `lib/files/blob.ts`
+toetst hem op de server, en `SizedFileInput` al in de browser, vóór het versturen (besluit F1 in
+`docs/modules/files.md`).
 
 ## L-HTTP-02 Het contenttype is een bewering
 

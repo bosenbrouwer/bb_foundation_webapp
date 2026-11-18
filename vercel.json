@@ -9,5 +9,22 @@
       "schedule": "30 3 * * *"
     }
   ],
-  "buildCommand": "pnpm db:deploy && pnpm build"
+  "buildCommand": "pnpm db:deploy && pnpm build",
+  "git": {
+    "deploymentEnabled": {
+      "dependabot/**": false,
+      "feature/**": false,
+      "fix/**": false,
+      "hotfix/**": false,
+      "chore/**": false,
+      "docs/**": false,
+      "refactor/**": false,
+      "test/**": false,
+      "build/**": false,
+      "ci/**": false,
+      "perf/**": false,
+      "style/**": false,
+      "revert/**": false
+    }
+  }
 }

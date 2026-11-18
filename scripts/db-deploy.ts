@@ -18,11 +18,19 @@
  *    constateert dan dat er niets te doen is.
  * 3. **Leesbare uitvoer in het buildlog**, met het endpoint erbij, zodat je achteraf kunt zien wat er
  *    waar gebeurd is.
+ *
+ * **Na de migraties zet hij de basisgegevens neer** (`ensureBaseData`, hetzelfde als
+ * `pnpm db:bootstrap`): de organisatie uit de configuratie en de referentiegegevens van het project.
+ * Die horen op elke omgeving te staan, ook op productie, en zonder de organisatierij faalt de eerste
+ * inlog en de eerste uitnodiging. Vóór besluit D21 deed niets dat op productie: geen migratie maakt
+ * die rij, en geen handleiding liet het script daar draaien. Idempotent: alleen upserts, dus elke
+ * deploy opnieuw is veilig.
  */
 
 import { Pool } from "@neondatabase/serverless";
 import { deployEnvironment } from "../lib/domain/deploy-environment";
-import { assertProductionTarget, describeTarget, directUrl } from "./lib/connection";
+import { ensureBaseData } from "./lib/bootstrap";
+import { assertProductionTarget, describeTarget, directUrl, scriptDb } from "./lib/connection";
 import { applyMigrations } from "./lib/migrate";
 import { runScript } from "./lib/run";
 
@@ -127,6 +135,9 @@ runScript(async () => {
     try {
       const applied = await applyMigrations(pool);
       console.log(applied.length === 0 ? "Niets te migreren." : `Migraties bijgewerkt: ${applied.length}.`);
+      /* Binnen hetzelfde slot: twee deploys tegelijk maken zo nooit allebei de organisatie aan. */
+      console.log("Basisgegevens (de organisatie en wat het project op elke omgeving nodig heeft):");
+      await ensureBaseData(scriptDb(pool));
     } finally {
       await release();
     }

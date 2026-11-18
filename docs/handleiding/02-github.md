@@ -43,12 +43,16 @@ de code hier op. **Tijd:** een half uur.
    licensing, Budgets and alerts**: een budget voor Actions van **0**, met "stop usage when budget
    limit is reached" aan (het gratis quotum is genoeg voor deze CI).
    **Controle:** een push bouwt nog steeds; het verbruik staat onder Billing and licensing, Usage.
-6. Plak de startprompt in het Claude-paneel: die van een wizard (op het eindscherm, de knop **Kopieer
-   de startprompt**), of die uit handleiding 10. Claude zet drie bestanden neer, `project.config.json`,
-   `docs/PROJECTPLAN.md` en `docs/handleiding/00-checklist-<slug>.md`, en stopt dan. Alleen een eigen
-   logo zet je zelf in `public/brand/`. Commit en push; de eerste keer rechtstreeks op `main`, daarna
-   via `release/next` met een pull request (09). Zeg Claude dan "gedaan".
-   **Controle:** de CI van de pull request is groen, ook de stap "Het template is intact".
+6. De startprompt, in het Claude-paneel. Er zijn twee routes (10, "De startprompt"); kies er één:
+   - **Met een wizard.** Plak de startprompt die de wizard je gaf. Claude zet drie bestanden neer,
+     `project.config.json`, `docs/PROJECTPLAN.md` en `docs/handleiding/00-checklist-<slug>.md`, en
+     stopt dan. Commit en push, en zeg Claude dan "gedaan".
+   - **Met de hand.** Zet `project.config.json` en `docs/PROJECTPLAN.md` zelf klaar, commit en push,
+     en plak daarna de startprompt uit handleiding 10.
+
+   Alleen een eigen logo zet je zelf in `public/brand/`. De eerste keer commit je rechtstreeks op
+   `main`, daarna via `release/next` met een pull request (09).
+   **Controle:** de CI is groen (onder **Actions**), ook de stap "Het template is intact".
 7. Geef collega's toegang via **Settings, Collaborators and teams**: wie bouwt krijgt Write, wie alleen
    meekijkt Read. Maak een team als het er meer dan twee zijn.
    **Controle:** de collega ziet de repo zonder dat jij hem een link stuurt.
@@ -77,10 +81,20 @@ van de organisatie bevat; geheimen staan er nooit in, maar namen en plannen wel.
   de versie en de release notes heen. Neem hem mee in een gewone ronde ("neem de open pull requests
   van Dependabot mee in deze ronde") en sluit hem daarna. Een workflow die Dependabot start, krijgt
   geen repository-secrets, en Vercel bouwt zijn branch niet (03, stap 5).
-- De CI controleert per pull request ook de bekende kwetsbaarheden in wat naar productie gaat
-  (`pnpm audit --prod --audit-level=high`) en geheimen in de code (`pnpm check:secrets`). Semgrep
-  draait als advies: een melding blokkeert niets tot de eerste run beoordeeld en groen is. De
-  actions in de CI staan op een vaste commit; Dependabot houdt die bij.
+- De CI draait op elke pull request en op een push naar `main` en naar `release/next`. In de job
+  "Kwetsbaarheden en geheimen" zijn drie stappen een poort: de bekende kwetsbaarheden in wat naar
+  productie gaat (`pnpm audit --prod --audit-level=high`), geheimen in de code
+  (`pnpm check:secrets`), en de licenties (`pnpm check:licenses`: geen GPL of AGPL in wat naar
+  productie gaat; LGPL mag, en een onbekende licentie geeft alleen een waarschuwing).
+- Twee controles zijn advies: een melding maakt de run niet rood. **Gitleaks** leest de hele
+  historie van de repo na op geheimen, ook wat later is weggehaald (een vaste versie, met de checksum
+  van de release). Een valse bevinding zet je met de reden in `.gitleaks.toml`. Een echte vondst
+  trek je in bij de dienst waar het geheim vandaan komt en haal je uit de historie; doe dat met
+  Claude. Pas als een run zo is beoordeeld, gaat `continue-on-error` van die stap weg en is het een
+  poort. `.github/workflows/ci.yml` is van het template: in een project wijzig je hem via
+  `pnpm template:adopt`, of met de versie van het template die het omzet. **Semgrep** (statische
+  analyse) is advies tot de eerste run beoordeeld en groen is.
+- De actions in de CI staan op een vaste commit; Dependabot houdt die bij.
 
 ## Kosten
 
@@ -103,8 +117,12 @@ aan Actions-minuten, en dat haalt een project van deze omvang niet. Stand van ok
 | De CI faalt direct na het aanmaken | Kijk in de run welke stap; de wortel van het template hoort groen te zijn, dus meestal een netwerkfout in `pnpm install`: run opnieuw |
 | Een collega ziet de repo niet | Hij is lid van de organisatie maar heeft geen rol op de repo; voeg hem toe onder Collaborators and teams |
 | GitHub vraagt bij elke push om een wachtwoord | Gebruik een SSH-sleutel of de GitHub CLI (`gh auth login`); een wachtwoord werkt niet meer voor git |
+| De stap "Geen GPL of AGPL in de productieafhankelijkheden" is rood | Een pakket dat naar productie gaat, staat onder GPL of AGPL; de log noemt het. Kies een ander pakket, of neem een besluit en leg het vast in `docs/SPEC.md` voordat het naar productie gaat |
+| De stap "Geen geheimen in de historie (advies)" meldt iets | Advies, de run blijft groen. Beoordeel de vondst toch: een echt geheim intrekken en uit de historie halen, een valse bevinding met de reden in `.gitleaks.toml` |
 
 ## Vul in
+
+Noteer dit in `docs/inrichting.md`, niet in dit bestand (zie `00-checklist.md`).
 
 | Wat | Waarde |
 |---|---|

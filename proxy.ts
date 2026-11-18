@@ -3,8 +3,8 @@ import { NextResponse, type NextRequest } from "next/server";
 import { contentSecurityPolicy, newNonce } from "@/lib/security/csp";
 
 /**
- * Per verzoek een nonce en de CSP die hem noemt. Zie `lib/security/csp.ts` en besluit D14. In Next
- * 16 heet middleware `proxy.ts`.
+ * Per verzoek een nonce en de CSP die hem noemt. Zie `lib/security/csp.ts` en de besluiten D14 en
+ * D17. In Next 16 heet middleware `proxy.ts`.
  *
  * ---
  *
@@ -14,10 +14,13 @@ import { contentSecurityPolicy, newNonce } from "@/lib/security/csp";
  * policy. De andere security headers blijven in `lib/config/next-base.ts`: die zijn vast en gelden
  * ook voor `/api` en de statische bestanden. Een tweede CSP daar zou de browser allebei afdwingen.
  *
- * **Alleen pagina's.** Statische bestanden, de routes van Auth.js en de rest van `/api` (cron,
- * bestanden) krijgen geen CSP: daar staat geen HTML in. Een prefetch van `next/link` ook niet, zoals
- * de documentatie van Next aanraadt; de scripts die de router daarna invoegt, erven het vertrouwen
- * via `'strict-dynamic'`.
+ * **Alleen pagina's, en een pagina met een punt in het adres is een pagina.** De proxy slaat alleen
+ * over wat geen pagina kan zijn: `/api` (cron, bestanden), de bestanden van Next, en een pad dat op
+ * de extensie van een bestand eindigt (de lijst hieronder, gelijk aan `STATIC_FILE_EXTENSIONS`).
+ * De HTML-pagina's van Auth.js onder `/api/auth` krijgen een vaste CSP zonder scripts uit
+ * `lib/config/next-base.ts`. Een prefetch van `next/link` krijgt er geen, zoals de documentatie van
+ * Next aanraadt; de scripts die de router daarna invoegt, erven het vertrouwen via
+ * `'strict-dynamic'`.
  *
  * **Geen autorisatie hier.** Dit bestand bekijkt geen sessie en weigert niets: dat blijft in
  * `requireSession()` en `can()`, op de plek waar het hoort (CLAUDE.md regel 11).
@@ -39,10 +42,12 @@ export const config = {
   matcher: [
     {
       /*
-       * Alles behalve `/api`, de bestanden van Next en wat er in `public/` staat (een pad met een
-       * extensie). Een pagina heeft in een project uit het template nooit een punt in zijn laatste deel.
+       * Alles behalve `/api`, de bestanden van Next en een pad dat op de extensie van een bestand
+       * eindigt. De lijst staat hier letterlijk, want Next leest deze matcher bij het bouwen en volgt
+       * geen variabele; `lib/security/csp-coverage.test.ts` houdt hem gelijk aan
+       * `STATIC_FILE_EXTENSIONS`. Een ander pad met een punt (`/iets.x`) is een pagina.
        */
-      source: "/((?!api/|_next/static|_next/image|.*\\.[a-zA-Z0-9]+$).*)",
+      source: "/((?!api/|_next/static|_next/image|.*\\.(?:ico|png|jpg|jpeg|gif|svg|webp|avif|txt|xml|json|webmanifest|woff|woff2|ttf|otf|map|css|js|pdf)$).*)",
       missing: [
         { type: "header", key: "next-router-prefetch" },
         { type: "header", key: "purpose", value: "prefetch" },

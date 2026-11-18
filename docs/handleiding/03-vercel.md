@@ -36,16 +36,26 @@ productie vanaf `main`. **Tijd:** een half uur.
 4. **Settings, Deployment Protection**: Vercel Authentication aan voor previews, zodat een
    preview-adres niet voor iedereen open staat.
    **Controle:** een preview-adres vraagt om in te loggen bij Vercel.
-5. **Settings, Git**: Production Branch is `main`. Dan **Settings, Build and Deployment**, het blok
-   **Ignored Build Step**: zet Behavior op **Custom** en plak deze opdracht:
+5. **Settings, Git**: Production Branch is `main`. Welke branches uitrollen, staat in de repo en
+   niet alleen hier: `vercel.json` zet onder `git.deploymentEnabled` de soorten werkbranches op
+   `false` (`feature/**`, `fix/**`, `hotfix/**`, `chore/**`, `docs/**`, `refactor/**`, `test/**`,
+   `build/**`, `ci/**`, `perf/**`, `style/**`, `revert/**` en `dependabot/**`). Er staat bewust geen
+   regel die alles uitzet, zodat `main` nooit per ongeluk meegaat: `main` en `release/next` rollen
+   uit. `pnpm template:apply` zet die lijst in `vercel.json` als de sleutel `git` er nog niet staat,
+   en laat hem daarna met rust.
+
+   Het tweede slot zet je hier met de hand, voor een branch met een naam die niet op die lijst staat.
+   **Settings, Build and Deployment**, het blok **Ignored Build Step**: zet Behavior op **Custom** en
+   plak deze opdracht:
 
        if [ "$VERCEL_GIT_COMMIT_REF" = "main" ] || [ "$VERCEL_GIT_COMMIT_REF" = "release/next" ]; then exit 1; else exit 0; fi
 
    `exit 1` betekent bouwen, `exit 0` overslaan. Vercel bouwt dan alleen productie en de vaste
    preview van `release/next`. Een andere branch, ook die van Dependabot (02), kost zo geen build en
    geen databasebranch in Neon, en op die preview zou toch niemand kunnen inloggen.
-   **Controle:** een push op een andere branch staat in **Deployments** als Canceled; een push op
-   `release/next` bouwt. Elke ronde gaat zo via `release/next` en zijn preview; zie 09.
+   **Controle:** een push op een branch als `feature/proef` levert geen deployment op; een push op
+   een branch met een andere naam staat in **Deployments** als Canceled; een push op `release/next`
+   bouwt. Elke ronde gaat zo via `release/next` en zijn preview; zie 09.
 6. Noteer het adres onder **Domains** (`<slug>.vercel.app`). Wil je een eigen domein, koppel het dan
    nu: de redirect-URI van de inlog (05) moet erop matchen en dat achteraf wijzigen is een extra
    ronde.
@@ -59,7 +69,10 @@ productie vanaf `main`. **Tijd:** een half uur.
 Een team in plaats van een persoonlijk account, om dezelfde reden als bij GitHub. Frankfurt, omdat de
 data in de EU blijft en de database daar staat. Geen preview zonder pull request, omdat elke preview
 een bouwminuut en een databasebranch kost en een losse push niets oplevert wat een pull request niet
-ook geeft.
+ook geeft. En geen preview per werkbranch: elke `feature/...`-branch een eigen preview met een eigen
+databasebranch liep in een eerder project tegen de limiet van het aantal branches aan. Twee sloten,
+omdat een instelling in een console een keer verdwijnt en een regel in `vercel.json` meegaat met de
+code.
 
 ## Beveiliging
 
@@ -67,8 +80,11 @@ ook geeft.
   meer terug te lezen, alleen te vervangen.
 - Deployment Protection houdt previews dicht. Productie is openbaar tot aan het inlogscherm; dat is
   de bedoeling, en `pnpm smoke:prod` controleert dat alles erachter dicht is.
-- De tool zet security headers (CSP, nosniff, geen framing) in `lib/config/next-base.ts`; je hoeft
-  daar niets voor te doen.
+- De tool zet zelf security headers; je hoeft daar niets voor te doen. De Content-Security-Policy
+  komt uit `proxy.ts` (zo heet middleware in Next 16), met per verzoek een nonce, zodat de browser
+  alleen de eigen scripts uitvoert. De vaste headers (nosniff, geen framing, HSTS) staan in
+  `lib/config/next-base.ts`. De proxy kijkt niet naar de sessie en weigert niets: wie wat mag, blijft
+  `requireSession()` in de code regelen.
 
 ## Kosten
 
@@ -76,8 +92,10 @@ Plan: **Hobby** tijdens het bouwen, gratis. **Pro** zodra er echte gebruikers zi
 staat commercieel gebruik niet toe, en een cron draait er maar één keer per dag. Plafond: op Pro
 staat **Spend Management** aan met een hard bedrag; op Hobby is er niets te overschrijden. Uit je
 checklist: het deel voor Vercel, met de seat per bouwer erbij op Pro. Upgraden is pas nodig bij de
-livegang met gebruikers, of eerder als een cron vaker dan dagelijks moet. Stand van oktober 2026;
-controleer het Hobby-beleid als je twijfelt.
+livegang met gebruikers, of eerder als een cron vaker dan dagelijks moet. Laat Fluid compute aan, en
+Web Analytics en Observability uit zolang je ze niet gebruikt: de rekening loopt op door crons,
+previews en extra's (les L-VRC-08). Stand van oktober 2026; controleer het Hobby-beleid als je
+twijfelt.
 
 ## Zo zie je dat het goed staat
 
@@ -94,8 +112,11 @@ controleer het Hobby-beleid als je twijfelt.
 | Een preview komt uit op productie-data | De Neon-integratie maakte geen branch (geen pull request) en `PRODUCTION_DB_ENDPOINT` staat niet; zie 04 |
 | Een gewijzigde variabele doet niets | Een variabele geldt pas na een nieuwe deploy: **Deployments, Redeploy** |
 | "Hobby plan does not allow cron jobs more frequent than daily" | Een rooster in `vercel.json` staat vaker dan dagelijks; zet het op dagelijks of ga naar Pro |
+| Een push op `feature/...` of `fix/...` levert geen deployment op | Met opzet: `vercel.json` zet die soort branch uit onder `git.deploymentEnabled`. Testen doe je op de preview van `release/next` (09) |
 
 ## Vul in
+
+Noteer dit in `docs/inrichting.md`, niet in dit bestand (zie `00-checklist.md`).
 
 | Wat | Waarde |
 |---|---|

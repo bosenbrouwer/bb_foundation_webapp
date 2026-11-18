@@ -11,6 +11,9 @@
  *
  * Elke poging die de API bereikt, staat als regel in `ai_requests`, met de tokens en de prijs van dat
  * moment, nooit met de inhoud.
+ *
+ * Met `AI_FAKE=1` in een uitdrukkelijk lokale omgeving antwoordt een nagemaakt model (`fake.ts`):
+ * zonder sleutel, zonder netwerk, door dezelfde toets, en als model `fake` in `ai_requests`.
  */
 import type Anthropic from "@anthropic-ai/sdk";
 import type { Actor } from "@/lib/auth/actor";
@@ -19,6 +22,7 @@ import type { DbOrTransaction } from "@/lib/db/client";
 import type { AiRequestStatus } from "@/lib/db/schema";
 import { todayIso } from "@/lib/domain/dates";
 import { apiErrorReason, askClaude, aiKey } from "./client";
+import { aiFake, fakeAnswer, FAKE_MODEL } from "./fake";
 import { buildUserMessage } from "./message";
 import { DEFAULT_MAX_TOKENS, promptFor, type AiPrompt } from "./prompts";
 import { loadPromptSetting, priceFor } from "./settings";
@@ -60,23 +64,26 @@ export function interpret(prompt: AiPrompt, message: ApiAnswer): Interpreted {
 
 export async function runPrompt(db: DbOrTransaction, actor: Actor, promptKey: string, values: Readonly<Record<string, string | null | undefined>>): Promise<AiOutcome> {
   assertCan(actor, "ai:use");
+  /* Eerst het slot: met AI_FAKE aan buiten lokaal gooit elk gebruik, ook als de prompt uit staat. */
+  const fake = aiFake();
   const prompt = promptFor(promptKey);
   if (prompt === undefined) return { ok: false, reason: "unknownPrompt" };
   const setting = await loadPromptSetting(db, actor.organisationId, promptKey);
   if (setting === undefined || !setting.enabled || setting.model === null) return { ok: false, reason: "off" };
-  const apiKey = aiKey();
+  const apiKey = fake ? "" : aiKey();
   if (apiKey === undefined) return { ok: false, reason: "noKey" };
 
   const day = todayIso();
   if ((await countToday(db, actor.organisationId, actor.id, promptKey, day)) >= setting.dailyLimit) return { ok: false, reason: "limit" };
 
-  const price = await priceFor(db, actor.organisationId, setting.model);
+  /* Een nagemaakt verzoek kost niets en heet in het verbruik ook zo. */
+  const price = fake ? undefined : await priceFor(db, actor.organisationId, setting.model);
   const base = {
     organisationId: actor.organisationId,
     userId: actor.id,
     promptKey,
     promptVersion: prompt.version,
-    model: setting.model,
+    model: fake ? FAKE_MODEL : setting.model,
     day,
     inputCentsPerMtok: price?.inputCentsPerMtok ?? null,
     outputCentsPerMtok: price?.outputCentsPerMtok ?? null,
@@ -84,27 +91,36 @@ export async function runPrompt(db: DbOrTransaction, actor: Actor, promptKey: st
   };
 
   const started = Date.now();
-  let message: Anthropic.Message;
-  try {
-    message = await askClaude(apiKey, {
-      model: setting.model,
-      system: prompt.instruction,
-      message: buildUserMessage(prompt.fields, values),
-      effort: setting.effort,
-      maxTokens: prompt.maxTokens ?? DEFAULT_MAX_TOKENS,
-      schema: outputSchema(prompt.output),
-    });
-  } catch (error) {
-    const requestId = await logRequest(db, { ...base, status: "failed", inputTokens: 0, outputTokens: 0, durationMs: Date.now() - started, error: apiErrorReason(error) });
-    return { ok: false, reason: "failed", requestId };
+  let answer: ApiAnswer;
+  let usage: Pick<Anthropic.Usage, "input_tokens" | "output_tokens"> = { input_tokens: 0, output_tokens: 0 };
+  if (fake) {
+    /* Het bericht wordt wel opgebouwd, zodat een fout daarin ook op het nagemaakte model zichtbaar is. */
+    buildUserMessage(prompt.fields, values);
+    answer = fakeAnswer(prompt);
+  } else {
+    try {
+      const message = await askClaude(apiKey, {
+        model: setting.model,
+        system: prompt.instruction,
+        message: buildUserMessage(prompt.fields, values),
+        effort: setting.effort,
+        maxTokens: prompt.maxTokens ?? DEFAULT_MAX_TOKENS,
+        schema: outputSchema(prompt.output),
+      });
+      answer = message;
+      usage = message.usage;
+    } catch (error) {
+      const requestId = await logRequest(db, { ...base, status: "failed", inputTokens: 0, outputTokens: 0, durationMs: Date.now() - started, error: apiErrorReason(error) });
+      return { ok: false, reason: "failed", requestId };
+    }
   }
 
-  const outcome = interpret(prompt, message);
+  const outcome = interpret(prompt, answer);
   const requestId = await logRequest(db, {
     ...base,
     status: outcome.status,
-    inputTokens: message.usage.input_tokens,
-    outputTokens: message.usage.output_tokens,
+    inputTokens: usage.input_tokens,
+    outputTokens: usage.output_tokens,
     durationMs: Date.now() - started,
     error: outcome.error,
   });

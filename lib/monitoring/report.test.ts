@@ -1,6 +1,76 @@
 /* template-owned (module core). Wordt overschreven door pnpm template:update; wijzig dit bestand niet. */
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { MAX_REPORT_LENGTH, describeError, reportError, scrubMessage } from "./report";
+import { MAX_REPORT_LENGTH, causeTags, describeError, reportError, scrubMessage } from "./report";
+
+/** De fout zoals Drizzle hem gooit bij een check: de query bovenop, de reden van Postgres eronder. */
+function checkViolation(): Error {
+  const cause = Object.assign(new Error('new row for relation "orders" violates check constraint "orders_amount_not_negative"'), {
+    code: "23514",
+    constraint: "orders_amount_not_negative",
+    table: "orders",
+    schema: "public",
+    detail: "Failing row contains (8c27df3e, Geheime opdracht van de klant, -5).",
+  });
+  return new Error('Failed query: update "orders" set "name" = $1, "amount_cents" = $2 where "orders"."id" = $3\nparams: Geheime opdracht van de klant,-5,8c27df3e', { cause });
+}
+
+/** De oorzaak als labels (besluit D16). Namen uit het eigen schema mogen mee, inhoud nooit. */
+describe("causeTags", () => {
+  it("geeft de code, de check en de tabel van de fout onder Drizzle", () => {
+    expect(causeTags(checkViolation())).toEqual({ cause_code: "23514", cause_constraint: "orders_amount_not_negative", cause_table: "orders" });
+  });
+
+  it("neemt de melding en het detail van de database nooit mee", () => {
+    const tags = JSON.stringify(causeTags(checkViolation()));
+    expect(tags).not.toContain("Geheime opdracht");
+    expect(tags).not.toContain("Failing row");
+    expect(tags).not.toContain("8c27df3e");
+  });
+
+  it("neemt de kolom mee als de database hem noemt", () => {
+    const error = new Error("Failed query", { cause: { code: "23502", table: "orders", column: "customer_id" } });
+    expect(causeTags(error)).toEqual({ cause_code: "23502", cause_table: "orders", cause_column: "customer_id" });
+  });
+
+  it("kent ook de code van een verbinding die wegviel", () => {
+    const error = new TypeError("fetch failed", { cause: { code: "ECONNRESET", hostname: "ergens.example" } });
+    expect(causeTags(error)).toEqual({ cause_code: "ECONNRESET" });
+  });
+
+  it("laat weg wat er niet uitziet als een code of een naam", () => {
+    const error = new Error("Failed query", {
+      cause: { code: "23505", constraint: "Key (email)=(iemand@voorbeeld.nl)", table: "users; drop table", column: "Naam Met Spaties" },
+    });
+    expect(causeTags(error)).toEqual({ cause_code: "23505" });
+  });
+
+  it("slaat een code over die geen code is en kijkt een laag dieper", () => {
+    const error = Object.assign(new Error("buitenste"), { code: "iemand anders", cause: { code: "57014" } });
+    expect(causeTags(error)).toEqual({ cause_code: "57014" });
+  });
+
+  it("geeft niets bij een fout zonder oorzaak, en bij iets wat geen fout is", () => {
+    expect(causeTags(new Error("gewoon stuk"))).toEqual({});
+    expect(causeTags("tekst")).toEqual({});
+    expect(causeTags(null)).toEqual({});
+  });
+
+  it("stopt bij een keten die in een kring loopt", () => {
+    const circle: { cause?: unknown } = {};
+    circle.cause = circle;
+    expect(causeTags(circle)).toEqual({});
+  });
+
+  it("staat als labels achter de regel in de log, zonder de rij", async () => {
+    const spy = vi.spyOn(console, "error").mockImplementation(() => undefined);
+    await reportError(checkViolation(), { kind: "action", method: "POST", route: "/app/orders" });
+    const lines = spy.mock.calls.map((call) => String(call[0]));
+    spy.mockRestore();
+    expect(lines[0]).toContain("[cause_code=23514 cause_constraint=orders_amount_not_negative cause_table=orders]");
+    expect(lines.join("\n")).not.toContain("Geheime opdracht");
+    expect(lines.join("\n")).not.toContain("Failing row");
+  });
+});
 
 describe("scrubMessage", () => {
   it("laat de parameters van een Drizzle-melding weg", () => {

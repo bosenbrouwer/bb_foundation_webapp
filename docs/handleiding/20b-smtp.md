@@ -80,6 +80,8 @@ Stand van oktober 2026.
 
 ## Vul in
 
+Noteer dit in `docs/inrichting.md`, niet in dit bestand (zie `00-checklist.md`).
+
 | Wat | Waarde |
 |---|---|
 | Aanbieder en plan | |

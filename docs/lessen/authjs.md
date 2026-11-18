@@ -61,8 +61,9 @@ uitgesteld, en achteraf invoeren breekt alle bestaande handtekeningen.
 
 **Afgedwongen door.** `auth.ts` (de sessieduur), `lib/auth/session-age.ts` met test en de
 jwt-callback in `lib/auth/callbacks.ts` (de absolute grens), `currentActor` in `lib/auth/session.ts` (de
-controle per request), en in module auth-password `lib/auth/password/secret-box.ts` (HKDF per doel
-uit `AUTH_SECRET`). De sleutel per omgeving is afspraak, zie `docs/handleiding/06-variabelen-in-vercel.md`.
+controle per request), en in module auth-password `lib/auth/password/secret-box.ts`: de sleutel voor
+het geheim van tweestapsverificatie komt met HKDF uit `MFA_SECRET_KEY`, en zonder die variabele uit
+`AUTH_SECRET`. De sleutel per omgeving is afspraak, zie `docs/handleiding/06-variabelen-in-vercel.md`.
 
 ## L-AUTH-04 Een dev-login met twee harde sloten
 
@@ -139,3 +140,56 @@ met `session-first:` en de reden.
 
 **Afgedwongen door.** De huisregel `session-first` (`scripts/house-rules/session-first.mjs`),
 meeliftend op `pnpm lint`.
+
+## L-AUTH-08 Bij de uitgever `common` wordt de verwachte uitgever uit het token zelf afgeleid
+
+**Symptoom.** (voorkomen) Bij het nalezen van de geïnstalleerde bron van Auth.js (`@auth/core`
+0.41.3, `lib/actions/callback/oauth/callback.js`) bleek: bij de uitgever `common` leest de callback
+de tenant uit het id-token en zet die in de uitgever waartegen hij dat token toetst.
+
+**Oorzaak.** De verwachte uitgever wordt afgeleid uit hetzelfde token dat hij moet toetsen. Dat klopt
+voor meerdere tenants, maar het hangt aan een regel in andermans code. En zonder ingestelde uitgever
+valt de provider vanzelf terug op `common` (L-ENTRA-01).
+
+**Regel.** Een tool voor één tenant start niet zonder eigen uitgever: ontbreekt
+`AUTH_MICROSOFT_ENTRA_ID_ISSUER`, wijst hij naar `common`, `organizations` of `consumers`, of draagt
+hij geen tenant-id als GUID, dan start de app niet. Wie bewust `common` gebruikt, toetst zelf nog
+een keer: de tenant is een GUID, de uitgever is exact die van die tenant, de `sub` is niet leeg. En
+lees de bron in plaats van hem te vertrouwen, na elke nieuwe versie van Auth.js opnieuw.
+
+**Afgedwongen door.** Module auth-entra: `entraIssuerProblem` in `lib/auth/providers/entra-issuer.ts`
+met test; `lib/auth/providers/entra.ts` gooit bij het maken van de provider. De eigen toets bij
+`common` heeft het template niet: patroon `accounts-van-buiten`, daar een pure functie met tests.
+
+## L-AUTH-09 Een mailadres uit een token van een andere tenant is geen bewijs
+
+**Symptoom.** (voorkomen) Wie toegang geeft op het mailadres uit een token, laat iedereen binnen die
+dat adres in zijn eigen tenant zet.
+
+**Oorzaak.** Een beheerder van een andere tenant zet in het token elk adres dat hij wil.
+
+**Regel.** Toegang hangt aan een uitnodiging per persoon en aan het paar uitgever en `sub`,
+vastgepind bij de eerste inlog. Daarna is alleen dat account die persoon. Naam en adres worden
+getoond en nergens vergeleken. Een test bewijst dat hetzelfde adres met een andere `sub` er niet in
+komt.
+
+**Afgedwongen door.** Het template laat geen accounts van buiten toe, dus hier is het afspraak:
+patroon `accounts-van-buiten`, met die test in het project. In een eerder project is de toelating
+gebouwd, maar op 17 november 2026 nog niet tegen een database uitgevoerd. Binnen één tenant geldt
+dezelfde regel al: de identiteit is de `oid` (L-AUTH-01), en `lib/auth/user-sync.ts` laat een login
+op e-mail geen rij overnemen die al aan een andere identiteit hangt (L-AUTH-06).
+
+## L-AUTH-10 De standaard voor `checks` is alleen pkce
+
+**Symptoom.** (voorkomen) Bij het nalezen van de geïnstalleerde bron (`@auth/core` 0.41.3,
+`lib/utils/providers.js`) bleek dat een provider zonder eigen `checks` alleen pkce toetst.
+
+**Oorzaak.** De standaard is `["pkce"]`. State en nonce komen er alleen bij als je erom vraagt.
+
+**Regel.** Zet `checks: ["pkce", "state", "nonce"]` op de provider, en bewijs met een echte inlog dat
+het daarna nog werkt.
+
+**Afgedwongen door.** Alleen afspraak. In het template is dit op de Entra-provider niet omgezet,
+want zonder tenant is niet te bewijzen dat de inlog blijft werken. Een project met een tenant dat
+het wil omzetten, neemt `lib/auth/providers/entra.ts` over (`pnpm template:adopt`) en bewijst het
+met een echte inlog.

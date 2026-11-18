@@ -56,6 +56,12 @@ codepad dat verwijdert: een token dat het niet kan, is een slot erbij. De grens 
 die van een server action op Vercel; groter vraagt een andere weg en dat is een besluit van het
 project.
 
+Het bestandsveld van de tool toetst die grens al in de browser, vóór het versturen. Vercel weigert
+een verzoek boven 4,5 MB voordat de tool het ziet, met een fout waar de tool niets van merkt: je
+kreeg dan een kale foutpagina in plaats van de zin die zegt wat er mis is. Nu staat die zin meteen
+onder het veld en wordt het formulier niet verstuurd. De controle op de server blijft de grens die
+telt; die in de browser is er voor de melding.
+
 ## Beveiliging
 
 - Anonieme toegang uit, container privé, token met vervaldatum. Een verlopen token stopt uploaden en
@@ -82,10 +88,13 @@ checklist: het deel voor Azure. Stand van oktober 2026.
 | "AuthenticationFailed" | Het token hoort bij een andere container of het account klopt niet |
 | "AuthorizationPermissionMismatch" | Het token mist Create of Write |
 | Uploaden werkt, downloaden geeft 502 | Het token mist Read |
-| "Het bestand is te groot" | Boven de grens van het doel (standaard 4 MB); dat is de bedoeling |
+| "Het bestand is te groot; de grens ligt op 4 MB." onder het veld, en het formulier wordt niet verstuurd | Boven de grens van het doel (standaard 4 MB); dat is de bedoeling. De browser houdt het tegen vóór het versturen |
+| Een kale foutpagina van Vercel bij het uploaden | Het verzoek was groter dan 4,5 MB en kwam niet bij de tool aan. Dat kan alleen in een eigen formulier dat het bestandsveld van het template (`FileInput`) niet gebruikt; geef het aan Claude |
 | Alles stopt op één dag | Het token is verlopen; maak een nieuw en zet de nieuwe datum in `BLOB_SAS_EXPIRES` |
 
 ## Vul in
+
+Noteer dit in `docs/inrichting.md`, niet in dit bestand (zie `00-checklist.md`).
 
 | Wat | Waarde |
 |---|---|

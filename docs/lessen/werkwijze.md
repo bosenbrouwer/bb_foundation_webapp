@@ -213,3 +213,85 @@ zet je tijdelijk in `minimumReleaseAgeExclude`, met de reden erbij, en haal je d
 
 **Afgedwongen door.** `pnpm-workspace.yaml` (`minimumReleaseAge`, `allowBuilds`),
 `.github/dependabot.yml` (`cooldown`), `pnpm install --frozen-lockfile` in de CI.
+
+## L-WERK-13 Een test met één vaste datum bewijst niets over de andere dagen van de week
+
+**Symptoom.** Een nachtelijke ronde gooide op elke dag behalve maandag: ze bood een week aan die geen
+maandag was, en een check in de database weigerde die. De check die deze ronde bewaakte, was al die
+tijd groen.
+
+**Oorzaak.** De check gebruikte als "vandaag" een vaste datum, en die was een maandag.
+
+**Regel.** Wat van de dag afhangt, toets je op meer dan één weekdag. Een vaste datum is één geval,
+geen bewijs over de andere zes.
+
+**Afgedwongen door.** Alleen afspraak. Zie ook L-WERK-09: een check die niet fout kan gaan, bewijst
+niets.
+
+## L-WERK-14 Rondes die niets van elkaar nodig hebben, krijgen elk hun eigen opvang
+
+**Symptoom.** Een nachtelijke route draaide acht rondes achter elkaar. De tweede gooide, en de zes
+erna draaiden niet: geen herinneringen, geen drempelmeldingen. Dat duurde dagen, en niemand miste
+een melding die niet kwam.
+
+**Oorzaak.** De rondes stonden achter elkaar zonder opvang per ronde, dus de eerste fout stopte de
+rest. De opruimtaak van het template deed hetzelfde: de eerste stap die gooide, stopte de volgende.
+
+**Regel.** Elke ronde is een eigen stap. Een fout wordt gevangen en gemeld met de naam van de stap,
+en de volgende stap draait. Het antwoord noemt de mislukte stappen en heeft dan status 500, zodat de
+cron bij de host als mislukt staat: opvangen is niet verzwijgen. Alleen voor stappen die niets van
+elkaar nodig hebben. Waar een belofte uit de privacyverklaring aan hangt (een bewaartermijn), krijgt
+een eigen stap: die mag niet stranden op een fout bij het opruimen van iets anders.
+
+**Afgedwongen door.** `runSteps` en `stepsResponse` in `lib/cron/steps.ts` met `steps.test.ts`.
+`runPrune` in `lib/tasks/prune.ts` loopt erop: `/api/cron/prune` antwoordt 500 als er een stap
+mislukte, en `pnpm task:prune` eindigt dan met exitcode 1. Patroon `cronroute`.
+
+## L-WERK-15 Een foutmelding zonder oorzaak kost een onderzoek; stuur de naam van de check mee, nooit de rij
+
+**Symptoom.** De foutenmonitor meldde een fout in een server action. De melding zei wat er misging
+en niet waarom: de oorzaak was een check in de database, en die zat in `error.cause`, die niet
+meeging. Dat kostte een onderzoek, en het bleef een vermoeden.
+
+**Oorzaak.** Alleen de buitenste fout werd gemeld. Bij een databasefout staat de reden in de keten
+van oorzaken (L-DRZ-16).
+
+**Regel.** Loop de keten van oorzaken af, hoogstens vijf diep, en stuur labels mee: de code, en bij
+een databasefout de naam van de check of index, de tabel en de kolom. Nooit `message` of `detail`
+van de oorzaak: Postgres zet daar de inhoud van de rij in. Een waarde gaat alleen mee als hij
+eruitziet als een code (`^[A-Z0-9_]{2,40}$`) of als een naam uit het schema (`^[a-z0-9_]{1,63}$`).
+De prijs: de grens ligt in die twee patronen, en die moeten streng blijven.
+
+**Afgedwongen door.** `causeTags` in `lib/monitoring/report.ts` (`cause_code`, `cause_constraint`,
+`cause_table`, `cause_column`) met de test in `report.test.ts`; de regel in de console draagt de
+labels. Zie L-WERK-08 voor het schoonmaken van de melding zelf.
+
+## L-WERK-16 Een melding die elke nacht komt, wordt genegeerd
+
+**Symptoom.** Een bewaker meldde elke nacht iets over werk dat alleen overdag draait.
+
+**Oorzaak.** De bewaker telde de klok rond. Een melding die elke nacht komt, leert iedereen haar te
+negeren.
+
+**Regel.** Een bewaker telt wat alleen overdag draait, alleen overdag. Stel bij elke nieuwe bewaker
+de vraag wanneer het werk hoort stil te staan, en of hij dan zwijgt.
+
+**Afgedwongen door.** Alleen afspraak: de review van elke nieuwe bewaker.
+
+## L-WERK-17 Een doorlichting vindt fouten in wat er is; een checklist vindt wat er niet is
+
+**Symptoom.** Een project dat twee keer was doorgelicht, haalde een checklist toch niet op zeven
+punten: geen back-up buiten de leverancier met een geprobeerde terugzet, geen beperking op land of
+adres, geen plafond op de sleutel van het model, geen noodstop, geen logboek van wie wat bekeek,
+geen uitloggen per persoon, en één database voor alles.
+
+**Oorzaak.** Een doorlichting zoekt fouten in wat er is. Wat er niet is, heeft geen code om te lezen
+en geen route om aan te vallen.
+
+**Regel.** Naast de doorlichting een checklist, met bij elk punt of je het bouwt (B), instelt bij een
+leverancier (I) of afspreekt (A), en in welke ronde. Een punt dat niemand bouwt en niemand instelt,
+bestaat alleen op papier. De lijst heeft een eigenaar: zonder is het na een maand een lijst vinkjes
+die niemand gelooft.
+
+**Afgedwongen door.** Alleen afspraak: het patroon `veiligheidschecklist`, als `docs/veiligheid.md`
+in een project. Het template zet dat bestand niet zelf klaar.

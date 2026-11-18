@@ -1,9 +1,10 @@
 # Alleen in de repo van het template zelf: staat niet in het manifest en komt dus niet in een project.
 name: Template
 
+# Ook op `release/next`: een directe push daarheen hoort niet buiten de gouden test om te lopen.
 on:
   push:
-    branches: [main]
+    branches: [main, release/next]
   pull_request:
 
 concurrency:

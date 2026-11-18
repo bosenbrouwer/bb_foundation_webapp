@@ -17,7 +17,10 @@ export const members = pgTable("members", {
   email: text("email").notNull(),
   ...timestamps,
   ...softDelete,
-}, (t) => [uniqueIndex("members_email_live").on(t.organisationId, sql`lower(${t.email})`).where(sql`${t.deletedAt} is null`)]);
+}, (t) => [
+  uniqueIndex("members_email_live").on(t.organisationId, sql`lower(${t.email})`).where(sql`${t.deletedAt} is null`),
+  appRowAccess(),
+]);
 
 export async function removeMember(db: DbOrTransaction, actor: Actor, id: string): Promise<void> {
   assertCan(actor, "members:write");

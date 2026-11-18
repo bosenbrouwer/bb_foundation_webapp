@@ -107,7 +107,8 @@ garandeert. De teller telt vóór het werk en ongeacht de uitkomst, en per accou
 ingelogd (CLAUDE.md regel 17).
 
 **Afgedwongen door.** `lib/domain/rate-limit.ts` (tabel `rate_limits`, `pnpm task:prune` ruimt op),
-`lib/jobs/kick.ts` in module jobs (alleen daar staat `after()`), `instrumentation.ts`.
+`lib/jobs/kick.ts` in module jobs en `lib/messaging/kick.ts` in module messaging (alleen in die twee
+bestanden staat `after()`), `instrumentation.ts`.
 
 ## L-VRC-07 De server draait in UTC
 
@@ -140,5 +141,8 @@ schema's op het kwartier in werkuren en houdt `template.keepCrons` ze buiten de 
 Build Step: geen preview zonder PR, geen build als alleen documentatie wijzigt. Fluid compute aan,
 analytics en observability uit als je ze niet gebruikt.
 
-**Afgedwongen door.** `engines` in `package.json` en de schema's in `vercel.json`. De
-consoleinstellingen zijn afspraak, zie `docs/handleiding/03-vercel.md` en `23-crons-en-taken.md`.
+**Afgedwongen door.** `engines` in `package.json` en de schema's in `vercel.json`. Welke branches
+uitrollen staat sinds besluit D20 ook in `vercel.json` (`git.deploymentEnabled`); de Ignored Build
+Step is het tweede slot. De consoleinstellingen zijn afspraak, zie `docs/handleiding/03-vercel.md`
+(stap 5 voor de Ignored Build Step, Kosten voor Fluid compute, Web Analytics en Observability) en
+`23-crons-en-taken.md` (het kwartierrooster in werkuren).

@@ -3,6 +3,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { aiImportsRule } from "./ai-imports.mjs";
+import { checkAiOutput } from "./ai-output.mjs";
 import { checkClientGraph } from "./client-graph.mjs";
 import { checkNoEmDash } from "./no-em-dash.mjs";
 import { checkSameId } from "./same-id.mjs";
@@ -182,6 +184,62 @@ describe("secret-patterns", () => {
     expect(run(checkSecretPatterns, ".env.local", pat)).toEqual([]);
     expect(run(checkSecretPatterns, "pnpm-lock.yaml", sas)).toEqual([]);
     expect(run(checkSecretPatterns, "scripts/x.ts", `// secretlint-disable-next-line\nconst value = "${sas}";\n`)).toEqual([]);
+  });
+});
+
+describe("ai-output", () => {
+  const view = (body) => `import { ProposalView } from "@/components/ai/proposal-view";\n${body}\n`;
+
+  it("weigert ruwe HTML en een markdown-renderer in een bestand dat iets van de module ai toont", () => {
+    const found = run(checkAiOutput, "components/requests/suggestion.tsx", view('import Markdown from "react-markdown";\nexport const X = () => <div dangerouslySetInnerHTML={{ __html: text }} />;'));
+    expect(found).toHaveLength(2);
+    expect(found[0]).toContain("components/requests/suggestion.tsx:3");
+    expect(found[0]).toContain("dangerouslySetInnerHTML");
+    expect(found[1]).toContain("react-markdown");
+  });
+
+  it("weigert ook de linkmaker van het template zelf", () => {
+    const found = run(checkAiOutput, "app/(app)/requests/page.tsx", `import { runPrompt } from "@/lib/ai/run";\nimport { RichText } from "@/components/ui/rich-text";\n`);
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain("@/components/ui/rich-text");
+  });
+
+  it("laat een bestand zonder de module ai met rust, en het woord in commentaar ook", () => {
+    expect(run(checkAiOutput, "components/ui/doc-view.tsx", 'export const X = () => <div dangerouslySetInnerHTML={{ __html: "x" }} />;')).toEqual([]);
+    expect(run(checkAiOutput, "components/ai/plain-text.tsx", "/** Nooit dangerouslySetInnerHTML. */\nexport const PlainText = () => null;")).toEqual([]);
+    expect(run(checkAiOutput, "components/requests/suggestion.tsx", view("export const X = () => <ProposalView />;"))).toEqual([]);
+  });
+});
+
+describe("ai-imports", () => {
+  const rule = aiImportsRule(["app/(app)/requests", "lib/requests/"]);
+  const text = 'import { runPrompt } from "@/lib/ai/run";\n';
+
+  it("laat de mappen van de module zelf en de mappen van het project door", () => {
+    for (const rel of ["lib/ai/run.ts", "components/ai/proposal-view.tsx", "app/(app)/admin/ai/page.tsx", "lib/project/registry.generated.ts", "scripts/check-ai.ts", "app/(app)/requests/actions.ts", "lib/requests/suggest.ts"]) {
+      expect(run(rule, rel, text), rel).toEqual([]);
+    }
+  });
+
+  it("weigert een map die het project niet noemt, en zegt waar hij bij moet", () => {
+    const found = run(rule, "app/(app)/orders/actions.ts", text);
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain("app/(app)/orders/actions.ts:1");
+    expect(found[0]).toContain("PROJECT_AI_IMPORT_ROOTS");
+  });
+
+  it("weigert een map voor gasten of klanten altijd, ook als hij op de lijst staat", () => {
+    const open = aiImportsRule(["app/(portal)/", "app/sign-in/"]);
+    for (const rel of ["app/(portal)/tickets/actions.ts", "app/sign-in/help-actions.ts"]) {
+      const found = run(open, rel, text);
+      expect(found, rel).toHaveLength(1);
+      expect(found[0]).toContain("gasten of klanten");
+    }
+  });
+
+  it("ziet ook een relatief pad en een import type, en laat een andere import met rust", () => {
+    expect(run(rule, "lib/orders/suggest.ts", 'import type { Proposal } from "../ai/structure";\n')).toHaveLength(1);
+    expect(run(rule, "lib/orders/suggest.ts", 'import { labels } from "@/lib/i18n/labels";\nimport { aid } from "@/lib/aid";\n')).toEqual([]);
   });
 });
 

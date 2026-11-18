@@ -19,9 +19,10 @@ import { projectNav } from "./nav.project";
  * in de HTML, in plaats van dat het met CSS verborgen wordt. Dit is laag één van drie: de rail
  * filtert, de pagina assert, de leesfunctie assert.
  *
- * Er staat met opzet geen middleware voor deze routes. Middleware draait op de edge runtime en
- * `auth.ts` trekt de databaselaag mee, die daar niet hoort. Deze layout is server-side en redirect
- * zelf: dezelfde bescherming op de plek waar de code al draait.
+ * De proxy (`proxy.ts`, zo heet middleware in Next 16) zet voor deze routes alleen de CSP, met een
+ * nonce per verzoek (besluiten D14 en D17). Hij bekijkt geen sessie en weigert niets: autorisatie
+ * staat met opzet niet in middleware. Deze layout is server-side en redirect zelf, via
+ * `requireSession()`, en elke pagina, server action en route handler controleert zelf opnieuw.
  */
 export default async function AppLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   const actor = await requireSession();

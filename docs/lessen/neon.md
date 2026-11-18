@@ -18,8 +18,9 @@ scripts en externe lezers die zelf verbindingen openhouden. Beide eindigen op `?
 anders heb je de verkeerde string.
 
 **Afgedwongen door.** Code: `drizzle.config.ts` en `scripts/lib/connection.ts` lezen
-`DATABASE_URL_UNPOOLED`, `lib/db/client.ts` leest `DATABASE_URL`. Welke string waar vandaan komt
-staat in `docs/handleiding/04-neon.md`.
+`DATABASE_URL_UNPOOLED`. `lib/db/client.ts` leest eerst `DATABASE_URL_APP` (de pooled string van de
+rol van de app, L-NEON-07) en valt zonder die variabele terug op `DATABASE_URL`. Welke string waar
+vandaan komt staat in `docs/handleiding/04-neon.md`.
 
 ## L-NEON-02 Geen lokale Postgres maar een eigen dev-branch
 
@@ -167,8 +168,9 @@ handleiding 04 en 30.
 **Symptoom.** (voorkomen) Het wachtwoord van `neondb_owner` moest draaien bij een Neon-project dat
 via de Vercel Marketplace was afgenomen.
 
-**Oorzaak.** De integratie beheert `DATABASE_URL` en `DATABASE_URL_UNPOOLED`, en die zijn met de
-hand niet te wijzigen. "Rotate secrets" in Vercel pakt volgens meerdere meldingen in 2026 de laatst
+**Oorzaak.** De integratie beheert `DATABASE_URL` en `DATABASE_URL_UNPOOLED`, en de regels van
+Production en Preview zijn met de hand niet te wijzigen (de regel van Development zet je wel zelf, op
+`dev`: L-NEON-04). "Rotate secrets" in Vercel pakt volgens meerdere meldingen in 2026 de laatst
 aangemaakte branch in plaats van productie (bij één gebruiker stond productie daarna op een
 stagingbranch); "Reset password" in Neon maakt het oude wachtwoord meteen ongeldig, en Vercel neemt
 het nieuwe niet over.
@@ -194,4 +196,57 @@ plan Free niet terug te zetten.
 buiten Neon werkt ook op Free en kost bij Neon niets extra: dat is het goedkoopste gat om te
 dichten, en bij geld- of personeelsgegevens geen optie maar een eis.
 
-**Afgedwongen door.** Alleen afspraak: handleiding 04 en 30. De back-upworkflow is een eigen module.
+**Afgedwongen door.** Alleen afspraak: handleiding 04 en 30. Het template heeft nog geen
+back-upworkflow: die moet nog gebouwd worden, en tot dan regelt een project de `pg_dump` zelf.
+
+## L-NEON-12 Rollen gelden voor de hele server: neem `CONNECT` af van `PUBLIC`
+
+**Symptoom.** (voorkomen) Staan twee databases ooit op dezelfde server, dan mag de inlogrol van de
+ene niet bij de andere kunnen.
+
+**Oorzaak.** Rollen gelden voor een hele server, niet voor één database. Wat `PUBLIC` op een
+database mag, mag elke rol op die server.
+
+**Regel.** Verbinden alleen met uitdrukkelijk recht. De eerste migratie neemt `CONNECT` af van
+`PUBLIC`, en elke inlogrol krijgt het voor zijn eigen database. De prijs: de dumprol en de rol van
+de app krijgen dat recht in productie met de hand. Geef het bij het dichtzetten ook terug aan
+`neon_superuser` (L-NEON-08).
+
+**Afgedwongen door.** Alleen afspraak: het template heeft één database per project en neemt niets
+af. Het geeft `CONNECT` wel uitdrukkelijk aan de rol van de app (de custom migratie van core), en
+`pnpm check:grants` bewijst dat die rol mag verbinden. Patroon `omgeving-per-adres`. In het eerdere
+project stond dit in een migratie die op 17 november 2026 nog niet was uitgevoerd.
+
+## L-NEON-13 Een preview uit een branch zonder persoonsgegevens: de default branch is de parent
+
+**Symptoom.** Een preview was een kopie van productie, met echte gegevens, en bleef tien tot twaalf
+dagen staan: langer dan de privacyverklaringen beloven.
+
+**Oorzaak.** De database van een preview is een branch van de default branch van het Neon-project,
+en dat was de branch van productie.
+
+**Regel.** Een preview komt uit een branch zonder persoonsgegevens. Maak een branch `seed` met alleen
+het schema en de seed, en maak die de default branch van het Neon-project (Set as default); de
+productiebranch blijft de production branch. Een preview is dan een kind van `seed`. In de
+documentatie van Neon, gelezen op 17 november 2026: "Preview branches are always created from the
+default branch" en "The production branch is independent of the default branch".
+
+Twee routes. Bij een nieuw project is de productiebranch nog leeg: `seed` krijgt die als parent en
+wordt daarna gevuld met `pnpm db:migrate`, `pnpm db:bootstrap` en `pnpm db:seed`. Bij een project
+dat al echte gegevens heeft, is `seed` een branch met alleen het schema (schema only). Daar is de
+lijst van gedraaide migraties (`drizzle.__drizzle_migrations`) leeg, terwijl de tabellen er staan:
+`pnpm db:migrate` begint dan bij de eerste migratie en strandt op "already exists". Neem eerst de
+rijen van die tabel over van de productiebranch (alleen hashes en tijdstippen), en draai dan
+`pnpm db:bootstrap` en `pnpm db:seed`. Die tweede route is in het template nog niet tegen een echte
+database bewezen.
+
+De prijs: een migratie ziet op de preview geen echte data, dus een check die bestaande rijen
+weigert, valt pas bij de uitrol naar productie om. Tel eerst op productie wat een migratie breekt
+(L-DRZ-05). `seed` loopt niet vanzelf mee met een gewijzigde seed. En met de wachtwoordlogin bestaat
+op een preview alleen een account dat op `seed` is aangemaakt.
+
+**Afgedwongen door.** Alleen afspraak: `docs/handleiding/04-neon.md` (stap 2 en 3, en "Een
+seed-branch achteraf"), `docs/handleiding/07-lokaal-werken.md` (stap 4c),
+`docs/handleiding/09-werken-met-een-releasebranch.md` en de regels in
+`docs/handleiding/00-checklist.md`. `pnpm db:seed` schrijft alleen op de branch uit `SEED_TARGET`
+en weigert op het productie-endpoint (`scripts/lib/seed-guard.ts`).

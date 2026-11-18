@@ -14,7 +14,8 @@ Vereist `messaging` (voor uitnodigingen en herstelkoppelingen); gaat niet samen 
 - **Tweestapsverificatie** (TOTP met een authenticator-app), verplicht voor de rollen in
   `auth.password.mfaRequiredFor` (standaard beheerders). Wie het nog niet heeft, stelt het in bij
   de eerste login: na een juist wachtwoord opent meteen de pagina met de QR-code, zonder mail.
-  Het geheim staat versleuteld met een sleutel uit `AUTH_SECRET`.
+  Het geheim staat versleuteld met een sleutel uit `MFA_SECRET_KEY`, en zonder die variabele uit
+  `AUTH_SECRET` (`lib/auth/password/secret-box.ts`).
 - **Vergrendeling** na vijf mislukte pogingen op een account of vanaf één adres, een kwartier lang.
   Eén foutmelding voor alles.
 - **Mijn account** in de rail: wachtwoord wijzigen, tweestapsverificatie aan of uit.
@@ -24,11 +25,20 @@ Vereist `messaging` (voor uitnodigingen en herstelkoppelingen); gaat niet samen 
 `/sign-in` (met het codeveld als dat nodig is), `/sign-in/reset`, `/sign-in/reset/<token>`,
 `/sign-in/invite/<token>`, `/sign-in/mfa/<token>`, `/account/security`, `/admin/accounts`.
 
+## Variabelen
+
+`MFA_SECRET_KEY`: het geheim waaruit de sleutel voor tweestapsverificatie komt, in Vercel als
+Sensitive, gelijk in Production en Preview. Staat hij er, dan versleutelt de tool daarmee en opent
+hij een ouder geheim ook nog met `AUTH_SECRET`; de inlog zet zo'n geheim dan meteen om naar de nieuwe
+sleutel. Staat hij er niet, dan is `AUTH_SECRET` de enige sleutel. Draait het geheim waaruit de
+sleutel komt, dan moet iedereen tweestapsverificatie opnieuw instellen. Zie handleiding 05b.
+
 ## Handwerk
 
-De eerste beheerder: `pnpm invite -- <adres> "<naam>" <beheerdersrol>` drukt de koppeling af.
-Daarna gaat alles via Beheer, Accounts. Zie handleiding 05b voor de keuzes en wat te doen bij een
-vermoeden van misbruik.
+De eerste beheerder maak je aan op de database waar hij gaat inloggen: handleiding 05b, stap 1 zegt
+hoe, ook voor de productiedatabase. `pnpm invite -- <adres> "<naam>" <beheerdersrol>` drukt de
+koppeling af. Daarna gaat alles via Beheer, Accounts. Zie handleiding 05b voor de keuzes en wat te
+doen bij een vermoeden van misbruik, en handleiding 09 voor een account op de preview.
 
 ## Bewijs
 

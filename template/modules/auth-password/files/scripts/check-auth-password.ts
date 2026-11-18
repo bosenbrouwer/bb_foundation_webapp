@@ -3,7 +3,7 @@
  * `pnpm check:auth-password`: de sloten van de wachtwoordlogin, tegen de dev-branch, alles
  * teruggedraaid. Tokens zijn eenmalig en verlopen, de vergrendeling slaat dicht na vijf pogingen,
  * een uitnodiging leidt tot een account met wachtwoord, tweestapsverificatie gaat aan en uit met
- * een echte code, en het token om die in te stellen komt alleen na het juiste wachtwoord. Heeft AUTH_SECRET nodig (voor het versleutelde geheim).
+ * een echte code, en het token om die in te stellen komt alleen na het juiste wachtwoord. Heeft `MFA_SECRET_KEY` of anders `AUTH_SECRET` nodig (voor het versleutelde geheim).
  */
 import { randomUUID } from "node:crypto";
 import { eq } from "drizzle-orm";

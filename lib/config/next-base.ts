@@ -1,5 +1,6 @@
 /* template-owned (module core). Wordt overschreven door pnpm template:update; wijzig dit bestand niet. */
 import type { NextConfig } from "next";
+import { STATIC_CSP } from "../security/csp";
 
 /**
  * De Next-instellingen die elk project uit het template deelt. `next.config.ts` van het project roept
@@ -8,10 +9,12 @@ import type { NextConfig } from "next";
  *
  * ---
  *
- * **De vaste security headers.** De Content-Security-Policy staat hier niet: die komt uit `proxy.ts`,
- * met een nonce per verzoek (`lib/security/csp.ts`, besluit D14). Een header uit deze configuratie
- * kan geen nonce dragen, en twee CSP-headers naast elkaar zou de browser allebei afdwingen. Wat hier
- * staat, is vast en geldt voor elk antwoord, ook voor `/api` en de statische bestanden: clickjacking
+ * **De vaste security headers.** De Content-Security-Policy van een pagina staat hier niet: die komt
+ * uit `proxy.ts`, met een nonce per verzoek (`lib/security/csp.ts`, besluit D14). Een header uit deze
+ * configuratie kan geen nonce dragen, en twee CSP-headers naast elkaar zou de browser allebei
+ * afdwingen. Eén uitzondering: de HTML-pagina's van Auth.js onder `/api/auth` (de foutpagina,
+ * uitloggen) vallen buiten de proxy en krijgen hier de vaste `STATIC_CSP` zonder scripts (besluit
+ * D17). Wat verder hier staat, geldt voor elk antwoord, ook voor `/api` en de statische bestanden: clickjacking
  * (`X-Frame-Options`, naast `frame-ancestors` in de CSP), MIME-sniffing, een referrer die interne
  * URL's lekt, en browserfeatures die niemand gebruikt. XSS wordt door twee dingen gedragen: de code
  * (geen `dangerouslySetInnerHTML`, tekst wordt nooit als HTML gelezen) en de nonce, die een
@@ -44,6 +47,9 @@ export const TEMPLATE_HEADERS = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
 
+/** De paden buiten de proxy waar HTML kan staan: de eigen pagina's van Auth.js. Zie `STATIC_CSP`. */
+export const STATIC_CSP_SOURCE = "/api/auth/:path*";
+
 export const ABOUT_DOCUMENTS = ["./RELEASE-NOTES-KORT.md", "./docs/ROADMAP.md", "./docs/SPEC.md"];
 
 export function withTemplateDefaults(project: NextConfig = {}): NextConfig {
@@ -51,7 +57,7 @@ export function withTemplateDefaults(project: NextConfig = {}): NextConfig {
     ...project,
     async headers() {
       const own = project.headers === undefined ? [] : await project.headers();
-      return [{ source: "/(.*)", headers: TEMPLATE_HEADERS }, ...own];
+      return [{ source: "/(.*)", headers: TEMPLATE_HEADERS }, { source: STATIC_CSP_SOURCE, headers: [{ key: "Content-Security-Policy", value: STATIC_CSP }] }, ...own];
     },
     experimental: {
       ...project.experimental,

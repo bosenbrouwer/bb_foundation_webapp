@@ -12,7 +12,12 @@
 - **Het transport komt uit `project.config.json`** (`messaging.transport`: smtp of graph) en wordt
   gelezen in `lib/messaging/transport/index.ts`. Geen tweede plek die een mail verstuurt. Teams gaat
   via een webhook, alleen als `messaging.teams` aan staat.
+- **Productie is de sleutel, geen vlag voor testen.** Het echte Teams-kanaal (`TEAMS_WEBHOOK_URL`)
+  wordt alleen in productie gelezen. Buiten productie gaat een bericht alleen naar een uitdrukkelijk
+  testkanaal (`TEAMS_WEBHOOK_URL_TEST`); ontbreekt dat, dan gaat er niets uit. Bouw voor een nieuw
+  kanaal naar buiten hetzelfde slot: een vlag "dit is een test" kun je vergeten.
 - **Na het inzetten `kickOutbox()`** in de server action; de cron `/api/cron/outbox` is het vangnet
+  (versturen, vastloopcontrole en opruimen als drie stappen met elk hun eigen opvang)
   en meldt werk dat stilstaat (soort `integration_stuck`, één keer per dag). Mislukt een bericht drie
   keer, dan blijft het op mislukt staan tot iemand het op Beheer, Berichten opnieuw aanbiedt.
 - **De doelgroepen zijn adressering, geen autorisatie**: `admins`, `person` of `role:<rol>`. Wie een

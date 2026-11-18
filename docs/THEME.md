@@ -71,9 +71,13 @@ inclusief wat `app/project.css` erover heen legt.
 | Bovenschrift (`.overline`) | sans | 11px | 500, 0,16em spatiëring |
 | Codes, datums, getallen | mono | 12,5px | 400 |
 
-Drie open fonts, zelf gehost uit `public/fonts` via `next/font/local`: opgehaald bij het bouwen,
-geserveerd van het eigen domein, nooit een `<link>` naar een fontdienst. Een project met eigen
-merkletters zet ze in `public/fonts` en wijst ze aan in `app/fonts/`; de rollen blijven dezelfde.
+Drie open fonts, zelf gehost: Space Grotesk voor de koppen, Manrope voor de body en JetBrains Mono
+voor cijfers en code. De bestanden staan in `app/fonts/` en `app/layout.tsx` laadt ze via
+`next/font/local`. De build haalt niets op en de browser krijgt ze van het eigen domein: nooit een
+`<link>` naar een fontdienst, en ook geen `next/font/google`. Een project met eigen merkletters zet
+de bestanden in `public/fonts/`, met een `@font-face`-blok in `app/project.css`, en zet de familie
+daar vooraan in `--font-display` of `--font-sans`. `app/layout.tsx` verandert dan niet, en de rollen
+blijven dezelfde. Zie `app/fonts/README.md`.
 
 Elk getal is tabular via de klasse `.num`. Elk bovenschrift is `.overline` en elk label `.label`:
 één klasse, niet vier losse die op drie maten voorkomen.
@@ -159,7 +163,7 @@ tokens van het template zijn de enige plek waar ze in de code staan.
 | Strak of afgerond | `brand.radius`: `sharp`, `soft` of `round` | Eén waarde voor de hele tool, geen afronding per component |
 | Alleen licht | `brand.darkMode: "off"` | Anders maakt de generator de donkere modus erbij |
 | Het logo | een SVG in `public/brand/`, en `brand.logo` | Een versie die leesbaar is op de donkere rail; nooit natekenen (6) |
-| Merkletters | `public/fonts` en `app/fonts/` (3) | Alleen met een licentie voor het web; anders blijven de open fonts |
+| Merkletters | de bestanden in `public/fonts/`, een `@font-face`-blok in `app/project.css`, en de familie vooraan in `--font-display` of `--font-sans` (3) | Alleen met een licentie voor het web; anders blijven de open fonts uit `app/fonts/` |
 | Iets wat hier niet in past (een eigen tint, een rand) | een eigen token in `app/project.css` (7) | Genoemd naar wat het betekent, in beide modi |
 
 Componenten uit het design system bouw je niet na: de UI-kit in `components/ui/` is de vorm, en een

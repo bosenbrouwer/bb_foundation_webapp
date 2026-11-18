@@ -21,6 +21,8 @@
  *   labels-size           geen labelbestand boven 600 regels; splits per domein
  *   no-config-import      project.config.json wordt nergens in de app geïmporteerd
  *   template-ownership    de kop van een bestand klopt met template.lock.json
+ *   ai-output             wat de module ai toont, is platte tekst: geen HTML, markdown of linkmaker
+ *   ai-imports            de module ai alleen vanuit mappen die het project noemt, nooit voor gasten
  *
  * Eigen regels van het project staan in scripts/house-rules/project-rules.mjs, dat bij een update
  * van het template blijft staan. Een regel is een functie (rel, text, report) of (root, report).
@@ -42,6 +44,8 @@ import { checkTemplateOwnership } from "./house-rules/template-ownership.mjs";
 import { checkClientGraph } from "./house-rules/client-graph.mjs";
 import { checkSameId } from "./house-rules/same-id.mjs";
 import { checkSecretPatterns } from "./house-rules/secret-patterns.mjs";
+import { checkAiOutput } from "./house-rules/ai-output.mjs";
+import { checkAiImports } from "./house-rules/ai-imports.mjs";
 import { PROJECT_PER_FILE_RULES, PROJECT_WHOLE_REPO_RULES } from "./house-rules/project-rules.mjs";
 
 /** Regels die per bestand kijken, met de vorm (rel, text, report). */
@@ -57,6 +61,8 @@ const PER_FILE_RULES = [
   checkTemplateOwnership,
   checkSameId,
   checkSecretPatterns,
+  checkAiOutput,
+  checkAiImports,
   ...PROJECT_PER_FILE_RULES,
 ];
 

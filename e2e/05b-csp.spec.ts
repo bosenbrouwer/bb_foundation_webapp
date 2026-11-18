@@ -1,6 +1,7 @@
 /* template-owned (module core). Wordt overschreven door pnpm template:update; wijzig dit bestand niet. */
 import { expect, test, type Page } from "@playwright/test";
 import { labels } from "../lib/i18n/labels";
+import { STATIC_CSP } from "../lib/security/csp";
 import { signIn } from "./helpers";
 
 /**
@@ -70,4 +71,19 @@ test("na het inloggen weigert de browser niets, en de pagina is gehydrateerd", a
   await expect(page.getByRole("button", { name: labels.toolFeedback.close })).toBeVisible();
 
   expect(violations).toEqual([]);
+});
+
+test("een adres met een punt erin is een pagina, en wat buiten de proxy valt heeft een vaste CSP", async ({ page }) => {
+  /* Besluit D17: in een eerder project viel de CSP weg op elk adres met een punt erin. */
+  for (const path of ["/bestaat-niet.x", "/iemand/jan.jansen"]) {
+    const response = await page.request.get(path);
+    const policy = response.headers()["content-security-policy"] ?? "";
+    expect(policy, path).toMatch(/script-src 'self' 'nonce-[A-Za-z0-9+/=]+' 'strict-dynamic'/);
+  }
+
+  /* De eigen HTML-pagina's van Auth.js komen niet langs de proxy: daar staat de vaste policy zonder scripts. */
+  const error = await page.request.get("/api/auth/error", { maxRedirects: 0 });
+  const fixed = error.headersArray().filter((header) => header.name.toLowerCase() === "content-security-policy");
+  expect(fixed).toHaveLength(1);
+  expect(fixed[0]?.value).toBe(STATIC_CSP);
 });

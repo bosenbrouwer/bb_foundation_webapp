@@ -28,7 +28,7 @@ import { patchEnvExample } from "../patchers/env-example";
 import { patchGitignore } from "../patchers/gitignore";
 import type { ManagedBlock } from "../patchers/managed-blocks";
 import { patchPackageJson, type PackageJsonDesired } from "../patchers/package-json";
-import { patchVercelJson, type Cron } from "../patchers/vercel-json";
+import { NO_PREVIEW_BRANCHES, patchVercelJson, type Cron } from "../patchers/vercel-json";
 import { normaliseConfig, readConfig } from "./config";
 import type { ProjectConfig } from "./config-schema";
 import { assertNoDrift, DrizzleError, generateModuleMigration, hasDrizzleKit, pendingSchemaSteps } from "./drizzle";
@@ -415,11 +415,12 @@ export function applyTemplate(root: string, sourceRoot: string, options: ApplyOp
   /*
    * De build migreert eerst (SPEC D5, les L-VRC-01): zonder `buildCommand` draait Vercel alleen
    * `next build`, en dan migreert noch productie noch een preview. Een standaardwaarde, dus een
-   * project dat zelf een buildCommand heeft, houdt het zijne.
+   * project dat zelf een buildCommand heeft, houdt het zijne. Hetzelfde voor `git`: welke soorten
+   * branches geen eigen preview krijgen (`NO_PREVIEW_BRANCHES`).
    */
   const vercelResult = patchVercelJson(
     vercelText,
-    { defaults: { regions: [config.hosting.region], buildCommand: "pnpm db:deploy && pnpm build" }, crons },
+    { defaults: { regions: [config.hosting.region], buildCommand: "pnpm db:deploy && pnpm build", git: { deploymentEnabled: NO_PREVIEW_BRANCHES } }, crons },
     previousLock?.merged.vercelCrons ?? shippedMerged.vercelCrons,
     [...config.template.keepCrons],
   );

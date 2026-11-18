@@ -6,14 +6,20 @@
  * Dat is geen cosmetiek: een tabel waar `updated_at` per ongeluk zonder `notNull` staat valt in een
  * code review niet op, maar levert later een overzicht op dat niet kan sorteren op wijzigingsmoment.
  *
- * Gebruik als spread aan het eind van een tabeldefinitie:
+ * Gebruik als spread aan het eind van een tabeldefinitie. Elke tabel draagt daarnaast
+ * `appRowAccess()` uit `./rls` in het blok met indexen (CLAUDE.md regel 16): zonder die regel is de
+ * tabel voor de rol van de app leeg.
  *
- *     export const orders = pgTable("orders", {
- *       id: primaryKeyColumn(),
- *       organisationId: uuid("organisation_id").notNull().references(() => organisations.id),
- *       ...timestamps,
- *       ...softDelete,
- *     });
+ *     export const orders = pgTable(
+ *       "orders",
+ *       {
+ *         id: primaryKeyColumn(),
+ *         organisationId: uuid("organisation_id").notNull().references(() => organisations.id),
+ *         ...timestamps,
+ *         ...softDelete,
+ *       },
+ *       (t) => [index("orders_organisation_idx").on(t.organisationId), appRowAccess()],
+ *     );
  */
 
 import { sql } from "drizzle-orm";

@@ -88,6 +88,7 @@ const nl = {
   suggesting: "Bezig",
   yes: "ja",
   no: "nee",
+  fakePrefix: "Nagemaakt",
 };
 
 const en = {
@@ -172,6 +173,7 @@ const en = {
   suggesting: "Working",
   yes: "yes",
   no: "no",
+  fakePrefix: "Fake",
 } satisfies Widen<typeof nl>;
 
 export const aiLabels: Readonly<Record<"nl" | "en", Widen<typeof nl>>> = { nl, en };

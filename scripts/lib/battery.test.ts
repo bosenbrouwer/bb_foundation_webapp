@@ -7,6 +7,7 @@ const SCRIPTS = {
   lint: "eslint . && node scripts/lint-house-rules.mjs",
   test: "vitest run",
   "check:secrets": 'node node_modules/secretlint/bin/secretlint.js "**/*"',
+  "check:licenses": "node scripts/check-licenses.mjs",
   "check:migrations": "node scripts/check-migrations.mjs",
   "check:drift": "node scripts/check-drift.mjs",
   "check:contrast": "node scripts/check-contrast.mjs",

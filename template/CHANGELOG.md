@@ -15,6 +15,128 @@ versie na het bijwerken.
 
 - Nog niets.
 
+## v1.8.0 (17 november 2026)
+
+### Wat verandert
+
+AI en veiligheid, uit lessen van een eerder project tot en met 17 november 2026: vier plekken waar
+dat project een model gebruikt, een doorlichting als aanvaller, en een nachtronde die dagenlang
+stilstond op één fout.
+
+- **Beveiliging: Next.js 16.4.6** (en `eslint-config-next` 16.4.6). Op 16.2.0 tot en met 16.4.4
+  staan twee meldingen (matig) over een cache die lekt tussen waarden van een root-parameter bij
+  `'use cache'`; opgelost vanaf 16.4.5. Het template gebruikt die functie niet, een project kan dat
+  wel. `next build` van 16.4.2 stopte op 17 november 2026 op die melding; `pnpm audit --prod` is
+  met 16.4.6 schoon. De versie is ouder dan de wachttijd van een week.
+- **De deploy zet de organisatie neer.** `pnpm db:deploy` roept na de migraties `ensureBaseData`
+  aan (hetzelfde als `pnpm db:bootstrap`). Geen migratie maakt de organisatierij en geen handleiding
+  liet dat script op productie draaien: op een verse productiedatabase faalden de eerste inlog en
+  `pnpm invite`. Besluit D21. Niet tegen een database bewezen.
+- **Eén fout zet de nacht niet stil.** `runSteps` en `stepsResponse` in `lib/cron/steps.ts`: elke
+  ronde van een cronroute is een stap met zijn eigen opvang; een stap die gooit, wordt gemeld met
+  zijn naam, de volgende loopt door, en het antwoord is een 500 met de mislukte stappen. `runPrune`
+  loopt erop, en ook de crons van de modules jobs (verwerken, opruimen) en messaging (versturen,
+  vastloopcontrole, opruimen). Besluit D15.
+- **Een foutmelding die zegt waarom, zonder de rij.** `causeTags` in `lib/monitoring/report.ts`
+  loopt de keten van `cause` af en zet de code en, bij een databasefout, de naam van de check of
+  index, de tabel en de kolom als labels achter de regel in de log. `message` en `detail` van de
+  oorzaak gaan nooit mee. Besluit D16.
+- **De CSP op elk adres.** De proxy slaat alleen `/api`, de bestanden van Next en een pad dat op de
+  extensie van een bestand eindigt over; een pagina met een punt in het adres krijgt de nonce. De
+  eigen HTML-pagina's van Auth.js onder `/api/auth` krijgen een vaste CSP zonder scripts
+  (`STATIC_CSP`). Test `lib/security/csp-coverage.test.ts`, e2e `05b` uitgebreid. Besluit D17.
+- **Module auth-entra: geen deploy zonder de eigen tenant.** Ontbreekt
+  `AUTH_MICROSOFT_ENTRA_ID_ISSUER` in een preview of in productie, of wijst hij naar `common`,
+  `organizations` of `consumers`, dan gooit de provider bij het opstarten
+  (`lib/auth/providers/entra-issuer.ts`). Besluit D18.
+- **De CI.** Draait ook op een push naar `release/next`. Nieuw in de job met de scans:
+  `pnpm check:licenses` (`scripts/check-licenses.mjs`: geen GPL of AGPL in wat naar productie gaat,
+  LGPL mag, een onbekende licentie waarschuwt) als poort, en Gitleaks over de hele git-historie op
+  een vaste versie met checksum, als advies tot een run beoordeeld is; de valse bevindingen staan
+  met hun reden in `.gitleaks.toml` (van het project). `check:licenses` staat ook in
+  `pnpm check:all`. Besluit D19.
+- **Welke branches uitrollen.** `vercel.json` krijgt `git.deploymentEnabled`: de soorten
+  werkbranches (`feature/**`, `fix/**`, `dependabot/**` en tien andere) krijgen geen eigen preview
+  meer; `main` en `release/next` rollen uit. Besluit D20.
+- **Een preview zonder echte gegevens.** Handleiding 04, 07, 09 en de checklist: de parent van een
+  preview is een branch `seed` met alleen de seed, de default branch van het Neon-project; de
+  productiebranch blijft de production branch. Vóór deze versie zei handleiding 09 dat de preview
+  een kopie van productie was.
+- **Kleine helpers voor invoer van buiten:** `uuidOrUndefined` (`lib/domain/ids.ts`), `oneOf`
+  (`lib/domain/one-of.ts`) en `escapeLike` (`lib/domain/like.ts`), elk met test. Een vreemd id, een
+  onbekende keuze of een joker in een zoekveld is een 404 of een lege lijst, geen 500.
+- **Module ai: een antwoord is invoer.** `keyed` (korte sleutels in plaats van id's) en `enumOr`
+  (een onbekende keuze wordt de keuze die niets doet) in `lib/ai/keys.ts`.
+- **Module ai: de witte lijst, bewezen.** `outgoingText` en `smuggled` in `lib/ai/outgoing.ts` voor
+  de smokkeltest per prompt, en rubriek 7 van `pnpm check:ai`, die de gevallen uit
+  `scripts/check-ai.project.ts` (van het project) tegen de database draait. De check haalt de
+  sleutel van het model eerst uit de omgeving.
+- **Module ai: platte tekst.** `PlainText` (`components/ai/plain-text.tsx`), door `ProposalView`
+  gebruikt voor elke tekst van het model, en de huisregel `ai-output`: een bestand dat iets van de
+  module toont, bevat geen `dangerouslySetInnerHTML`, geen markdown-renderer en geen linkmaker.
+- **Module ai: wie de module mag gebruiken.** De huisregel `ai-imports`: `@/lib/ai` alleen vanuit
+  de mappen van de module zelf en de mappen in `PROJECT_AI_IMPORT_ROOTS`
+  (`scripts/house-rules/project-rules.mjs`), en nooit vanuit een map voor gasten of klanten.
+- **Module ai: een nagemaakt model.** Met `AI_FAKE=1` en `APP_ENV=local` antwoordt
+  `lib/ai/fake.ts` in de vaste structuur van de prompt, door dezelfde toets, zonder sleutel en
+  zonder netwerk; buiten lokaal gooit het. `playwright.config.ts` geeft de server van de e2e
+  `SAFE_SERVER_ENV` mee (`scripts/lib/safe-server-env.ts`): de sleutel leeg en het nagemaakte model
+  aan. Besluit A5 in `docs/modules/ai.md`.
+- **Module messaging: Teams buiten productie alleen naar een testkanaal.** `TEAMS_WEBHOOK_URL` wordt
+  alleen in productie gelezen; elders telt alleen `TEAMS_WEBHOOK_URL_TEST`, en zonder die gaat er
+  niets uit. Besluit M1 in `docs/modules/messaging.md`.
+- **Module files: de grens in de browser.** `FileInput` houdt een bestand boven de grens van het
+  doel tegen vóór het versturen (`SizedFileInput`). Besluit F1 in `docs/modules/files.md`.
+- **Lessen:** een nieuwe laag `docs/lessen/ai.md` (L-AI-01 tot 11), en L-WERK-13 tot 17, L-AUTH-08
+  tot 10, L-NEXT-20 tot 22, L-NEON-12 en 13, L-WIN-08 en 09.
+- **Patronen:** `ai-gesprek`, `ai-meten`, `omgeving-per-adres`, `accounts-van-buiten`,
+  `intrekbare-sessie`, `tweede-app-in-de-repo`, `eigenaar-boven-beheerder`,
+  `niemand-beslist-over-zichzelf` en `veiligheidschecklist`. Acht van de negen staan niet in code in
+  het template: ze zeggen hoe een project het bouwt.
+- **CLAUDE.md:** regel 5 (in een log die je niet kunt opschonen staan sleutels en aantallen, nooit
+  inhoud), regel 11 (de helpers voor invoer van buiten), regel 17 (ook een action die het quotum van
+  een gedeelde sleutel kost), de batterij met `check:licenses`, "zeg wat bewezen is en wat niet", en
+  vijf nieuwe rijen in de tabel met lessen en patronen. Het blok van de module ai is herschreven.
+- **Documenten nagelopen op tegenspraak met de code** (veertig bevindingen): onder meer wat
+  `pnpm entra:status` en `pnpm db:status` echt tonen, de sleutel van tweestapsverificatie
+  (`MFA_SECRET_KEY`), `appRowAccess()` in elk voorbeeld van een tabel, de CSP in handleiding 03 en
+  L-NEXT-13, het rooster van een kwartiercron (werkuren), en invullen en afvinken in een eigen
+  `docs/inrichting.md` in plaats van in een bestand van het template. `OVERDRACHT.md` is weg.
+
+### Let op bij bijwerken
+
+- **Next.js 16.4.6:** `pnpm install` na de update, en bouw één keer lokaal.
+- **De deploy draait `scripts/lib/bootstrap.project.ts` nu elke keer**, ook op productie. Dat
+  bestand hoort alleen upserts te bevatten; staat er iets in dat bij herhaling verdubbelt, maak het
+  dan eerst idempotent.
+- **Het antwoord van een cronroute heeft een andere vorm:** `{ "results": { ... }, "failed": [ ... ] }`
+  in plaats van de tellingen op het hoogste niveau. Leest een eigen script of test het antwoord van
+  `/api/cron/prune`, `/api/cron/jobs` of `/api/cron/outbox`, pas het dan aan. `runPrune` geeft nu
+  `{ results, failed }` terug. Een eigen cronroute met meer dan één ronde: zet de rondes in
+  `runSteps`.
+- **Inloggen via Microsoft:** staat `AUTH_MICROSOFT_ENTRA_ID_ISSUER` niet in Vercel voor Production
+  én Preview, dan faalt de eerstvolgende build daar, met een melding die zegt wat te zetten
+  (handleiding 05).
+- **De huisregel `ai-imports`** (alleen met de module ai): elke map buiten de module die `@/lib/ai`
+  importeert, moet in `PROJECT_AI_IMPORT_ROOTS` staan. Die lijst staat in
+  `scripts/house-rules/project-rules.mjs`, een bestand van het project dat een update niet
+  overschrijft: voeg `export const PROJECT_AI_IMPORT_ROOTS = ["app/(app)/<map>/", "lib/<map>/"];`
+  zelf toe. Tot dan weigert `pnpm lint` en zegt hij welke map.
+- **De huisregel `ai-output`:** een scherm dat een voorstel toont met een markdown-renderer of
+  `RichText`, zet je om naar `PlainText`.
+- **Teams:** staat `TEAMS_WEBHOOK_URL` ook in Preview of in `.env.local`, dan gaat daar niets meer
+  uit. Wil je buiten productie testen: maak een testkanaal met een eigen webhook en zet die in
+  `TEAMS_WEBHOOK_URL_TEST` (handleiding 21).
+- **`vercel.json`:** apply zet `git.deploymentEnabled` alleen als er nog geen `git` in staat. Een
+  werkbranch krijgt daarna geen preview meer; zet wat je wilt bekijken op `release/next`.
+- **De preview:** een bestaand project houdt zijn previews als kopie van productie tot je de branch
+  `seed` hebt gemaakt en als default hebt gezet (handleiding 04, "Een seed-branch achteraf"). Lees
+  de waarschuwing daar over de lijst van gedraaide migraties.
+- **De CI:** `.gitleaks.toml` komt er als nieuw bestand bij. De stap met Gitleaks staat op advies:
+  loop de eerste uitkomst na, zet een valse bevinding met de reden in dat bestand, en trek een echte
+  in bij de dienst waar hij vandaan komt.
+- **`pnpm check:ai`** leest nu `scripts/check-ai.project.ts`; apply zet dat bestand neer.
+
 ## v1.7.0 (29 oktober 2026)
 
 ### Wat verandert

@@ -14,6 +14,8 @@ test("de cronroute geeft 404 zonder of met een verkeerd token, en antwoordt met 
 
   const right = await request.get("/api/cron/prune", { headers: { authorization: "Bearer e2e-cron-secret" } });
   expect(right.status()).toBe(200);
-  const body = (await right.json()) as Record<string, number>;
-  expect(typeof body.rate_limits).toBe("number");
+  /* Elke stap met zijn uitkomst, en geen enkele mislukt (lib/cron/steps.ts). */
+  const body = (await right.json()) as { results: Record<string, number | null>; failed: string[] };
+  expect(typeof body.results.rate_limits).toBe("number");
+  expect(body.failed).toEqual([]);
 });

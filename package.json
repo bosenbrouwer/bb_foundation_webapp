@@ -49,13 +49,14 @@
     "check:secrets": "node node_modules/secretlint/bin/secretlint.js \"**/*\"",
     "check:all": "node --env-file-if-exists=.env.local node_modules/tsx/dist/cli.mjs scripts/check-all.ts",
     "check:grants": "node --env-file-if-exists=.env.local node_modules/tsx/dist/cli.mjs scripts/check-grants.ts",
-    "db:app-login": "node --env-file-if-exists=.env.local node_modules/tsx/dist/cli.mjs scripts/db-app-login.ts"
+    "db:app-login": "node --env-file-if-exists=.env.local node_modules/tsx/dist/cli.mjs scripts/db-app-login.ts",
+    "check:licenses": "node scripts/check-licenses.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.131.0",
     "@neondatabase/serverless": "1.1.0",
     "drizzle-orm": "0.45.2",
-    "next": "16.4.2",
+    "next": "16.4.6",
     "next-auth": "5.0.0-beta.32",
     "nodemailer": "10.1.7",
     "qrcode": "1.5.4",
@@ -73,7 +74,7 @@
     "@types/react-dom": "19.2.4",
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.5",
-    "eslint-config-next": "16.4.2",
+    "eslint-config-next": "16.4.6",
     "secretlint": "13.0.7",
     "tailwindcss": "4.3.3",
     "tsx": "^4.23.7",

@@ -21,7 +21,8 @@ wat je deed en wanneer.
 | Niemand kan inloggen (Microsoft) | Het client secret is verlopen | Nieuw secret in Entra, in Vercel zetten, opnieuw deployen (05, 06) |
 | Niemand kan inloggen (wachtwoord) | `AUTH_SECRET` gewisseld of ontbreekt | Iedereen logt opnieuw in; tweestapsverificatie opnieuw instellen als het geheim wisselde (05b) |
 | Eén persoon komt er niet in | Geen rol toegewezen, account inactief of vergrendeld | 11; vergrendeling duurt een kwartier |
-| "Geen toegang" na inloggen bij Microsoft | Assignment required staat uit, of de rolwaarde wijkt af | 05 stap 4 en 5; `pnpm entra:status` |
+| "Geen toegang" na inloggen bij Microsoft | Assignment required staat uit, of de rolwaarde wijkt af | 05 stap 4 en 5; `pnpm entra:status` drukt de rolwaarden af die de tool verwacht, om naast de portal te leggen |
+| De build faalt op `AUTH_MICROSOFT_ENTRA_ID_ISSUER` | Met opzet: de issuer ontbreekt in die omgeving of noemt `common`, `organizations` of `consumers` | De tenant-id in de issuer, in Production en Preview (05, 06) |
 | Het inlogscherm toont een oude versie | Deploy bezig of cache | Wachten, verversen zonder cache; anders Vercel, Deployments |
 | Een pagina geeft een foutscherm met een code | Een fout op de server | Vercel, Logs met die code; de melding staat gescrubd in de log |
 | Beheer, Systeem: databaseschema rood | De migratie van de laatste deploy is niet gedraaid | Build-log van de deploy; `pnpm db:deploy` faalde; herstel de migratie op `dev` met `pnpm db:roundtrip` en deploy opnieuw |
@@ -30,8 +31,12 @@ wat je deed en wanneer.
 | "vastgelopen" op Beheer | Er wacht al een uur werk zonder beweging | De laatste fout staat erbij; meestal een token of een variabele (23) |
 | Uploaden weigert | Grens, type of inhoud, of het token is verlopen | De melding zegt welke; 22 bij een token |
 | Een cron geeft 404 in de logs | `CRON_SECRET` ontbreekt of wijkt af | 06 |
+| Een cron staat rood bij Vercel, met status 500 | Een stap in de ronde mislukte; de andere stappen zijn wel gelopen | De regel `[report] cron ...` in de logs noemt de stap (23, "Een rode cron") |
 | Een preview-deploy faalt op `PRODUCTION_DB_ENDPOINT` | Met opzet: de guard | 04 en 06 |
 | Een preview komt op productiedata uit | Geen pull request, dus geen Neon-branch | Altijd via een pull request; 04 |
+| Een preview toont gegevens van productie | De preview-branch kwam niet uit `seed` | `seed` op Set as default, dan een nieuwe pull request (04) |
+| Op de preview kan ik niet inloggen | De preview komt uit `seed`: je account van productie bestaat er niet | 09, "Inloggen op de preview" |
+| Een Teams-bericht van een preview of van je laptop komt niet aan | Buiten productie gaat Teams alleen naar het testkanaal, en zonder `TEAMS_WEBHOOK_URL_TEST` nergens heen | 21, stap 3 |
 | De rekening van Neon loopt op | Compute slaapt niet | Autosuspend korter, crons minder vaak, branches weg (04, 23) |
 | `pnpm template:verify` rood in de CI | Een owned bestand gewijzigd | `pnpm template:apply --force` of `pnpm template:adopt <pad>` |
 | `pnpm template:apply` slaat bestanden over | Het project heeft owned bestanden gewijzigd | Bewust: adopt of force, zie `template/README.md` |
@@ -54,6 +59,9 @@ wat je deed en wanneer.
 
 ## Melden
 
-Een storing die hier niet staat en die je hebt opgelost: zet hem erbij via een pull request, zodat de
-volgende het in een minuut vindt. Een vermoeden van een lek: het geheim wisselen, de audit log
-nalopen, en het adres uit `security.txt` is voor meldingen van buiten.
+Een storing die hier niet staat en die je hebt opgelost: schrijf hem op in `docs/inrichting.md`,
+onder een eigen kopje "Storingen", en zet dat via een pull request in de repo, zodat de volgende het
+in een minuut vindt. Niet in dit bestand: dat is van het template, een wijziging maakt
+`pnpm template:verify` rood, en een update overschrijft hem. Is de storing er een die elk project kan
+krijgen, meld hem dan ook bij wie het template beheert. Een vermoeden van een lek: het geheim
+wisselen, de audit log nalopen, en het adres uit `security.txt` is voor meldingen van buiten.

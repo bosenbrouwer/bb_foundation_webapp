@@ -17,7 +17,9 @@ een wizard, bijvoorbeeld bij een training, dan volgt die dezelfde delen.
 
 ### Deel 1. Voorbereiding, vooraf en thuis
 
-Zeven stappen, samen ongeveer een uur. Vink ze af in de checklist.
+Zeven stappen, samen ongeveer een uur. Vink ze af in je eigen kopie van de checklist,
+`docs/inrichting.md`: de checklist zelf is van het template en wijzig je niet (`00-checklist.md` zegt
+bovenaan hoe je de kopie maakt).
 
 | Stap | Wat | Waar |
 |---|---|---|
@@ -32,15 +34,22 @@ Zeven stappen, samen ongeveer een uur. Vink ze af in de checklist.
 ### Deel 2. Klaarzetten en live
 
 Eerst ontwerp je je tool (handleiding 10): het projectplan en de keuzes voor `project.config.json`.
-Dat levert één ding op: de startprompt. Een wizard maakt hem voor je, met de configuratie, het plan en
-je checklist erin; zonder wizard staat hij in handleiding 10. Daarna deze acht stappen. Aan het eind staat de lege tool
-online, en elke ronde daarna gaat via `release/next`.
+Daarna deze acht stappen. Stap 3 heeft twee routes, en ze lopen anders:
+
+- **Met een wizard.** De wizard maakt één startprompt, met de configuratie, het plan en je checklist
+  erin. Claude zet die drie bestanden neer en stopt. Jij doet Commit en Sync en zegt "gedaan"; dan
+  past Claude het template toe en schrijft de eerste specificatie.
+- **Met de hand.** Je zet `project.config.json` en `docs/PROJECTPLAN.md` zelf klaar, doet Commit en
+  Sync, en plakt dan de startprompt uit handleiding 10. Claude past het template toe en schrijft de
+  eerste specificatie. Er is geen tussenstop en je zegt geen "gedaan".
+
+Aan het eind staat de lege tool online, en elke ronde daarna gaat via `release/next`.
 
 | Stap | Wat | Handleiding | Wat je daarna hebt |
 |---|---|---|---|
 | 1 | GitHub: Use this template, privérepo | 02, stap 3 | je eigen repo, privé |
 | 2 | VS Code: Clone Repository | 07, stap 1 | de repo in je werkmap |
-| 3 | Plak de startprompt in het Claude-paneel: Claude zet config, plan en checklist neer en stopt. Commit en Sync, zeg "gedaan" | 10, "De startprompt" | de drie bestanden staan op GitHub; Claude past het template toe en schrijft de eerste specificatie |
+| 3 | De startprompt in het Claude-paneel. Met een wizard: Claude zet config, plan en checklist neer en stopt; Commit en Sync, zeg "gedaan". Met de hand: zet zelf config en plan klaar, Commit en Sync, plak dan de prompt uit 10 | 10, "De startprompt" | config en plan staan op GitHub; Claude past het template toe en schrijft de eerste specificatie |
 | 4 | Vercel: Add New Project, Neon onder Storage | 03, 04 | een project dat bij elke push bouwt, met een database in Frankfurt |
 | 5 | Zet de variabelen die Claude noemt in Vercel: namen van Claude, waarden alleen van jou | 06 | de geheimen op hun plek, nergens anders |
 | 6 | Commit en Sync: je tool gaat online | 08 | de tool staat live |
@@ -55,7 +64,7 @@ online, en elke ronde daarna gaat via `release/next`.
 | Werken met een releasebranch | 09 | Zodra er echte gebruikers zijn niet meer rechtstreeks op `main`: eerst testen op de vaste preview van `release/next`, dan live |
 | De manier van inloggen | 05, Microsoft Entra, of 05b, wachtwoordlogin | Rollen voor de eerste mensen, tweestapsverificatie |
 | De rooktest | 08 | `pnpm smoke:prod` is groen |
-| GitHub, Vercel en Neon afmaken | 02, 03, 04 | Organisatie, tweestapsverificatie, regio, preview-branches, plafonds |
+| GitHub, Vercel en Neon afmaken | 02, 03, 04 | Organisatie, tweestapsverificatie, regio, de branch `seed` waar previews uit komen, plafonds |
 | De modules die je in `project.config.json` aanzette | 20 of 20b (mail), 21 (Teams), 22 (bestanden), 23 (crons), 24 (AI) | Niets ervoor |
 | Altijd | 30, beveiliging en kosten; 90, als iets misgaat | Overzicht en rust |
 
@@ -86,8 +95,11 @@ online, en elke ronde daarna gaat via `release/next`.
 
 Claude Code bouwt, test en levert op; jij beslist, controleert en doet alles buiten de code: accounts,
 variabelen, rollen in de tenant, een postbus. `docs/WERKWIJZE.md` beschrijft het samenspel per ronde.
-Elke handleiding eindigt met "Vul in": de namen van wat je aanmaakte, zodat de volgende persoon het
-terugvindt. Nooit het geheim zelf.
+De meeste handleidingen eindigen met "Vul in": de namen van wat je aanmaakte, zodat de volgende
+persoon het terugvindt. Nooit het geheim zelf. Die tabellen vul je niet in de handleiding in: een
+handleiding is van het template, en een wijziging daarin maakt `pnpm template:verify` rood en
+verdwijnt bij een update. Noteer het in `docs/inrichting.md`, je eigen kopie van de checklist
+(`00-checklist.md`), onder een kopje met het nummer van de handleiding.
 
 ## Als het misgaat
 

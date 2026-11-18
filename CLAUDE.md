@@ -30,10 +30,12 @@ De bouw volgt het plan van 2 oktober 2026 in veertien rondes; de stand staat in 
    de tijdzone uit de config via `Intl`, nooit via de serverklok.
 4. **Geen `localStorage` of `sessionStorage` voor domeindata of voorkeuren.** Voorkeuren staan in
    `user_preferences`, per persoon.
-5. **De audit log is append-only**, afgedwongen met een trigger en niet alleen met `REVOKE`: lokaal
-   verbindt de app als eigenaar, en de rol van de app mag hem alleen aanvullen. Loggen gebeurt in
-   dezelfde transactie als de mutatie. Geen gezondheidsgegeven en geen vrije tekst over een persoon
-   in `before` of `after`: wat daar staat, is nooit meer op te schonen.
+5. **De audit log is append-only**, afgedwongen met een trigger en niet alleen met `REVOKE`: de
+   trigger houdt ook de eigenaar tegen (scripts en migraties verbinden als eigenaar), en de rol van
+   de app mag hem alleen aanvullen. Loggen gebeurt in dezelfde transactie als de mutatie. In een log
+   die je niet kunt opschonen, staan sleutels en aantallen, nooit inhoud: geen gezondheidsgegeven,
+   geen vrije tekst over een persoon en geen volledige inhoud van een bewerking in `before` of
+   `after`.
 6. **Elke schrijfactie naar buiten is idempotent**: via `outbox` of `jobs`, met een unieke
    idempotency key en een lease (`claimed_until`, `for update skip locked`). Nooit rechtstreeks
    vanuit een server action.
@@ -49,8 +51,11 @@ De bouw volgt het plan van 2 oktober 2026 in veertien rondes; de stand staat in 
     tegen een Neon dev-branch, DDL over de ongepoolde verbinding.
 11. **Elke mutatie is een server action** die begint met `requireSession()` of `requireActor()` als
     eerste regel, vóór elke blik op de invoer (de huisregel `session-first` controleert dat), en een
-    expliciete `can()`. Route handlers alleen voor cron en webhooks. Autorisatie zit in de query,
-    nooit in de UI: `display:none` is geen autorisatie.
+    expliciete `can()`. Route handlers alleen voor cron, webhooks en downloads. Autorisatie zit in
+    de query, nooit in de UI: `display:none` is geen autorisatie. Een id van buiten gaat eerst door
+    `uuidOrUndefined` (`lib/domain/ids.ts`), een keuze door `oneOf` (`lib/domain/one-of.ts`) en
+    zoektekst in een `like` door `escapeLike` (`lib/domain/like.ts`): een vreemde waarde is een 404
+    of een lege lijst, geen 500.
 12. **Elke migratie heeft een geteste terugweg**, een gedraaide migratie wordt nooit gewijzigd, een
     nieuwe enumwaarde en het gebruik ervan staan in twee migraties, en hernoemen is uitbreiden en
     inkrimpen in stappen. Zie `lib/db/migrations/README.md`.
@@ -70,7 +75,8 @@ De bouw volgt het plan van 2 oktober 2026 in veertien rondes; de stand staat in 
     binnen de app, blijft de app regelen.
 17. **Alles wat van buiten te raken is, heeft een rem** via `consumeRateLimit`
     (`lib/domain/rate-limit.ts`): inloggen, codes, herstel, hulpformulieren, en elke action die rijen
-    maakt of naar buiten schrijft, ook voor wie is ingelogd. De sleutel is het adres voor wie niet is
+    maakt, naar buiten schrijft of een dienst aanroept die geld of het quotum van een gedeelde
+    sleutel kost, ook voor wie is ingelogd. De sleutel is het adres voor wie niet is
     ingelogd en het account voor wie dat wel is; de teller telt vóór het werk en ongeacht de uitkomst,
     en de weigering zegt wanneer het weer kan.
 
@@ -79,12 +85,16 @@ De bouw volgt het plan van 2 oktober 2026 in veertien rondes; de stand staat in 
 Next.js (App Router) + TypeScript, Neon Postgres (EU) via Drizzle, Auth.js v5, Tailwind 4 zonder
 componentenbibliotheek (de tokens volgen het shadcn/ui-contract), deploy op Vercel.
 
-- Mutaties via server actions. Route handlers alleen voor cron en webhooks.
+- Mutaties via server actions. Route handlers alleen voor cron, webhooks en downloads.
 - De CSP komt uit `proxy.ts`, met een nonce per verzoek; de andere headers uit
   `lib/config/next-base.ts`. Nooit een tweede CSP-header. Een eigen `<script>` of `next/script`
-  krijgt de nonce uit `(await headers()).get("x-nonce")`, anders weigert de browser hem.
+  krijgt de nonce uit `(await headers()).get("x-nonce")`, anders weigert de browser hem. Een pagina
+  met een punt in het adres is ook een pagina en krijgt de nonce; de eigen pagina's van Auth.js
+  onder `/api/auth` krijgen een vaste CSP zonder scripts.
 - Migraties met `drizzle-kit`. Elke migratie heeft een geteste terugweg.
-- Achtergrondwerk met Vercel Cron, elke cron ook als `pnpm task:<naam>`.
+- Achtergrondwerk met Vercel Cron, elke cron ook als `pnpm task:<naam>`. Een cron met meer dan
+  één ronde draait ze als stappen met `runSteps` (`lib/cron/steps.ts`): een fout in de ene houdt de
+  andere niet tegen, en het antwoord is dan een 500 met de naam van de stap.
 - Scripts in `package.json` roepen `node --env-file-if-exists=.env.local node_modules/tsx/dist/cli.mjs
   scripts/<x>.ts` rechtstreeks aan, nooit genest `pnpm`: een `&` in een Windows-gebruikerspad breekt
   dat. `next build` nooit met `--env-file`. TypeScript en ESLint staan vastgepind, zie
@@ -100,9 +110,10 @@ lib/project/            config.generated.ts (PROJECT), modules.ts, registry.gene
 lib/auth/               actor, can, session, token, roles.generated, actions.ts en matrix.ts (project)
 lib/db/                 client, rows, errors, audit, schema/ (template-index.ts gegenereerd, index.ts project)
 lib/i18n/               template/ (beide talen), labels.ts en domain/ (project)
-lib/jobs|messaging|files   modules, alleen als ze zijn toegepast
+lib/jobs|messaging|files|ai   modules, alleen als ze zijn toegepast
+lib/cron/               guard.ts (de poort van elke cronroute) en steps.ts (rondes met elk hun eigen opvang)
 lib/integrations/       http.ts (fetchWithTimeout, de enige fetch naar buiten), health.ts (Beheer, Systeem)
-lib/monitoring/         report.ts: serverfouten schoongemaakt naar de log; instrumentation.ts in de root hangt het aan Next
+lib/monitoring/         report.ts: serverfouten schoongemaakt naar de log, met de oorzaak als labels en nooit de rij; instrumentation.ts in de root hangt het aan Next
 lib/domain/             pure functies, elk los te testen: van het template (dates, csv-safe, rate-limit) en van het project
 scripts/                pnpm-taken; scripts/lib/ gedeeld; check-<domein>.ts bewijst gedrag tegen de dev-branch
 e2e/                    00 tot 09 van het template, vanaf 10 van het project
@@ -127,10 +138,14 @@ Vuistregels: één bestand, één onderwerp; datatabellen apart van logica; sche
   met de prijs, de mens kiest, dan volledig uitvoeren, dan vastleggen met een verwijzing naar wat
   het vervangt.
 - **Roadmap.** `docs/ROADMAP.md` werk je bij in dezelfde wijziging als het onderdeel.
-- **De batterij** voordat iets klaar heet: typecheck, lint plus huisregels, vitest, build,
-  check:migrations, check:drift, check:contrast, template:verify, migraties heen en terug op de
-  dev-branch, alle `check:<domein>`, en de e2e tegen `next start`. `pnpm check:all` draait alles en
-  de samenvatting komt in de rubriek Bewijs.
+- **De batterij** voordat iets klaar heet: typecheck, lint plus huisregels, vitest, check:secrets,
+  check:licenses, check:migrations, check:drift, check:contrast, template:verify, build, migraties
+  heen en terug op de dev-branch, alle `check:<domein>`, en de e2e tegen `next start`.
+  `pnpm check:all` draait alles en de samenvatting komt in de rubriek Bewijs.
+- **Zeg wat bewezen is en wat niet.** Wat zonder database of zonder de echte dienst niet te bewijzen
+  was, staat als lijst in het verslag, met waar het bij de eerste echte run het eerst mis kan gaan.
+  Documentatie die de code tegenspreekt, is een bevinding en geen slordigheid. En een test met één
+  vaste datum bewijst niets over de andere dagen van de week.
 - **Fasegrens.** Bouw niets uit een latere fase, ook niet "even snel". Bij twijfel over scope:
   vraag, bouw niet.
 - **Handwerk, één stap per bericht.** Leidt Claude iemand door een console (Neon, Vercel, Entra),
@@ -184,7 +199,7 @@ codevoorbeeld). Lees ze wanneer het onderwerp aan de orde is:
 | Als je dit gaat doen | Lees dan eerst |
 |---|---|
 | een migratie schrijven | `docs/lessen/drizzle-postgres.md`, `docs/lessen/neon.md` |
-| een cron of taak | `docs/lessen/vercel.md`, `docs/patronen/cronroute.md` |
+| een cron of taak | `docs/lessen/vercel.md`, `docs/patronen/cronroute.md`, `docs/lessen/werkwijze.md` (L-WERK-14) |
 | iets met inloggen of rollen | `docs/lessen/authjs.md`, `docs/lessen/entra-graph.md` |
 | een scherm met formulier of upload | `docs/lessen/nextjs.md`, `docs/lessen/http-bestanden.md` |
 | een e2e schrijven | `docs/lessen/nextjs.md` (de e2e-lessen), `docs/lessen/neon.md` |
@@ -193,6 +208,11 @@ codevoorbeeld). Lees ze wanneer het onderwerp aan de orde is:
 | een script dat op productie mag draaien | `docs/lessen/werkwijze.md` (L-WERK-07), `docs/lessen/neon.md` (L-NEON-03) |
 | een fout die in productie niets achterliet | `docs/lessen/werkwijze.md` (L-WERK-08), `docs/patronen/sentry-envelope.md` |
 | een besluit omkeren | `docs/lessen/werkwijze.md` |
+| een prompt, een AI-knop of een gesprek | `docs/modules/ai.md`, `docs/lessen/ai.md`, `docs/patronen/ai-gesprek.md`, `docs/patronen/ai-meten.md` |
+| een tool klaarmaken voor echte gebruikers | `docs/patronen/veiligheidschecklist.md`, `docs/handleiding/30-beveiliging-en-kosten.md` |
+| rechten boven de beheerder, of iemand die over zichzelf beslist | `docs/patronen/eigenaar-boven-beheerder.md`, `docs/patronen/niemand-beslist-over-zichzelf.md` |
+| gebruikers van buiten, meer dan één adres of een tweede app | `docs/patronen/accounts-van-buiten.md`, `docs/patronen/omgeving-per-adres.md`, `docs/patronen/intrekbare-sessie.md`, `docs/patronen/tweede-app-in-de-repo.md` |
+| iets dat op Windows of met pnpm anders loopt dan verwacht | `docs/lessen/toolchain-windows.md` |
 <!-- template:end core -->
 
 <!-- template:begin auth-entra -->
@@ -206,6 +226,11 @@ codevoorbeeld). Lees ze wanneer het onderwerp aan de orde is:
   opgeslagen of vergeleken.
 - **Een nieuwe rol** staat eerst in `project.config.json`, dan in de tenant als app role met exact
   dezelfde waarde. De twee lijsten horen gelijk te zijn.
+- **Een deploy start niet zonder de uitgever van de eigen tenant.** Ontbreekt
+  `AUTH_MICROSOFT_ENTRA_ID_ISSUER` in een preview of in productie, of staat er `common`,
+  `organizations` of `consumers` in, dan gooit de provider bij het opstarten
+  (`lib/auth/providers/entra-issuer.ts`). Haal dat slot nooit weg om een build te laten slagen: zet
+  de variabele.
 <!-- template:end auth-entra -->
 
 ## Dit project

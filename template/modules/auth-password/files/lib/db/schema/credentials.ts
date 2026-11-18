@@ -25,7 +25,7 @@ export const credentials = pgTable("credentials", {
     .notNull()
     .references(() => organisations.id),
   passwordHash: text("password_hash").notNull(),
-  /** Versleuteld met de sleutel uit AUTH_SECRET; leeg zolang er geen tweestapsverificatie is. */
+  /** Versleuteld met `MFA_SECRET_KEY` (zonder die: `AUTH_SECRET`), zie `secret-box.ts`; leeg zolang er geen tweestapsverificatie is. */
   mfaSecret: text("mfa_secret"),
   mfaEnabled: boolean("mfa_enabled").notNull().default(false),
   failedAttempts: integer("failed_attempts").notNull().default(0),

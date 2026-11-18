@@ -70,7 +70,16 @@ aan, nooit genest `pnpm`: een `&` in een Windows-gebruikerspad breekt dat, ook d
 
 ## Regels voor wie aan het template werkt
 
-1. Geen projectinhoud, geen namen van eerdere projecten, van de organisatie of van klanten, geen em-dash. `node template/ci/check-template.mjs` grept erop (de woorden staan in `template/ci/forbidden-words.txt`; dit bestand en dat bestand zijn uitgezonderd, en verder is er geen uitzondering: de wizard en het lesmateriaal van een training staan sinds v1.3.0 in een eigen repo, en die test zelf dat wat de wizard oplevert neutraal blijft en door `template:validate` komt) en `template-ci.yml` draait het bij elke push.
+1. Geen projectinhoud, geen namen van eerdere projecten, van de organisatie of van klanten, geen
+   em-dash. `node template/ci/check-template.mjs` grept erop, en `template-ci.yml` draait het bij
+   elke push naar `main` en `release/next` en bij elke pull request. De woorden staan in
+   `template/ci/forbidden-words.txt`. Wat de check overslaat, staat bovenin het script en is dit:
+   drie bestanden (dit bestand, `forbidden-words.txt` en `check-template.mjs` zelf), de mappen
+   `node_modules`, `.next`, `.git`, `.vercel`, `.template-backup`, `coverage`, `playwright-report`,
+   `test-results` en `fonts`, en elk bestand zonder tekstextensie dat niet met een punt begint
+   (afbeeldingen, fonts). De wizard en het lesmateriaal van een training staan sinds v1.3.0 in een
+   eigen repo, en die test zelf dat wat de wizard oplevert neutraal blijft en door
+   `template:validate` komt.
 2. Documentatie Nederlands, code Engels, UI-teksten in `lib/i18n/template/` in beide talen.
 3. Elke owned bestand draagt de kop. Elke wijziging aan een owned bestand komt in
    `template/CHANGELOG.md` onder de volgende versie, met "Let op bij bijwerken" als er iets kan
@@ -83,8 +92,12 @@ aan, nooit genest `pnpm`: een `&` in een Windows-gebruikerspad breekt dat, ook d
    met Engelse interface, andere rollen en de wachtwoordlogin.
 4. Nooit een kolom hernoemen tussen schemaversies van een module; uitbreiden en inkrimpen in
    stappen. Een nieuwe enumwaarde en het gebruik ervan in twee schemaversies.
-5. Een ronde is klaar als de batterij groen is: typecheck, lint, huisregels, vitest, build,
-   contrast, en vanaf ronde 2 de migraties heen en terug en de e2e-basisset.
+5. Een ronde is klaar als de batterij groen is: typecheck, lint plus huisregels, vitest,
+   check:secrets, check:licenses, check:migrations, check:drift, check:contrast, template:verify,
+   build, de migraties heen en terug op de dev-branch, alle `check:<domein>`, en de e2e tegen
+   `next start`. `pnpm check:all` draait alles in die volgorde (`scripts/lib/battery.ts`) en zegt wat
+   het oversloeg; de samenvatting komt in de rubriek Bewijs. Voor het template zelf komen daar
+   `node template/ci/check-template.mjs` en de gouden test bij (`template/ci/golden.mjs`).
 
 ## Stand
 
@@ -102,9 +115,12 @@ aan, nooit genest `pnpm`: een `&` in een Windows-gebruikerspad breekt dat, ook d
 | 9 | auth-password | code klaar, 3 oktober 2026; check:auth-password en e2e 09 uitgesteld |
 | 10 | files | code klaar, 3 oktober 2026; check:files, blob:status en e2e 08 uitgesteld |
 | 11 | Update en release | code klaar, 3 oktober 2026; updatetest offline |
-| 12 | Documenten voor Claude | klaar, 3 oktober 2026: THEME, WERKWIJZE, docs/modules, twintig patronen, 79 lessen in negen lagen, check:template; de startprompt op een vers project is nog niet beproefd (ronde 14) |
-| 13 | Handleidingen en wizard | code klaar, 3 oktober 2026: handleidingen 00 tot 90, PROJECTPLAN-seed, wizard als één HTML-bestand met de rooktest `template/ci/wizard-smoke.mjs` groen (42 controles in Chromium); de klikproef door een collega staat open |
-| 14 | Proef op de som, tag v1.0.0 | heeft een database nodig, zie hieronder |
+| 12 | Documenten voor Claude | klaar, 3 oktober 2026: THEME, WERKWIJZE, docs/modules, de patronen en de lessen, check:template. Stand na v1.8.0: 29 patronen, en 121 lessen in tien lagen (de laag `ai` is nieuw). De startprompt op een vers project is nog niet beproefd (ronde 14) |
+| 13 | Handleidingen en wizard | code klaar, 3 oktober 2026: handleidingen 00 tot 90 en de PROJECTPLAN-seed. De wizard en zijn rooktest staan sinds v1.3.0 in een eigen repo; `template/ci/wizard-smoke.mjs` bestaat hier niet meer. De klikproef door een collega staat open |
+| 14 | Proef op de som, v1.0.0 | v1.0.0 staat in `template/CHANGELOG.md` (13 oktober 2026); de proef met een database staat nog open, zie hieronder |
+
+Deze tabel beschrijft de bouw tot en met v1.0.0. Wat er sindsdien per versie veranderde, staat in
+`template/CHANGELOG.md`; de versie van nu staat in `template/manifest.json`.
 
 ## Uitgestelde bewijzen
 
@@ -123,3 +139,8 @@ niet was. Allemaal inhalen zodra `.env.local` van de templatemap een dev-branch 
 | 9 | tokens, vergrendeling, uitnodigen en aannemen, tweestapsverificatie met een echte code; de hele weg door de browser | `pnpm check:auth-password` (met `AUTH_SECRET` in `.env.local`), e2e `09-password.spec.ts` in een project met de wachtwoordlogin |
 | 10 | de administratie en de sloten van bestanden, de route zonder sessie, en één echte blob | `pnpm check:files`, e2e `08-files.spec.ts`, `pnpm blob:status` met een ingerichte container |
 | 14 | de proef op de som met database: in de gouden kopieën van `default` (Entra) en `voorbeeld` (wachtwoord, alle modules) `pnpm db:roundtrip`, `pnpm db:bootstrap`, `pnpm db:seed`, alle `check:*` en de volledige e2e; daarna een update met een gewijzigde seed en een gewijzigd owned bestand tegen een echte tag | `node template/ci/golden.mjs --keep voorbeeld`, dan in die map met een `.env.local` naar een dev-branch; de offline helft (gouden test, updatetest) draait al in `template-ci.yml` |
+| v1.6.0 | de rol van de app en het slot op elke tabel: de inlogrol op de dev-branch, de rechten, de regel, evenveel rijen als de eigenaar, en de app en de e2e als die rol | `pnpm db:app-login`, `pnpm check:grants`, daarna `pnpm dev` en `pnpm e2e:all` met `DATABASE_URL_APP` in `.env.local` |
+| v1.7.0 en v1.8.0 | de CSP in een echte browser: één header, de nonce op elk script in de HTML van de server, een pagina met een punt in het adres, en de vaste CSP op `/api/auth` | e2e `05b-csp.spec.ts` |
+| v1.2.0 en v1.8.0 | de sloten van de module ai, en in rubriek 7 de smokkeltest tegen de database | `pnpm check:ai` in een project met de module ai, met minstens één geval in `scripts/check-ai.project.ts` |
+| v1.8.0 | de cronroutes op `runSteps`: het antwoord `{ results, failed }` van de kern, de wachtrij en de outbox. De mislukte stap en de 500 bewijst `lib/cron/steps.test.ts` zonder database | e2e `04-cron.spec.ts`, en in een project met jobs en messaging `06-jobs.spec.ts` en `07-messages.spec.ts` |
+| v1.8.0 | de preview uit `seed`: de route voor een nieuw project (handleiding 04, stap 2 en 07, stap 4c), de seed-branch achteraf met alleen het schema en de overgenomen migratielijst, en een account met wachtwoord op `seed` (handleiding 09) | met de hand, in een Neon-project met een Vercel-koppeling; geen van de drie is gedraaid |

@@ -25,7 +25,8 @@ buiten de code. Dit document zegt hoe dat samenspel loopt. De regels voor de cod
 4. **Claude levert op** met: wat er is veranderd, de versie (`vX.YY` in `lib/version.ts` en de twee
    release-notesbestanden), welke bewijzen groen zijn, en wat jij nog met de hand doet.
 5. **Jij commit op `release/next`** en opent een pull request naar `main`. Vercel bouwt een preview
-   met een eigen kopie van de database. Handleiding 09 gaat klik voor klik.
+   met een eigen database uit de branch `seed`: het schema en de seed, geen echte gegevens.
+   Handleiding 09 gaat klik voor klik.
 6. **Jij controleert op de preview** (zie 4) en mergt pas als het klopt.
 7. **Vercel zet live.** Kijk daarna één keer in de tool of de versie linksonder in de rail de nieuwe
    is, en ruim `release/next` op voor de volgende ronde.
@@ -52,7 +53,8 @@ Vercel en in `.env.local`; Claude heeft alleen de naam nodig.
 - Open de pull request op GitHub: de CI is groen. De CI is advies en geen slot (het gratis plan heeft
   geen branch protection), dus kijk ernaar.
 - Als er een migratie in zit: de release notes zeggen "Let op bij bijwerken", en jij weet dat de
-  deploy de migratie draait.
+  deploy de migratie draait. De preview heeft geen echte data: kan de migratie bestaande rijen
+  weigeren, dan is er eerst op productie geteld (handleiding 09, "Wat de preview niet bewijst").
 - Klik het scherm na in de preview van Vercel, in beide modi als het een nieuw scherm is.
 
 ## 5. Besluiten
@@ -111,3 +113,28 @@ Handleiding 90 heeft de lijst van bekende storingen en wat eraan te doen is.
 - Pull request naar `main`, naam gelijk aan de versie (`v0.07: diensten aanmaken`), mergen als de
   CI groen is en jij het scherm hebt gezien.
 - Een tag alleen voor het template zelf; een project heeft genoeg aan versies in de release notes.
+
+## 11. Bouwen met agents
+
+Bij een grote ronde verdeelt Claude het werk over agents: de hoofdsessie schrijft per onderdeel een
+opdracht, een agent bouwt, en de hoofdsessie leest wat er veranderd is, draait zelf alle controles
+en legt de besluiten vast. Dat werkt alleen met een precieze opdracht. Dit mag je verwachten, en
+hier kun je om vragen:
+
+- **Een precieze opdracht per agent.** Wat besloten is, welke bestanden als voorbeeld dienen, wat
+  "klaar" is en wat niet mag. Twee zinnen horen in elke opdracht: "zet in je verslag wat je niet kon
+  bewijzen" en "vind je een fout in de kern, repareer hem niet stil".
+- **Laat de bron lezen in plaats van hem te vertrouwen.** Hoe een bibliotheek iets doet, staat in de
+  geïnstalleerde code. Vraag om het bestand en de regel in het verslag, niet om wat Claude zich
+  herinnert.
+- **Zeg wat zonder database bewezen is, en wat niet.** Wat puur is, is getoetst. Wat een database
+  nodig heeft, staat als lijst in de oplevering, met waar het bij de eerste echte run het eerst mis
+  kan gaan.
+- **Splits ophalen en tonen.** Een pagina haalt de gegevens op en geeft gewone waarden door aan een
+  component dat alleen toont. Dan is elk scherm met verzonnen gegevens te bekijken voordat er een
+  database is.
+- **Een feitenblad vóór een overdracht.** Gaat werk van de ene sessie of de ene repo naar de andere,
+  dan eerst een blad met per onderwerp wat de een heeft, wat de ander heeft en het verschil, met
+  bestand en regel. Zo'n blad vindt de gaten die een verhaal overslaat.
+- **Documentatie die de code tegenspreekt, is een bevinding.** Niet iets om stil recht te zetten:
+  een van de twee is fout, en soms is dat de code. Laat het melden.

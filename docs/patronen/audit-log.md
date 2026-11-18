@@ -7,9 +7,10 @@ en wat stond er eerst.
 **Het patroon.** Eén tabel `audit_log` met de organisatie, de actor (gebruiker of het systeem), de
 tabel en de rij, de actie (`insert`, `update`, `delete`, `restore`, plus de eigen acties van het
 project in `lib/db/audit-actions.ts`), `before` en `after` als jsonb, en de herkomst van het verzoek.
-Append-only, afgedwongen door een trigger die `UPDATE` en `DELETE` weigert, want de app verbindt als
-eigenaar en een `REVOKE` zou haar niet tegenhouden. De regel wordt geschreven in dezelfde transactie
-als de mutatie: lukt een van beide niet, dan gebeurt er niets.
+Append-only, afgedwongen door een trigger die `UPDATE` en `DELETE` weigert. De trigger houdt ook de
+eigenaar van de tabel tegen, die zichzelf een ingetrokken recht kan teruggeven; de rol van de app
+(`app_rw`) mag de log alleen aanvullen. De regel wordt geschreven in dezelfde transactie als de
+mutatie: lukt een van beide niet, dan gebeurt er niets.
 
 ```ts
 await db.transaction(async (tx) => {

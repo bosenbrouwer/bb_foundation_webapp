@@ -16,7 +16,9 @@ staat in [README.md](README.md).
 CI-stap, `typescript.ignoreBuildErrors: false` expliciet. Het gegenereerde agentblok committen en
 vrijstellen van tekstregels (vervangen door spaties zodat regelnummers kloppen).
 
-**Afgedwongen door.** De instructie onderaan `CLAUDE.md` (afspraak), de lintstap in `ci.yml`, en de
+**Afgedwongen door.** Het lezen van de docs is alleen afspraak: het template zet er geen regel voor
+in `CLAUDE.md`. Het agentblok dat `next dev` daar zelf onderaan schrijft (`nextjs-agent-rules`),
+laat de patcher staan (`template/patchers/claude-md.ts`). Verder de lintstap in `ci.yml` en de
 vrijstelling van door tools gegenereerde blokken in `scripts/house-rules/no-em-dash.mjs`.
 
 ## L-NEXT-02 Een `"use server"`-bestand exporteert alleen async functies
@@ -192,20 +194,27 @@ maakt er één query per verzoek van; bij een fout of zonder sessie is het antwo
 domein, terwijl de site in orde was.
 
 **Oorzaak.** Google Safe Browsing had de host als phishing gemarkeerd; de precieze reden is niet
-vastgesteld. Daarnaast vraagt een nonce-CSP middleware per request, terwijl Next met inline scripts
-hydrateert.
+vastgesteld. Daarnaast hydrateert Next met inline scripts: een vaste CSP moet die met
+`'unsafe-inline'` toelaten en draagt XSS dan niet, en een nonce vraagt een header per verzoek.
 
-**Regel.** Headers voor alle routes: CSP met `'self'` en `'unsafe-inline'` voor scripts en styles,
-`'unsafe-eval'` alleen buiten productie (HMR), `frame-ancestors 'none'` plus `X-Frame-Options
-DENY`, `nosniff`, `Referrer-Policy`, `Permissions-Policy`, `connect-src 'self'` omdat alle externe
-calls op de server gebeuren. XSS dragen in de code: geen `dangerouslySetInnerHTML`, tekst van
-gebruikers via een eigen parser naar JSX. Publiek: het inlogscherm zegt wat het is en waar inloggen
-gebeurt, `robots.txt`, `/.well-known/security.txt` (`Expires` jaarlijks vernieuwen), DMARC op het
-domein, geen hangende subdomeinen.
+**Regel.** De CSP komt uit `proxy.ts`, met een nonce per verzoek (besluit D14, L-NEXT-17):
+`script-src 'self' 'nonce-...' 'strict-dynamic'`, `'unsafe-eval'` alleen in ontwikkeling (HMR),
+`style-src` met `'unsafe-inline'`, `frame-ancestors 'none'`, `connect-src 'self'` omdat alle externe
+calls op de server gebeuren. De proxy slaat alleen `/api`, de bestanden van Next en een pad op een
+bekende bestandsextensie over; een ander pad met een punt is een pagina en krijgt de nonce, en de
+HTML-pagina's van Auth.js onder `/api/auth` krijgen een vaste CSP zonder scripts (besluit D17). De
+vaste headers gelden voor alle routes: `X-Frame-Options DENY`, `nosniff`, `Referrer-Policy`,
+`Permissions-Policy`, HSTS. De proxy doet geen autorisatie: dat blijft `requireSession()` en `can()`
+(L-NEXT-19). XSS dragen in de code: geen `dangerouslySetInnerHTML`, tekst van gebruikers via een
+eigen parser naar JSX; de nonce houdt een ontsnapt script alsnog tegen. Publiek: het inlogscherm
+zegt wat het is en waar inloggen gebeurt, `robots.txt`, `/.well-known/security.txt` (`Expires`
+jaarlijks vernieuwen), DMARC op het domein, geen hangende subdomeinen.
 
-**Afgedwongen door.** `lib/config/next-base.ts` (de headers), `lib/domain/rich-text.ts` (de
-parser), `pnpm smoke:prod` (headers, `robots.txt`, `security.txt`). De e2e draait op `next start` en
-test dus de productieheaders.
+**Afgedwongen door.** `proxy.ts` en `lib/security/csp.ts` (de CSP, `STATIC_CSP` en
+`STATIC_FILE_EXTENSIONS`) met `csp.test.ts` en `csp-coverage.test.ts`, `lib/config/next-base.ts` (de
+vaste headers, en `STATIC_CSP` op `/api/auth`), `lib/domain/rich-text.ts` (de parser), de e2e
+`05b-csp.spec.ts`, en `pnpm smoke:prod` (headers, `robots.txt`, `security.txt`). De e2e draait op
+`next start` en test dus de productieheaders.
 
 ## L-NEXT-14 e2e tegen een productiebuild, niet tegen `next dev`
 
@@ -278,8 +287,10 @@ ook niet voor een worker.
 antwoord), en de vaste CSP-header uit `next.config.ts` weg. `script-src 'self' 'nonce-...'
 'strict-dynamic'` (in ontwikkeling plus `'unsafe-eval'`), `style-src` houdt `'unsafe-inline'`
 (React zet `style`-attributen), `worker-src 'self'` uitdrukkelijk, `object-src 'none'`. De matcher
-slaat `/api`, `_next/static`, `_next/image`, alles met een extensie en prefetches over. Na de eerste
-uitrol één ronde door elk scherm.
+slaat `/api`, `_next/static`, `_next/image`, een pad dat op een bekende bestandsextensie eindigt
+(`STATIC_FILE_EXTENSIONS`) en prefetches over. Niet alles met een punt erin: een pad als
+`/iemand/jan.jansen` is een pagina en krijgt de nonce (besluit D17). Na de eerste uitrol één ronde
+door elk scherm.
 
 **Afgedwongen door.** `proxy.ts` en `lib/security/csp.ts` met test; de vaste CSP is uit
 `lib/config/next-base.ts` gehaald. De e2e `05b-csp.spec.ts` eist één CSP-header.
@@ -316,3 +327,49 @@ bijhouden: in 2026 kwamen de kritieke fixes in 15.5.18, 16.2.6, 16.3.3 en 16.4.1
 
 **Afgedwongen door.** De huisregel `session-first` en `requireSession()` op elke plek; `proxy.ts`
 heeft geen autorisatie. De versie bewaakt Dependabot met `pnpm audit --prod` in de CI.
+
+## L-NEXT-20 In een route handler komt `request.url` uit de servernaam, niet uit de `host`-kop
+
+**Symptoom.** Achter meer dan één adres gaf Auth.js bij de terugkeer een ander terugkeeradres dan
+bij de start van de inlog.
+
+**Oorzaak.** In een route handler bouwt Next `request.url` uit de naam en de poort van de server,
+niet uit de `host`-kop. Auth.js leidt uit die URL zijn terugkeeradres af.
+
+**Regel.** Zet in de route het begin van de URL op het adres uit de inrichting, laat de proxy
+`x-forwarded-host` en `x-forwarded-proto` overschrijven met de waarden uit de inrichting, en start
+niet als `AUTH_URL` gezet is. Lokaal werkt de inlog bij Microsoft niet op een adres als
+`a.localhost`: http is alleen toegestaan op `localhost` zelf. Lokaal en in de e2e is de dev-login
+dus de weg, door precies dezelfde toelating.
+
+**Afgedwongen door.** Alleen afspraak: het template draait achter één adres en heeft dit niet in
+code. Patroon `omgeving-per-adres`. In het eerdere project is het gebouwd in een app die op 17
+november 2026 nog geen database had gezien.
+
+## L-NEXT-21 Een variabele die al bestaat, ook leeg, vult Next niet opnieuw uit `.env.local`
+
+**Symptoom.** (voorkomen) Een script start een server en haalt een sleutel uit de omgeving om een
+koppeling onklaar te maken. De server leest `.env.local` en heeft de sleutel gewoon weer.
+
+**Oorzaak.** Next vult uit `.env.local` alleen variabelen die nog niet bestaan. Weghalen maakt de
+variabele juist vrij om gevuld te worden; een lege waarde bestaat, en blijft dus leeg.
+
+**Regel.** Een variabele maak je onklaar door hem leeg te zetten, niet door hem weg te halen.
+
+**Afgedwongen door.** `SAFE_SERVER_ENV` in `scripts/lib/safe-server-env.ts` zet `ANTHROPIC_API_KEY`
+op een lege tekst, en `playwright.config.ts` gebruikt die lijst voor de server van de e2e. Zie
+L-AI-08.
+
+## L-NEXT-22 Een effect bij het laden mag niet overschrijven wat de gebruiker vóór het hydrateren al deed
+
+**Symptoom.** Wat een gebruiker vóór het hydrateren al had ingevuld of gekozen, was na het laden
+weer weg.
+
+**Oorzaak.** Een effect dat bij het laden een waarde zet, loopt pas na het hydrateren. Tot dat
+moment werkt de pagina al als gewone HTML, en wat iemand daar deed, overschrijft het effect.
+
+**Regel.** Een effect bij het laden zet alleen iets als de gebruiker het nog niet heeft aangeraakt.
+Wat al in de HTML van de server kan staan, heeft geen effect nodig (vergelijk L-NEXT-12).
+
+**Afgedwongen door.** Alleen afspraak. In het eerdere project bewaakt een e2e het; het template
+heeft er geen.

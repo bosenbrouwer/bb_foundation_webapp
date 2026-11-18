@@ -15,6 +15,17 @@ export function isUuid(value: string): boolean {
 }
 
 /**
+ * Het id als het de vorm van een uuid heeft, en anders `undefined`. Voor een id uit een URL, een
+ * formulier of een zoekparameter, dat elke vorm kan hebben en ook geen tekst kan zijn:
+ *
+ *     const id = uuidOrUndefined(form.get("orderId"));
+ *     if (id === undefined) return notFound();
+ */
+export function uuidOrUndefined(value: unknown): string | undefined {
+  return typeof value === "string" && UUID.test(value) ? value : undefined;
+}
+
+/**
  * Zijn dit hetzelfde id? Zonder op hoofdletters te letten, zoals Postgres een `uuid` vergelijkt.
  *
  * Een id uit een formulier gaat ongewijzigd naar de query, en daar is `B57CBC18-...` dezelfde rij als

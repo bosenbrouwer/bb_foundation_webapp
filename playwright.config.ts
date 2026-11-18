@@ -1,5 +1,6 @@
 /* template-owned (module core). Wordt overschreven door pnpm template:update; wijzig dit bestand niet. */
 import { defineConfig, devices } from "@playwright/test";
+import { SAFE_SERVER_ENV } from "./scripts/lib/safe-server-env";
 
 /**
  * End-to-end op de kernflow. Gebruik: pnpm e2e, of pnpm e2e:ui om mee te kijken.
@@ -51,6 +52,12 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120_000,
     env: {
+      /*
+       * Geen echte aanroep naar een model vanuit een test: de sleutel uitdrukkelijk leeg (leeg en niet
+       * weg, want een variabele die al bestaat, vult Next niet opnieuw uit .env.local) en het nagemaakte
+       * model aan. Zie scripts/lib/safe-server-env.ts.
+       */
+      ...SAFE_SERVER_ENV,
       /* Zonder deze twee staat de dev-login uit en komt er niemand binnen. De guard in dev-login.ts gooit als APP_ENV niet local is. */
       AUTH_DEV_LOGIN: "1",
       APP_ENV: "local",

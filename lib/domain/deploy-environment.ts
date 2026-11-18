@@ -27,7 +27,7 @@ export function deployEnvironment(env: Readonly<Record<string, string | undefine
 
   /*
    * **Een deploy is nooit lokaal.** `.env.example` zet `APP_ENV=local` samen met `AUTH_DEV_LOGIN=1`.
-   * Wie dat bestand in bulk in Vercel importeert, zette zo op een preview (een kopie van productie)
+   * Wie dat bestand in bulk in Vercel importeert, zette zo op een preview (toen nog een kopie van productie)
    * een inlog zonder wachtwoord open, met vrije rolkeuze; in een eerder project gevonden bij een
    * audit. Nu telt de deploy, dus de dev-login blijft dicht en gooit bij het laden. `vercel env pull`
    * zet lokaal `development`, en dat blijft lokaal mogen.

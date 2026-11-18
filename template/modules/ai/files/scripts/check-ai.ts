@@ -5,17 +5,25 @@
  * met een auditregel, de daglimiet telt per persoon per prompt per dag, de kosten van een maand kloppen
  * tot op de centtoken, en wie het recht niet heeft, komt nergens bij.
  *
- * Deze check roept de API niet aan: dat kost geld. Een proef met de echte sleutel: pnpm ai:test.
+ * Deze check roept de API niet aan: dat kost geld. Hij haalt de sleutel eerst uit de omgeving, zodat
+ * een echte aanroep niet eens kan. Een proef met de echte sleutel: pnpm ai:test.
+ *
+ * Rubriek 7 is de smokkeltest tegen de database: voor elk geval uit `check-ai.project.ts` bouwt hij
+ * de waarden zoals de server action dat doet, en eist hij dat wat verboden is, niet in het bericht
+ * naar het model staat (docs/modules/ai.md, les L-AI-02).
  */
 import { and, eq } from "drizzle-orm";
+import { AI_KEY_ENV } from "../lib/ai/client";
 import { centTokens } from "../lib/ai/cost";
-import { AI_PROMPTS, catalogueProblems } from "../lib/ai/prompts";
+import { outgoingText, smuggled } from "../lib/ai/outgoing";
+import { AI_PROMPTS, catalogueProblems, promptFor } from "../lib/ai/prompts";
 import { loadPrices, loadPromptSettings, mergePromptSettings, savePrice, savePromptSetting } from "../lib/ai/settings";
 import { countToday, logRequest, monthTotals, recentRequests } from "../lib/ai/usage";
 import type { Actor } from "../lib/auth/actor";
 import { ADMIN_ROLES } from "../lib/auth/roles";
 import { auditLog } from "../lib/db/schema";
 import { labels } from "../lib/i18n/labels";
+import { AI_SMUGGLE_CASES } from "./check-ai.project";
 import { createChecker, inRollback, requireContext } from "./lib/check";
 import { scriptDb, withDirectDb } from "./lib/connection";
 import { runScript } from "./lib/run";
@@ -26,6 +34,9 @@ function refuses(run: () => Promise<unknown>): Promise<boolean> {
     () => true,
   );
 }
+
+/* Geen echte aanroep vanuit een check, ook niet per ongeluk: zonder sleutel kan hij niet eens. */
+delete process.env[AI_KEY_ENV];
 
 runScript(async () => {
   await withDirectDb(async (pool) => {
@@ -101,6 +112,24 @@ runScript(async () => {
     t.section("6. Zonder het recht admin:ai geen verbruik");
     t.ok("monthTotals geweigerd", await refuses(() => monthTotals(db, nobody)));
     t.ok("recentRequests geweigerd", await refuses(() => recentRequests(db, nobody)));
+
+    t.section("7. Wat naar het model gaat: de smokkeltest tegen de database");
+    t.ok("de sleutel van het model staat niet in de omgeving van deze check", process.env[AI_KEY_ENV] === undefined);
+    for (const prompt of AI_PROMPTS) {
+      if (!AI_SMUGGLE_CASES.some((one) => one.prompt === prompt.key)) console.log(`  --    prompt ${prompt.key} heeft geen smokkelgeval in check-ai.project.ts; leest hij niets uit de database?`);
+    }
+    for (const one of AI_SMUGGLE_CASES) {
+      const prompt = promptFor(one.prompt);
+      t.ok(`geval ${one.prompt}: de prompt staat in de catalogus`, prompt !== undefined);
+      if (prompt === undefined) continue;
+      await inRollback(db, async (tx) => {
+        const context = { organisationId: ctx.organisationId, userId: ctx.userId };
+        const values = await one.values(tx, context);
+        const forbidden = await one.forbidden(tx, context);
+        t.ok(`geval ${one.prompt}: er is iets om te smokkelen`, forbidden.some((text) => text.trim().length >= 3));
+        t.check(`geval ${one.prompt}: niets verbodens in het bericht naar het model`, smuggled(outgoingText(prompt, values), forbidden), []);
+      });
+    }
 
     t.summary("check:ai");
   });

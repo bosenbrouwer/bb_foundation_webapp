@@ -1,6 +1,6 @@
 {
   "manifestVersion": 1,
-  "version": "1.7.0",
+  "version": "1.8.0",
   "source": "https://github.com/bosenbrouwer/bb_foundation_webapp.git",
   "rootRenderedOn": "2026-10-02",
   "modules": {
@@ -17,6 +17,7 @@
         { "to": ".github/dependabot.yml", "class": "owned" },
         { "to": ".github/workflows/ci.yml", "class": "owned" },
         { "to": ".secretlintignore", "class": "owned" },
+        { "to": ".gitleaks.toml", "class": "seed" },
         { "to": ".secretlintrc.json", "class": "owned" },
         { "to": "app/(app)/about/", "class": "owned", "tree": true },
         { "to": "app/(app)/actions.ts", "class": "owned" },
@@ -107,6 +108,8 @@
         { "to": "lib/config/next-base.ts", "class": "owned" },
         { "to": "lib/cron/guard.test.ts", "class": "owned" },
         { "to": "lib/cron/guard.ts", "class": "owned" },
+        { "to": "lib/cron/steps.test.ts", "class": "owned" },
+        { "to": "lib/cron/steps.ts", "class": "owned" },
         { "to": "lib/db/audit-actions.ts", "class": "seed" },
         { "to": "lib/db/audit.ts", "class": "owned" },
         { "to": "lib/db/client.ts", "class": "owned" },
@@ -146,6 +149,10 @@
         { "to": "lib/domain/doc-markdown.ts", "class": "owned" },
         { "to": "lib/domain/ids.test.ts", "class": "owned" },
         { "to": "lib/domain/ids.ts", "class": "owned" },
+        { "to": "lib/domain/like.test.ts", "class": "owned" },
+        { "to": "lib/domain/like.ts", "class": "owned" },
+        { "to": "lib/domain/one-of.test.ts", "class": "owned" },
+        { "to": "lib/domain/one-of.ts", "class": "owned" },
         { "to": "lib/domain/initials.test.ts", "class": "owned" },
         { "to": "lib/domain/initials.ts", "class": "owned" },
         { "to": "lib/domain/preferences.ts", "class": "owned" },
@@ -180,6 +187,7 @@
         { "to": "lib/project/registry.generated.ts", "class": "generated", "generator": "registry" },
         { "to": "lib/project/types.ts", "class": "owned" },
         { "to": "lib/project/ui-registry.generated.ts", "class": "generated", "generator": "registry" },
+        { "to": "lib/security/csp-coverage.test.ts", "class": "owned" },
         { "to": "lib/security/csp.test.ts", "class": "owned" },
         { "to": "lib/security/csp.ts", "class": "owned" },
         { "to": "lib/tasks/prune.project.ts", "class": "seed" },
@@ -202,6 +210,8 @@
         { "to": "scripts/check-drift.mjs", "class": "owned" },
         { "to": "scripts/check-example.ts", "class": "seed" },
         { "to": "scripts/check-grants.ts", "class": "owned" },
+        { "to": "scripts/check-licenses.mjs", "class": "owned" },
+        { "to": "scripts/check-licenses.test.mjs", "class": "owned" },
         { "to": "scripts/check-migrations.mjs", "class": "owned" },
         { "to": "scripts/db-app-login.ts", "class": "owned" },
         { "to": "scripts/db-bootstrap.ts", "class": "owned" },
@@ -212,6 +222,8 @@
         { "to": "scripts/db-seed.ts", "class": "owned" },
         { "to": "scripts/db-status.ts", "class": "owned" },
         { "to": "scripts/doctor.ts", "class": "owned" },
+        { "to": "scripts/house-rules/ai-imports.mjs", "class": "owned" },
+        { "to": "scripts/house-rules/ai-output.mjs", "class": "owned" },
         { "to": "scripts/house-rules/client-graph.mjs", "class": "owned" },
         { "to": "scripts/house-rules/client-imports.mjs", "class": "owned" },
         { "to": "scripts/house-rules/env-template.mjs", "class": "owned" },
@@ -241,6 +253,7 @@
         { "to": "scripts/lib/production-guard.test.ts", "class": "owned" },
         { "to": "scripts/lib/production-guard.ts", "class": "owned" },
         { "to": "scripts/lib/run.ts", "class": "owned" },
+        { "to": "scripts/lib/safe-server-env.ts", "class": "owned" },
         { "to": "scripts/lib/seed-guard.ts", "class": "owned" },
         { "to": "scripts/lib/seed.project.ts", "class": "seed" },
         { "to": "scripts/lib/sql-file.ts", "class": "owned" },
@@ -281,6 +294,7 @@
             "db:seed": "node --env-file-if-exists=.env.local node_modules/tsx/dist/cli.mjs scripts/db-seed.ts",
             "db:status": "node --env-file-if-exists=.env.local node_modules/tsx/dist/cli.mjs scripts/db-status.ts",
             "check:secrets": "node node_modules/secretlint/bin/secretlint.js \"**/*\"",
+            "check:licenses": "node scripts/check-licenses.mjs",
             "check:all": "node --env-file-if-exists=.env.local node_modules/tsx/dist/cli.mjs scripts/check-all.ts",
             "doctor": "node --env-file-if-exists=.env.local node_modules/tsx/dist/cli.mjs scripts/doctor.ts",
             "e2e": "node --env-file-if-exists=.env.local node_modules/@playwright/test/cli.js test",
@@ -303,7 +317,7 @@
             "@anthropic-ai/sdk": "0.131.0",
             "@neondatabase/serverless": "1.1.0",
             "drizzle-orm": "0.45.2",
-            "next": "16.4.2",
+            "next": "16.4.6",
             "nodemailer": "10.1.7",
             "qrcode": "1.5.4",
             "next-auth": "5.0.0-beta.32",
@@ -321,7 +335,7 @@
             "@types/react-dom": "19.2.4",
             "drizzle-kit": "0.31.10",
             "eslint": "9.39.5",
-            "eslint-config-next": "16.4.2",
+            "eslint-config-next": "16.4.6",
             "secretlint": "13.0.7",
             "tailwindcss": "4.3.3",
             "tsx": "^4.23.7",
@@ -374,6 +388,8 @@
         { "to": "components/login/entra-sign-in.tsx", "class": "owned" },
         { "to": "lib/auth/providers/entra-identity.test.ts", "class": "owned" },
         { "to": "lib/auth/providers/entra-identity.ts", "class": "owned" },
+        { "to": "lib/auth/providers/entra-issuer.test.ts", "class": "owned" },
+        { "to": "lib/auth/providers/entra-issuer.ts", "class": "owned" },
         { "to": "lib/auth/providers/entra-login.ts", "class": "owned" },
         { "to": "lib/auth/providers/entra-profile.test.ts", "class": "owned" },
         { "to": "lib/auth/providers/entra-profile.ts", "class": "owned" },
@@ -470,7 +486,7 @@
       ],
       "migrations": { "1": { "down": "template/modules/auth-password/migrations/1/down.sql" } },
       "manual": [
-        "De eerste beheerder: draai na pnpm db:bootstrap en de eerste deploy één keer pnpm invite -- <adres> \"<naam>\" <beheerdersrol> en geef de koppeling aan die persoon. Daarna gaat uitnodigen via Beheer, Accounts.",
+        "De eerste beheerder: maak na pnpm db:bootstrap en de eerste deploy het account aan op de database waar die persoon gaat inloggen, zoals handleiding 05b, stap 1 beschrijft (pnpm invite -- <adres> \"<naam>\" <beheerdersrol>, voor de live tool tegen de productiedatabase), en geef de koppeling aan die persoon. Daarna gaat uitnodigen via Beheer, Accounts.",
         "Lees handleiding 05b over de keuzes (tweestapsverificatie, vergrendeling, wat te doen bij een vermoeden van misbruik). Entra heeft de voorkeur als er een Microsoft-tenant is."
       ]
     },
@@ -519,7 +535,7 @@
       },
       "migrations": { "1": { "down": "template/modules/jobs/migrations/1/down.sql" } },
       "manual": [
-        "Op Vercel Pro: zet het rooster van /api/cron/jobs in vercel.json op */15 * * * * en zet het pad in template.keepCrons, zodat een update het niet terugzet. Op Hobby mag een cron hoogstens één keer per dag draaien; de wachtrij wordt daar direct na elke handeling verwerkt (lib/jobs/kick.ts)."
+        "Op Vercel Pro: zet het rooster van /api/cron/jobs in vercel.json op het kwartier in werkuren, */15 5-18 * * 1-5 (UTC), en zet het pad in template.keepCrons, zodat een update het niet terugzet. Niet */15 * * * *: een cron die dag en nacht langskomt, houdt de database wakker, en Neon rekent compute-uren (handleiding 23). Op Hobby mag een cron hoogstens één keer per dag draaien; de wachtrij wordt daar direct na elke handeling verwerkt (lib/jobs/kick.ts)."
       ]
     },
     "messaging": {
@@ -557,6 +573,7 @@
         { "to": "lib/messaging/settings.ts", "class": "owned" },
         { "to": "lib/messaging/stuck-alerts.test.ts", "class": "owned" },
         { "to": "lib/messaging/stuck-alerts.ts", "class": "owned" },
+        { "to": "lib/messaging/teams.test.ts", "class": "owned" },
         { "to": "lib/messaging/teams.ts", "class": "owned" },
         { "to": "lib/messaging/transport/graph.ts", "class": "owned" },
         { "to": "lib/messaging/transport/index.ts", "class": "owned" },
@@ -593,13 +610,14 @@
         { "name": "SMTP_PASSWORD", "secret": true, "where": "both", "guide": "docs/handleiding/20b-smtp.md", "description": "Het wachtwoord of app-wachtwoord (alleen bij transport smtp)." },
         { "name": "SMTP_FROM", "secret": false, "where": "both", "guide": "docs/handleiding/20b-smtp.md", "description": "Het afzenderadres, met een naam ervoor als je wilt (alleen bij transport smtp)." },
         { "name": "GRAPH_SENDER_UPN", "secret": false, "where": "both", "guide": "docs/handleiding/20-graph-mail.md", "description": "De gedeelde postbus waaruit Graph verstuurt (alleen bij transport graph)." },
-        { "name": "TEAMS_WEBHOOK_URL", "secret": true, "where": "both", "guide": "docs/handleiding/21-teams.md", "description": "De inkomende webhook van het Teams-kanaal (alleen als messaging.teams aan staat)." }
+        { "name": "TEAMS_WEBHOOK_URL", "secret": true, "where": "vercel", "guide": "docs/handleiding/21-teams.md", "description": "De inkomende webhook van het echte Teams-kanaal (alleen als messaging.teams aan staat). Alleen Production: buiten productie wordt hij niet gelezen." },
+        { "name": "TEAMS_WEBHOOK_URL_TEST", "secret": true, "where": "both", "guide": "docs/handleiding/21-teams.md", "description": "De webhook van een testkanaal, voor Preview en lokaal (alleen als messaging.teams aan staat). Zonder deze gaat er buiten productie niets naar Teams." }
       ],
       "migrations": { "1": { "down": "template/modules/messaging/migrations/1/down.sql" } },
       "manual": [
         "Richt het transport uit project.config.json in: Graph volgens handleiding 20 (Mail.Send met admin consent, een gedeelde postbus, liefst een ApplicationAccessPolicy) of SMTP volgens 20b (een aanbieder met SPF en DKIM op het afzenderdomein). Stuur daarna één proefmail met pnpm mail:test -- <adres>.",
-        "Teams, alleen als messaging.teams aan staat: maak in het kanaal een inkomende webhook (Workflows), zet de URL in TEAMS_WEBHOOK_URL en test met pnpm teams:test (handleiding 21).",
-        "Op Vercel Pro: zet het rooster van /api/cron/outbox in vercel.json op */15 * * * * en zet het pad in template.keepCrons."
+        "Teams, alleen als messaging.teams aan staat: maak in het kanaal een inkomende webhook (Workflows) en zet de URL in TEAMS_WEBHOOK_URL, alleen voor Production. Wil je buiten productie testen, maak dan een testkanaal met een eigen webhook, zet die in TEAMS_WEBHOOK_URL_TEST en draai pnpm teams:test (handleiding 21).",
+        "Op Vercel Pro: zet het rooster van /api/cron/outbox in vercel.json op het kwartier in werkuren, */15 5-18 * * 1-5 (UTC), en zet het pad in template.keepCrons. Niet */15 * * * *: een cron die dag en nacht langskomt, houdt de database wakker (handleiding 23)."
       ]
     },
     "files": {
@@ -610,6 +628,7 @@
       "files": [
         { "to": "app/api/files/[id]/route.ts", "class": "owned" },
         { "to": "components/files/file-input.tsx", "class": "owned" },
+        { "to": "components/files/sized-file-input.tsx", "class": "owned" },
         { "to": "e2e/08-files.spec.ts", "class": "owned" },
         { "to": "lib/db/schema/files.ts", "class": "owned" },
         { "to": "lib/files/authorize.project.ts", "class": "seed" },
@@ -666,6 +685,7 @@
         { "to": "app/(app)/admin/ai/actions.ts", "class": "owned" },
         { "to": "app/(app)/admin/ai/forms.tsx", "class": "owned" },
         { "to": "app/(app)/admin/ai/page.tsx", "class": "owned" },
+        { "to": "components/ai/plain-text.tsx", "class": "owned" },
         { "to": "components/ai/proposal-view.tsx", "class": "owned" },
         { "to": "lib/ai/admin-tab.ts", "class": "owned" },
         { "to": "lib/ai/catalogue.ts", "class": "seed" },
@@ -674,8 +694,14 @@
         { "to": "lib/ai/cost.ts", "class": "owned" },
         { "to": "lib/ai/health-provider.ts", "class": "owned" },
         { "to": "lib/ai/message.test.ts", "class": "owned" },
+        { "to": "lib/ai/fake.test.ts", "class": "owned" },
+        { "to": "lib/ai/fake.ts", "class": "owned" },
+        { "to": "lib/ai/keys.test.ts", "class": "owned" },
+        { "to": "lib/ai/keys.ts", "class": "owned" },
         { "to": "lib/ai/message.ts", "class": "owned" },
         { "to": "lib/ai/models.ts", "class": "owned" },
+        { "to": "lib/ai/outgoing.test.ts", "class": "owned" },
+        { "to": "lib/ai/outgoing.ts", "class": "owned" },
         { "to": "lib/ai/prompts.ts", "class": "owned" },
         { "to": "lib/ai/run.test.ts", "class": "owned" },
         { "to": "lib/ai/run.ts", "class": "owned" },
@@ -687,6 +713,7 @@
         { "to": "lib/i18n/template/ai.test.ts", "class": "owned" },
         { "to": "lib/i18n/template/ai.ts", "class": "owned" },
         { "to": "scripts/ai-test.ts", "class": "owned" },
+        { "to": "scripts/check-ai.project.ts", "class": "seed" },
         { "to": "scripts/check-ai.ts", "class": "owned" }
       ],
       "registry": {
