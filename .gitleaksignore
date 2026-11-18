@@ -1,0 +1,8 @@
+# Vondsten van Gitleaks die bij één commit in de historie van deze repo horen, elk met de reden.
+# Een regel is de vingerafdruk uit de uitvoer van de stap: commit, bestand, regel-id, regelnummer.
+# Een valse bevinding die in elk project terugkomt, hoort in .gitleaks.toml en niet hier.
+
+# Geen geheim: het wachtwoord van een verzonnen testaccount in een rooktest tegen een nagebootste
+# site. Nagerekend tegen elk account dat ooit in het accountbestand stond: het past op geen enkel.
+# Het bestand is sinds v1.3.0 weg uit deze repo.
+7850d13f6224bfc8e7d9100f729a2b35595f3662:template/ci/wizard-smoke.mjs:generic-api-key:523

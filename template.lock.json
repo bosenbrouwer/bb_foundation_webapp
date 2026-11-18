@@ -2,7 +2,7 @@
   "lockVersion": 1,
   "source": "https://github.com/bosenbrouwer/bb_foundation_webapp.git",
   "version": "1.8.0",
-  "appliedAt": "2026-11-18T14:07:07Z",
+  "appliedAt": "2026-11-18T14:12:08Z",
   "modules": {
     "core": {
       "schemaVersion": 2,
@@ -17,7 +17,7 @@
     ".githooks/commit-msg": {"module":"core","class":"owned","hash":"a4fb323ccd6fd03065b16f20230fd45982b7a00b97c54aa4720cd3d5ee870e7b","seeded":false,"seededIn":null,"sourceHash":null,"shippedHash":null},
     ".github/dependabot.yml": {"module":"core","class":"owned","hash":"bc0bb2f4dc190f8613d651f4c12c47c827facaaa3bd7406c4f49558a8b8df92a","seeded":false,"seededIn":null,"sourceHash":null,"shippedHash":null},
     ".github/workflows/ci.yml": {"module":"core","class":"owned","hash":"3d638c90bcc3ba1659bea19c87b1a7ba8c5d475235378922c01d01a8856ca422","seeded":false,"seededIn":null,"sourceHash":null,"shippedHash":null},
-    ".gitleaks.toml": {"module":"core","class":"seed","hash":"bb578e20d9bf636c5c17b91f3730c6a8010bf3bb031b51f28ccd7c0709d0a772","seeded":false,"seededIn":null,"sourceHash":"bb578e20d9bf636c5c17b91f3730c6a8010bf3bb031b51f28ccd7c0709d0a772","shippedHash":"bb578e20d9bf636c5c17b91f3730c6a8010bf3bb031b51f28ccd7c0709d0a772"},
+    ".gitleaks.toml": {"module":"core","class":"seed","hash":"25e16b6ddc7fd874cf1aa460b0369bf0ef562444710cb92d7706c291487cd1b0","seeded":false,"seededIn":null,"sourceHash":"25e16b6ddc7fd874cf1aa460b0369bf0ef562444710cb92d7706c291487cd1b0","shippedHash":"25e16b6ddc7fd874cf1aa460b0369bf0ef562444710cb92d7706c291487cd1b0"},
     ".secretlintignore": {"module":"core","class":"owned","hash":"6bc20883b98ae881877017da291159a61e8e65a3a6952422792e67cebaaf225e","seeded":false,"seededIn":null,"sourceHash":null,"shippedHash":null},
     ".secretlintrc.json": {"module":"core","class":"owned","hash":"1c0e86ca72216c22cc77b1c94c27f975b731aa9e104167f5d57a5befa654c10e","seeded":false,"seededIn":null,"sourceHash":null,"shippedHash":null},
     "README.md": {"module":"core","class":"seed","hash":"fb55f807b78fa695d61f9a61315f86049f78229ef4b469be14b001df63958b77","seeded":false,"seededIn":null,"sourceHash":"a436bc8b4938fa3ca3c0e7710f76b56a4dabdb2215abfd231eaba6e3788f60b4","shippedHash":"fb55f807b78fa695d61f9a61315f86049f78229ef4b469be14b001df63958b77"},
@@ -365,7 +365,7 @@
     "scripts/lint-house-rules.mjs": {"module":"core","class":"owned","hash":"ac68b7767f4e0872f9a83136e39e3f70e02afcecc75ca05fed29dcba8af0070c","seeded":false,"seededIn":null,"sourceHash":null,"shippedHash":null},
     "scripts/smoke-prod.ts": {"module":"core","class":"owned","hash":"571666eb53c46232bd4d32bbd2fcc8b6e185643dac3c7b1ecbb348c172989f71","seeded":false,"seededIn":null,"sourceHash":null,"shippedHash":null},
     "scripts/task-prune.ts": {"module":"core","class":"owned","hash":"81a4d07f045584ed0b7eeeaf4101aa09f719ed05c7d77085a699b58626150fdc","seeded":false,"seededIn":null,"sourceHash":null,"shippedHash":null},
-    "template/CHANGELOG.md": {"module":"core","class":"owned","hash":"dd6ccdc299ed664754acdc0746e1133cb7bdc3a19a561b9566f3da440f187350","seeded":false,"seededIn":null,"sourceHash":null,"shippedHash":null},
+    "template/CHANGELOG.md": {"module":"core","class":"owned","hash":"14c2275c525478f717f534c5deac6cf2295b5d6cf82e1f90b2551e0f5842e40f","seeded":false,"seededIn":null,"sourceHash":null,"shippedHash":null},
     "template/README.md": {"module":"core","class":"owned","hash":"9b91121569d5c9838b3996ce6c65f7e34ad048f039238cd1cdf81178fc948635","seeded":false,"seededIn":null,"sourceHash":null,"shippedHash":null},
     "template/ci/check-template.mjs": {"module":"core","class":"owned","hash":"4ed7931ca4c301027d677f1064fd10086b605e489af6b3c34409ba1ac148eedd","seeded":false,"seededIn":null,"sourceHash":null,"shippedHash":null},
     "template/ci/forbidden-words.txt": {"module":"core","class":"owned","hash":"c69b5fec9d3ad98a9998716179f3968d2a9e33b24f2c3ee0bfddb3ab8c91c01e","seeded":false,"seededIn":null,"sourceHash":null,"shippedHash":null},

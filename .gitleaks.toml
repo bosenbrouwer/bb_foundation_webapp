@@ -10,11 +10,27 @@ title = "Geheimen in de historie"
 [extend]
 useDefault = true
 
-# Een valse bevinding zet je zo uit, met de reden erboven:
+# Twee testwaarden uit de tests van het template zelf. Ze staan in de historie van elk project dat
+# uit het template komt, dus ze staan hier al uit.
+
+[[allowlists]]
+description = "Geen geheim: het testgeheim uit RFC 6238 als base32, een openbare waarde uit de standaard (totp.test.ts)"
+regexes = [
+  '''^GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ$''',
+]
+
+[[allowlists]]
+description = "Geen geheim: een verzonnen JWT in de test van scrubMessage, die hem hoort weg te poetsen (report.test.ts)"
+regexTarget = "line"
+regexes = [
+  '''expect\(scrubMessage\("token eyJ''',
+]
+
+# Een valse bevinding van je eigen project zet je net zo uit, met de reden in de omschrijving.
+# Zonder regexTarget kijkt de regex naar de gevonden waarde zelf; met "line" naar de hele regel.
 #
 # [[allowlists]]
 # description = "Geen geheim: een verzonnen waarde in een test"
-# regexTarget = "match"
 # regexes = [
-#   '''de-letterlijke-tekst-van-de-vondst''',
+#   '''^de-letterlijke-waarde$''',
 # ]

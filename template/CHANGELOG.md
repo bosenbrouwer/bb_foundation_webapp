@@ -57,7 +57,10 @@ stilstond op één fout.
   `pnpm check:all`. Besluit D19. De stap met Gitleaks toont per vondst de regel, het bestand en de
   commit, met de waarde weggelakt. Twee testwaarden die Semgrep bij de eerste run als geheim aanzag
   (een verzonnen JWT in `report.test.ts` en het testgeheim uit RFC 6238 in `totp.test.ts`), staan
-  per regel uit met de reden.
+  per regel uit met de reden. Gitleaks vond dezelfde twee in de historie; ze staan met hun reden
+  in `.gitleaks.toml`, zodat een nieuw project er schoon mee begint. Een derde vondst zit alleen in
+  de historie van het template zelf (een testwachtwoord in een script dat sinds v1.3.0 weg is) en
+  staat als vingerafdruk in `.gitleaksignore`.
 - **Welke branches uitrollen.** `vercel.json` krijgt `git.deploymentEnabled`: de soorten
   werkbranches (`feature/**`, `fix/**`, `dependabot/**` en tien andere) krijgen geen eigen preview
   meer; `main` en `release/next` rollen uit. Besluit D20.
