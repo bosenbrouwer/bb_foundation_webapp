@@ -130,6 +130,8 @@ jobs:
       # een SHA staan; de officiële action vraagt een licentie voor een organisatie. Advies en geen
       # poort tot een run hier beoordeeld is: een echte vondst ingetrokken en uit de historie gehaald,
       # een valse met zijn reden in .gitleaks.toml. Daarna gaat continue-on-error hier weg.
+      # --verbose toont per vondst de regel, het bestand en de commit (zonder staat er alleen een
+      # aantal); --redact lakt de waarde zelf weg, dus het geheim staat nooit in de log.
       - name: Geen geheimen in de historie (advies)
         continue-on-error: true
         env:
@@ -139,7 +141,7 @@ jobs:
           curl -sSfL -o "$RUNNER_TEMP/gitleaks.tar.gz" "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
           echo "${GITLEAKS_SHA256}  $RUNNER_TEMP/gitleaks.tar.gz" | sha256sum -c -
           tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP" gitleaks
-          "$RUNNER_TEMP/gitleaks" git . --config .gitleaks.toml --redact --no-banner
+          "$RUNNER_TEMP/gitleaks" git . --config .gitleaks.toml --redact --no-banner --verbose
 
   # Statische analyse met Semgrep CE: de standaardregels plus die voor TypeScript. Advies en geen
   # poort tot een run hier beoordeeld en groen is: de echte bevindingen gerepareerd, een vals alarm

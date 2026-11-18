@@ -91,6 +91,8 @@ describe("scrubMessage", () => {
     // secretlint-disable-next-line
     expect(scrubMessage("connect postgresql://app:wachtwoord@ep-x.eu-central-1.aws.neon.tech/db?sslmode=require failed")).toBe("connect [verbindingsstring] failed");
     expect(scrubMessage("header Authorization: Bearer abc.def-ghi_jkl")).toBe("header Authorization: Bearer [token]");
+    /* Geen geheim: een verzonnen JWT, precies wat deze test hoort weg te poetsen. */
+    // nosemgrep: generic.secrets.security.detected-jwt-token.detected-jwt-token
     expect(scrubMessage("token eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiIxMjM0In0.sig_part-here")).toBe("token [token]");
     expect(scrubMessage("GET https://x.blob.core.windows.net/c/f.png?sv=2024&sig=abc%2Bdef&se=2027")).toBe("GET https://x.blob.core.windows.net/c/f.png?sv=[weggelaten]&sig=[weggelaten]&se=[weggelaten]");
   });

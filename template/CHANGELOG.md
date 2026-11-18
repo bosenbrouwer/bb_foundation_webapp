@@ -54,7 +54,10 @@ stilstond op één fout.
   LGPL mag, een onbekende licentie waarschuwt) als poort, en Gitleaks over de hele git-historie op
   een vaste versie met checksum, als advies tot een run beoordeeld is; de valse bevindingen staan
   met hun reden in `.gitleaks.toml` (van het project). `check:licenses` staat ook in
-  `pnpm check:all`. Besluit D19.
+  `pnpm check:all`. Besluit D19. De stap met Gitleaks toont per vondst de regel, het bestand en de
+  commit, met de waarde weggelakt. Twee testwaarden die Semgrep bij de eerste run als geheim aanzag
+  (een verzonnen JWT in `report.test.ts` en het testgeheim uit RFC 6238 in `totp.test.ts`), staan
+  per regel uit met de reden.
 - **Welke branches uitrollen.** `vercel.json` krijgt `git.deploymentEnabled`: de soorten
   werkbranches (`feature/**`, `fix/**`, `dependabot/**` en tien andere) krijgen geen eigen preview
   meer; `main` en `release/next` rollen uit. Besluit D20.

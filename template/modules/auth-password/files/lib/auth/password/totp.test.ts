@@ -2,7 +2,8 @@
 import { describe, expect, it } from "vitest";
 import { base32Decode, base32Encode, counterFor, generateTotpSecret, otpauthUrl, totpCode, verifyTotp } from "./totp";
 
-/* Het testgeheim uit RFC 6238, "12345678901234567890", als base32. */
+/* Het testgeheim uit RFC 6238, "12345678901234567890", als base32. Geen geheim: het staat in de standaard. */
+// nosemgrep: generic.secrets.security.detected-generic-secret.detected-generic-secret
 const RFC_SECRET = "GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ";
 
 describe("totp", () => {
