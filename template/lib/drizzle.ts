@@ -15,6 +15,13 @@
  *   5. bij `custom`: `generate --custom`, de inhoud erin, de terugweg ernaast.
  * Alles via drizzle-kit zelf, met een onbereikbare connectiestring: generate leest alleen bestanden.
  *
+ * Een vers project en een module met meer dan één schemaversie: de schemabestanden in de boom zijn
+ * die van nu, dus de migratie van versie 1 bevat alles en voor versie 2 valt er niets meer te
+ * genereren. Dat is goed, maar de terugweg van versie 1 kent de tabellen van versie 2 niet. Daarom
+ * krijgt de terugweg van die eerste migratie de terugweg van elke latere versie ervoor gezet, in
+ * omgekeerde volgorde: zo draait ze alles terug wat de migratie maakte. Een bestaand project krijgt
+ * voor versie 2 gewoon een eigen migratie met haar eigen terugweg.
+ *
  * Dit bestand raakt nooit een database.
  */
 import { spawnSync } from "node:child_process";
@@ -118,14 +125,20 @@ export function assertNoDrift(root: string): void {
  * dat zegt een custom migratie erachter. Staat de tag al in het journal (de lock was weg, of een
  * eerdere run stopte na het genereren), dan wordt er niets opnieuw gegenereerd en alleen de terugweg
  * aangevuld als die ontbreekt.
+ *
+ * `absorbedBy` is de migratie van een eerdere schemaversie van dezelfde module uit dezelfde run. Valt
+ * er voor deze versie niets te genereren, dan zat haar schema al in die migratie en gaat haar
+ * terugweg daar voorop (zie de kop van dit bestand).
  */
-export function generateModuleMigration(root: string, sourceRoot: string, moduleName: string, step: SchemaStep): GeneratedMigration[] {
+export function generateModuleMigration(root: string, sourceRoot: string, moduleName: string, step: SchemaStep, absorbedBy?: string): GeneratedMigration[] {
   const results: GeneratedMigration[] = [];
 
   const generated = generateOne(root, migrationName(moduleName, step.version), null);
   if (generated !== undefined) {
     ensureDown(root, sourceRoot, generated.tag, step.down);
     results.push({ ...generated, kind: "generated" });
+  } else if (absorbedBy !== undefined) {
+    prependDown(root, sourceRoot, absorbedBy, step.down);
   }
 
   if (step.custom !== null) {
@@ -158,6 +171,24 @@ function generateOne(root: string, name: string, customSql: string | null): Omit
     writeText(join(root, MIGRATIONS_DIR, `${tag}.sql`), customSql.endsWith("\n") ? customSql : `${customSql}\n`);
   }
   return { tag, fresh: true };
+}
+
+/** Puur: de terugweg van een latere schemaversie voor een bestaande terugweg. Staat ze er al in, dan verandert er niets. */
+export function withDownInFront(existing: string, later: string): string {
+  const block = later.trim();
+  if (block === "" || existing.includes(block)) return existing;
+  return `${block}\n\n${existing}`;
+}
+
+/** De terugweg van een schemaversie die in een eerdere migratie is opgegaan, vooraan in de terugweg van die migratie. */
+function prependDown(root: string, sourceRoot: string, tag: string, downSource: string): void {
+  const target = join(root, MIGRATIONS_DIR, "down", `${tag}.sql`);
+  const source = join(sourceRoot, downSource);
+  if (!existsSync(source)) throw new DrizzleError(`De terugweg ${downSource} ontbreekt in het template.`);
+  if (!existsSync(target)) throw new DrizzleError(`De terugweg van ${tag} ontbreekt; daar hoort die van ${downSource} voor te komen.`);
+  const existing = readText(target);
+  const combined = withDownInFront(existing, readText(source));
+  if (combined !== existing) writeText(target, combined);
 }
 
 function ensureDown(root: string, sourceRoot: string, tag: string, downSource: string): void {

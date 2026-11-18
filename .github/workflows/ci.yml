@@ -127,13 +127,12 @@ jobs:
 
       # Gitleaks over elke commit, niet alleen de boom van nu: een geheim dat later is weggehaald,
       # staat nog in de historie. Een vaste versie met de checksum van de release, zoals de actions op
-      # een SHA staan; de officiële action vraagt een licentie voor een organisatie. Advies en geen
-      # poort tot een run hier beoordeeld is: een echte vondst ingetrokken en uit de historie gehaald,
-      # een valse met zijn reden in .gitleaks.toml. Daarna gaat continue-on-error hier weg.
+      # een SHA staan; de officiële action vraagt een licentie voor een organisatie. Een poort: een
+      # vondst maakt de run rood. Een echte trek je in en haal je uit de historie, een valse zet je
+      # met zijn reden in .gitleaks.toml (besluit D22).
       # --verbose toont per vondst de regel, het bestand en de commit (zonder staat er alleen een
       # aantal); --redact lakt de waarde zelf weg, dus het geheim staat nooit in de log.
-      - name: Geen geheimen in de historie (advies)
-        continue-on-error: true
+      - name: Geen geheimen in de historie
         env:
           GITLEAKS_VERSION: 8.30.1
           GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb

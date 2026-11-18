@@ -41,13 +41,19 @@
   `runPrompt` aan (die zelf `ai:use` controleert). Bij `ok: false` toon je `labels.ai.outcome[reason]`;
   het scherm werkt altijd door zonder AI.
 - **Synchroon, niet via de outbox**: een AI-aanroep verandert niets buiten de tool (besluit A1 in
-  `docs/modules/ai.md`). De grenzen zijn de daglimiet per persoon en de uitgavenlimiet in de Console.
+  `docs/modules/ai.md`).
+- **De grenzen toetst `runPrompt` zelf**: de noodstop en het maandplafond van de organisatie (Beheer,
+  AI, Grenzen; besluit A6), de daglimiet per persoon, en daarboven de uitgavenlimiet in de Console.
+  Bouw er geen tweede toets naast en geen weg eromheen; bij `stopped`, `monthLimit` en `noPrice` toon
+  je net als bij elke andere reden `labels.ai.outcome[reason]`. Geld is centen plus valuta: het
+  plafond rekent in hele getallen (`lib/ai/budget.ts`).
 - **Nooit een echte aanroep in een test, een check of de CI.** Met `AI_FAKE=1` en `APP_ENV=local`
   antwoordt een nagemaakt model (`lib/ai/fake.ts`), door dezelfde toets; de e2e zet dat zelf, en elk
   script dat een server start geeft `SAFE_SERVER_ENV` mee (`scripts/lib/safe-server-env.ts`): de
   sleutel leeg, niet weg. Een nagemaakt model bewijst niets over het echte: daarvoor zijn de
   testgevallen in de Playground en `pnpm ai:test -- <model>`.
-- **Bewijs:** `pnpm check:ai` (catalogus, instellingen, prijzen, daglimiet, kosten, rechten en de
-  smokkeltest tegen de database), de testgevallen van een prompt als test met een nagebootst antwoord,
+- **Bewijs:** `pnpm check:ai` (catalogus, instellingen, prijzen, daglimiet, kosten, rechten, de
+  smokkeltest tegen de database, en de noodstop en het maandplafond dwars door `runPrompt`), de
+  testgevallen van een prompt als test met een nagebootst antwoord,
   en `pnpm ai:test -- <model>` voor één proef met de echte sleutel. De lessen staan in
   `docs/lessen/ai.md`, de patronen in `docs/patronen/ai-gesprek.md` en `ai-meten.md`.

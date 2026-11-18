@@ -12,11 +12,16 @@
  *   tokens en de prijzen op dat moment. Nooit de inhoud: wat er naar Claude ging en terugkwam, staat
  *   hier niet. De kosten van een regel zijn tokens maal prijs, uitgerekend bij het tonen en één keer
  *   afgerond.
+ * - `ai_limits`: de grenzen van de hele organisatie, in hoogstens één rij: het maandplafond in centen
+ *   (leeg is geen plafond) en de noodstop (een tijdstip betekent: geen enkele prompt wordt
+ *   uitgevoerd, met wie hem zette). Geen rij betekent geen plafond en geen noodstop. De stand van de
+ *   maand staat hier niet: die is de som van `ai_requests`, zodat er niets naast elkaar kan lopen.
  *
- * `day` is de datum in de tijdzone van het project (CLAUDE.md regel 3), voor de daglimiet.
+ * `day` is de datum in de tijdzone van het project (CLAUDE.md regel 3), voor de daglimiet en voor
+ * het maandplafond.
  */
 import { sql } from "drizzle-orm";
-import { bigint, boolean, char, check, date, index, integer, pgEnum, pgTable, primaryKey, text, uuid } from "drizzle-orm/pg-core";
+import { bigint, boolean, char, check, date, index, integer, pgEnum, pgTable, primaryKey, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { primaryKeyColumn, timestamps } from "./columns";
 import { organisations } from "./organisations";
 import { appRowAccess } from "./rls";
@@ -91,7 +96,30 @@ export const aiRequests = pgTable(
   (t) => [
     index("ai_requests_user_day_idx").on(t.organisationId, t.userId, t.promptKey, t.day),
     index("ai_requests_created_idx").on(t.organisationId, t.createdAt),
+    /* De som van een maand, voor het plafond: elke aanroep leest hem. */
+    index("ai_requests_org_day_idx").on(t.organisationId, t.day),
     check("ai_requests_tokens_not_negative", sql`${t.inputTokens} >= 0 and ${t.outputTokens} >= 0`),
+    appRowAccess(),
+  ],
+);
+
+export const aiLimits = pgTable(
+  "ai_limits",
+  {
+    organisationId: uuid("organisation_id")
+      .primaryKey()
+      .references(() => organisations.id),
+    /** Het plafond per kalendermaand, in centen; leeg is geen plafond. Geld is centen plus valuta (CLAUDE.md regel 15). */
+    monthlyCapCents: bigint("monthly_cap_cents", { mode: "number" }),
+    currency: char("currency", { length: 3 }).notNull().default("USD"),
+    /** De noodstop: een tijdstip betekent dat geen enkele prompt wordt uitgevoerd. */
+    stoppedAt: timestamp("stopped_at", { withTimezone: true }),
+    stoppedBy: uuid("stopped_by").references(() => users.id),
+    ...timestamps,
+  },
+  (t) => [
+    check("ai_limits_cap_range", sql`${t.monthlyCapCents} is null or ${t.monthlyCapCents} between 1 and 10000000`),
+    check("ai_limits_stop_has_actor", sql`(${t.stoppedAt} is null) = (${t.stoppedBy} is null)`),
     appRowAccess(),
   ],
 );
@@ -99,5 +127,6 @@ export const aiRequests = pgTable(
 export type AiPromptSettingRow = typeof aiPromptSettings.$inferSelect;
 export type AiModelPriceRow = typeof aiModelPrices.$inferSelect;
 export type AiRequestRow = typeof aiRequests.$inferSelect;
+export type AiLimitsRow = typeof aiLimits.$inferSelect;
 export type AiEffort = (typeof aiEffort.enumValues)[number];
 export type AiRequestStatus = (typeof aiRequestStatus.enumValues)[number];

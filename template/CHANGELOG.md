@@ -15,6 +15,65 @@ versie na het bijwerken.
 
 - Nog niets.
 
+## v1.9.0 (18 november 2026)
+
+### Wat verandert
+
+Drie besluiten van 18 november 2026 uitgevoerd: een rem op de rekening van AI die een beheerder zelf
+ziet en bedient, de veiligheidslijst als bestand van het project, en Gitleaks van advies naar poort.
+
+- **Module ai: een maandplafond en een noodstop, voor de hele organisatie.** Onder Beheer, AI staat
+  een nieuwe rubriek Grenzen. De noodstop zet elke prompt in één keer uit, met wie hem zette en
+  wanneer. Het maandplafond is een bedrag per kalendermaand in de valuta van de prijzen; op 100%
+  weigert `runPrompt` tot de eerste van de volgende maand of tot een beheerder het verhoogt, en vanaf
+  80% waarschuwen Beheer, AI en Beheer, Systeem. De stand is de som van `ai_requests`, er is geen
+  aparte teller. Met een plafond wordt een model zonder prijs geweigerd, omdat zo een verzoek niet
+  te tellen is. Nieuw: de tabel `ai_limits` en een index op `ai_requests` (schemaversie 2 van de
+  module), `lib/ai/budget.ts` met de pure toets, `loadLimits`, `saveMonthlyCap` en
+  `setEmergencyStop` in `lib/ai/settings.ts`, `monthSpend` in `lib/ai/usage.ts`, en rubriek 8 in
+  `pnpm check:ai`. `runPrompt` kent drie nieuwe redenen: `stopped`, `monthLimit` en `noPrice`, elk
+  met een tekst in `labels.ai.outcome`. Besluit A6 in `docs/modules/ai.md`. Het plafond is niet de
+  harde grens: de toets loopt vooraf en de kosten zijn pas achteraf bekend. Niet tegen een database
+  bewezen.
+- **`runPrompt` toetst de sleutel als laatste.** De volgorde is nu: het recht, de noodstop, de prompt,
+  de daglimiet, het maandplafond, de sleutel. Zo kan `pnpm check:ai` de grenzen zonder sleutel
+  bewijzen. Wie de daglimiet bereikt in een omgeving zonder sleutel, ziet nu de melding van de
+  daglimiet en niet meer die van de sleutel.
+- **De veiligheidslijst is een bestand van het project.** `docs/veiligheid.md` is een nieuwe seed: 31
+  punten in acht groepen, elk met bouwen, instellen of afspreken, een stand en een aanwijzing naar
+  wat het template levert, en bovenaan een eigenaar en een datum. Het patroon
+  `docs/patronen/veiligheidschecklist.md` is de uitleg erbij; de checklist (handleiding 00) en
+  handleiding 30 verwijzen ernaar. Besluit D23.
+- **Gitleaks is een poort.** De stap over de historie in `.github/workflows/ci.yml` draait zonder
+  `continue-on-error` en heet niet meer advies: een vondst maakt de run rood. Besluit D22. Semgrep
+  blijft advies; handleiding 02 zegt hoe je een vals alarm per regel uitzet.
+- **Apply: een nieuwe schemaversie van een module in een vers project.** In een vers project zit het
+  hele schema van een module in haar eerste migratie, en voor een latere schemaversie valt er niets
+  meer te genereren. De terugweg van die latere versie komt nu vooraan in de terugweg van de eerste
+  migratie, in plaats van te ontbreken, en de waarschuwing dat er niets gegenereerd is blijft weg.
+  Een bestaand project krijgt een eigen migratie met haar eigen terugweg, zoals voorheen
+  (`template/lib/drizzle.ts`, `template/lib/apply.ts`; regel 4b in `template/README.md`). Bewezen
+  zonder database: een project op v1.8.0 met alle modules kreeg bij het bijwerken precies één
+  migratie met de nieuwe tabel, het slot en de index, en de gouden test dekt het verse project.
+
+### Let op bij bijwerken
+
+- **Module ai, de database:** `pnpm template:update` maakt een migratie `template_ai_2` met de tabel
+  `ai_limits` en een index, en zet haar terugweg erbij. Bekijk allebei, draai `pnpm db:roundtrip` op
+  je dev-branch en `pnpm check:ai`, en commit ze met de rest. Zonder die migratie op productie faalt
+  elke aanroep van `runPrompt`: hij leest de nieuwe tabel als eerste.
+- **Module ai, de redenen:** `AiFailure` heeft er drie waarden bij. Een server action die
+  `labels.ai.outcome[reason]` toont, hoeft niets te doen. Een eigen `switch` over de redenen of een
+  eigen tekst per reden vul je aan met `stopped`, `monthLimit` en `noPrice`.
+- **Module ai, de prijzen:** zet je een maandplafond, vul dan eerst de prijs in van elk model dat een
+  prompt gebruikt. Een prompt met een model zonder prijs wordt met een plafond geweigerd; Beheer, AI
+  noemt de modellen.
+- **De CI:** Gitleaks is nu een poort. Een project dat nog een vondst in zijn historie heeft, krijgt
+  een rode run tot het geheim is ingetrokken en uit de historie is, of de valse bevinding met zijn
+  reden in `.gitleaks.toml` staat. De stap noemt per vondst de regel, het bestand en de commit.
+- **De veiligheidslijst:** `docs/veiligheid.md` komt er als nieuw bestand bij. Heeft je project die
+  lijst al onder die naam, dan blijft je eigen bestand staan; leg de twee dan naast elkaar.
+
 ## v1.8.0 (17 november 2026)
 
 ### Wat verandert

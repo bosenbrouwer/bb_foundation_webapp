@@ -1,6 +1,6 @@
 {
   "manifestVersion": 1,
-  "version": "1.8.0",
+  "version": "1.9.0",
   "source": "https://github.com/bosenbrouwer/bb_foundation_webapp.git",
   "rootRenderedOn": "2026-10-02",
   "modules": {
@@ -59,6 +59,7 @@
         { "to": "docs/PROJECTPLAN.md", "class": "seed", "placeholders": true },
         { "to": "docs/ROADMAP.md", "class": "seed", "placeholders": true },
         { "to": "docs/SPEC.md", "class": "seed", "placeholders": true },
+        { "to": "docs/veiligheid.md", "class": "seed" },
         { "to": "docs/THEME.md", "class": "owned" },
         { "to": "docs/WERKWIJZE.md", "class": "owned" },
         { "to": "docs/handleiding/", "class": "owned", "tree": true },
@@ -678,8 +679,8 @@
     },
     "ai": {
       "title": "AI-integratie",
-      "description": "Een prompt naar de Claude API vanuit de tool, met een vaste structuur voor het antwoord (structured outputs), een catalogus van prompts met versies, en onder Beheer, AI de instellingen per prompt (aan of uit, model, denkniveau, daglimiet), de prijzen per model en het verbruik met de kosten per verzoek.",
-      "schemaVersion": 1,
+      "description": "Een prompt naar de Claude API vanuit de tool, met een vaste structuur voor het antwoord (structured outputs), een catalogus van prompts met versies, en onder Beheer, AI de grenzen van de organisatie (een noodstop en een maandplafond), de instellingen per prompt (aan of uit, model, denkniveau, daglimiet), de prijzen per model en het verbruik met de kosten per verzoek.",
+      "schemaVersion": 2,
       "schemaFiles": ["ai"],
       "files": [
         { "to": "app/(app)/admin/ai/actions.ts", "class": "owned" },
@@ -688,6 +689,8 @@
         { "to": "components/ai/plain-text.tsx", "class": "owned" },
         { "to": "components/ai/proposal-view.tsx", "class": "owned" },
         { "to": "lib/ai/admin-tab.ts", "class": "owned" },
+        { "to": "lib/ai/budget.test.ts", "class": "owned" },
+        { "to": "lib/ai/budget.ts", "class": "owned" },
         { "to": "lib/ai/catalogue.ts", "class": "seed" },
         { "to": "lib/ai/client.ts", "class": "owned" },
         { "to": "lib/ai/cost.test.ts", "class": "owned" },
@@ -734,10 +737,11 @@
       "env": [
         { "name": "ANTHROPIC_API_KEY", "secret": true, "where": "both", "guide": "docs/handleiding/24-claude-api.md", "description": "Een sleutel van een service account in de workspace van deze tool, in de Claude Console." }
       ],
-      "migrations": { "1": { "down": "template/modules/ai/migrations/1/down.sql" } },
+      "migrations": { "1": { "down": "template/modules/ai/migrations/1/down.sql" }, "2": { "down": "template/modules/ai/migrations/2/down.sql" } },
       "manual": [
         "Maak in de Claude Console een workspace voor deze tool met een uitgavenlimiet en een service account, maak een sleutel en zet ANTHROPIC_API_KEY in Vercel (Production en Preview, Sensitive) en zelf in .env.local (handleiding 24). Draai pnpm ai:test -- <model>.",
-        "Kies onder Beheer, AI per prompt het model, het denkniveau en de daglimiet, en vul de prijzen per model in van de prijspagina van Anthropic. Zonder model staat een prompt uit."
+        "Kies onder Beheer, AI per prompt het model, het denkniveau en de daglimiet, en vul de prijzen per model in van de prijspagina van Anthropic. Zonder model staat een prompt uit.",
+        "Zet onder Beheer, AI, Grenzen het maandplafond op een bedrag onder de uitgavenlimiet in de Console, en zoek de noodstop een keer op voordat je hem nodig hebt. Met een plafond wordt een prompt met een model zonder prijs geweigerd."
       ]
     },
     "portal": {

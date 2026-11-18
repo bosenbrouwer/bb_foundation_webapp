@@ -7,7 +7,7 @@ import { EMPTY_FORM_STATE, firstError } from "@/components/ui/form-state";
 import { SubmitButton } from "@/components/ui/submit-button";
 import { SwitchLabel } from "@/components/ui/switch";
 import { labels } from "@/lib/i18n/labels";
-import { savePriceAction, savePromptSettingAction } from "./actions";
+import { saveMonthlyCapAction, savePriceAction, savePromptSettingAction, setEmergencyStopAction } from "./actions";
 
 const EFFORT_OPTIONS = ["low", "medium", "high"] as const;
 
@@ -101,6 +101,43 @@ export function PriceForm({ model, input, output, models }: { model: string; inp
       <p className="text-muted-foreground text-[11px]">{labels.ai.priceHint}</p>
       <div className="flex items-center gap-3">
         <SubmitButton busyLabel={labels.form.saving}>{labels.ai.priceSave}</SubmitButton>
+        <Status done={state.done} error={firstError(state)} />
+      </div>
+    </form>
+  );
+}
+
+/** De noodstop, in het zwevende paneel: één knop, met erboven wat hij doet. */
+export function StopForm({ stopped }: { stopped: boolean }) {
+  const [state, formAction] = useActionState(setEmergencyStopAction, EMPTY_FORM_STATE);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <input type="hidden" name="stop" value={stopped ? "off" : "on"} />
+      <p className="text-[12px]">{stopped ? labels.ai.stopReleaseHint : labels.ai.stopPressHint}</p>
+      <div className="flex items-center gap-3">
+        <SubmitButton variant={stopped ? "primary" : "danger"} busyLabel={labels.form.saving}>
+          {stopped ? labels.ai.stopRelease : labels.ai.stopPress}
+        </SubmitButton>
+        <Status done={state.done} error={firstError(state)} />
+      </div>
+    </form>
+  );
+}
+
+/** Het maandplafond, in het zwevende paneel achter Update. Leeg is geen plafond. */
+export function CapForm({ cap }: { cap: string }) {
+  const [state, formAction] = useActionState(saveMonthlyCapAction, EMPTY_FORM_STATE);
+
+  return (
+    <form action={formAction} className="flex flex-col gap-3">
+      <label className="text-[12px]">
+        {labels.ai.capInput}
+        <input name="cap" type="text" inputMode="decimal" defaultValue={cap} className={`${controlClass} mt-1 w-32`} />
+      </label>
+      <p className="text-muted-foreground text-[11px]">{labels.ai.capHint}</p>
+      <div className="flex items-center gap-3">
+        <SubmitButton busyLabel={labels.form.saving}>{labels.ai.capSave}</SubmitButton>
         <Status done={state.done} error={firstError(state)} />
       </div>
     </form>

@@ -130,9 +130,29 @@ in `pnpm-workspace.yaml`, tegen pakketten die net zijn gekaapt). Pin een versie 
 ## Kosten
 
 Plan: tegoed vooraf, betalen per token. Plafond: het tegoed zonder automatisch bijkopen, de
-uitgavenlimiet op de workspace, en in de tool de daglimiet per persoon per prompt. Uit je checklist:
-het deel voor AI. Wat een verzoek kost, zie je onder Beheer, AI; wat een model per miljoen tokens
-kost, staat op de prijspagina. Stand van oktober 2026.
+uitgavenlimiet op de workspace, en in de tool het maandplafond van de organisatie en de daglimiet
+per persoon per prompt. Uit je checklist: het deel voor AI. Wat een verzoek kost, zie je onder
+Beheer, AI; wat een model per miljoen tokens kost, staat op de prijspagina. Stand van oktober 2026.
+
+### Het maandplafond en de noodstop
+
+Onder **Beheer, AI**, in de rubriek **Grenzen**, staan twee grenzen voor de hele organisatie.
+
+1. Bij **Maandplafond**, **Update**: vul een bedrag in dollars in dat lager is dan de
+   uitgavenlimiet van de workspace, en bewaar. Leeg is geen plafond.
+   **Controle:** bovenaan staat onder "Kosten deze maand" nu je bedrag met een percentage.
+2. Vul voor elk model dat een prompt gebruikt de prijs in, als dat nog niet gedaan is. Met een
+   plafond wordt een prompt met een model zonder prijs geweigerd: zo een verzoek is niet te tellen.
+   **Controle:** de pagina toont geen regel die zegt welke modellen nog geen prijs hebben.
+3. Bij **Noodstop**, **Alles uitzetten**: lees wat er staat en probeer hem één keer, op een rustig
+   moment.
+   **Controle:** bovenaan staat sinds wanneer hij aan staat en wie hem zette, en de knop voor een
+   voorstel zegt dat de functie uit staat. Haal hem er daarna af met **Weer aanzetten**.
+
+Wat je ervan mag verwachten: vanaf 80% van het plafond waarschuwen Beheer, AI en Beheer, Systeem. Op
+100% weigert de tool tot de eerste van de volgende maand, of tot je het plafond verhoogt. Het plafond
+is niet de harde grens: de kosten van een verzoek zijn pas na afloop bekend, dus een maand kan er net
+boven eindigen. De harde grens blijft de uitgavenlimiet in de Console.
 
 ## Zo zie je dat het goed staat
 
@@ -148,6 +168,9 @@ kost, staat op de prijspagina. Stand van oktober 2026.
 | "Dit model bestaat niet of is niet beschikbaar" | Een tikfout in het model-id, of het model is uitgefaseerd; kies een ander onder Beheer, AI |
 | "Het is nu te druk" of de uitgavenlimiet is bereikt | De limiet van de workspace is op, of de API heeft het druk; de knop werkt later weer |
 | "Je hebt het maximum voor vandaag bereikt" | De daglimiet per persoon uit Beheer, AI; dat is de bedoeling |
+| "Het budget voor deze maand is op" | Het maandplafond onder Beheer, AI, Grenzen is bereikt. Verhoog het, of wacht tot de eerste van de volgende maand |
+| "Deze functie staat nu uit" terwijl de prompt aan staat | De noodstop staat aan; bovenaan Beheer, AI staat sinds wanneer en door wie |
+| "Deze functie is nog niet ingericht" terwijl de sleutel er is | Er is een maandplafond en het model van deze prompt heeft nog geen prijs; vul de prijs in |
 | Een voorstel "paste niet" | Claude antwoordde buiten de grenzen van de structuur; kijk naar de instructie en de voorbeelden van de prompt |
 | De knop staat uit | Geen sleutel, geen model, of de prompt staat uit onder Beheer, AI |
 | Kosten "onbekend" | Voor dat model staat nog geen prijs onder Beheer, AI, Prijzen |

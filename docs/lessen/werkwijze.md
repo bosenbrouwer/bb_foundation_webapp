@@ -293,5 +293,6 @@ leverancier (I) of afspreekt (A), en in welke ronde. Een punt dat niemand bouwt 
 bestaat alleen op papier. De lijst heeft een eigenaar: zonder is het na een maand een lijst vinkjes
 die niemand gelooft.
 
-**Afgedwongen door.** Alleen afspraak: het patroon `veiligheidschecklist`, als `docs/veiligheid.md`
-in een project. Het template zet dat bestand niet zelf klaar.
+**Afgedwongen door.** Het template zet de lijst klaar als `docs/veiligheid.md` (een seed, besluit
+D23), met het patroon `veiligheidschecklist` als uitleg. Dat hij wordt nagelopen is afspraak: geen
+controle kijkt of de stand klopt.

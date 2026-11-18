@@ -209,7 +209,7 @@ codevoorbeeld). Lees ze wanneer het onderwerp aan de orde is:
 | een fout die in productie niets achterliet | `docs/lessen/werkwijze.md` (L-WERK-08), `docs/patronen/sentry-envelope.md` |
 | een besluit omkeren | `docs/lessen/werkwijze.md` |
 | een prompt, een AI-knop of een gesprek | `docs/modules/ai.md`, `docs/lessen/ai.md`, `docs/patronen/ai-gesprek.md`, `docs/patronen/ai-meten.md` |
-| een tool klaarmaken voor echte gebruikers | `docs/patronen/veiligheidschecklist.md`, `docs/handleiding/30-beveiliging-en-kosten.md` |
+| een tool klaarmaken voor echte gebruikers | `docs/veiligheid.md` (de lijst van dit project), `docs/patronen/veiligheidschecklist.md`, `docs/handleiding/30-beveiliging-en-kosten.md` |
 | rechten boven de beheerder, of iemand die over zichzelf beslist | `docs/patronen/eigenaar-boven-beheerder.md`, `docs/patronen/niemand-beslist-over-zichzelf.md` |
 | gebruikers van buiten, meer dan één adres of een tweede app | `docs/patronen/accounts-van-buiten.md`, `docs/patronen/omgeving-per-adres.md`, `docs/patronen/intrekbare-sessie.md`, `docs/patronen/tweede-app-in-de-repo.md` |
 | iets dat op Windows of met pnpm anders loopt dan verwacht | `docs/lessen/toolchain-windows.md` |

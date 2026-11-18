@@ -39,4 +39,4 @@ eerder project nog niet tegen een database of tegen het echte model is bewezen, 
 | [tweede-app-in-de-repo](tweede-app-in-de-repo.md) | Een eigen wortel in dezelfde repo: niets gedeeld, alles gekopieerd, op zes plekken uitgesloten |
 | [eigenaar-boven-beheerder](eigenaar-boven-beheerder.md) | De sleutels van de organisatie in één lijst, bij een rol boven de beheerder |
 | [niemand-beslist-over-zichzelf](niemand-beslist-over-zichzelf.md) | Wie iets aanvraagt, beslist er niet over; één regel die elk schrijfpad aanroept |
-| [veiligheidschecklist](veiligheidschecklist.md) | Elk punt bouwen, instellen of afspreken; het sjabloon voor `docs/veiligheid.md` |
+| [veiligheidschecklist](veiligheidschecklist.md) | Elk punt bouwen, instellen of afspreken; de uitleg bij `docs/veiligheid.md` |

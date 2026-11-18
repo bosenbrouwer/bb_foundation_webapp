@@ -491,20 +491,23 @@ export function applyTemplate(root: string, sourceRoot: string, options: ApplyOp
     } else if (steps.length > 0) {
       if (!included.includes(name)) included.push(name);
       writeText(join(root, indexPath), generateSchemaIndex(manifest, applied.filter((candidate) => included.includes(candidate))));
+      /* De migratie die deze run al voor deze module maakte of terugvond: een latere versie waar niets meer voor te genereren valt, zit daarin. */
+      let absorbedBy: string | undefined;
       for (const step of steps) {
         let generated;
         try {
-          generated = generateModuleMigration(root, sourceRoot, name, step);
+          generated = generateModuleMigration(root, sourceRoot, name, step, absorbedBy);
         } catch (error) {
           if (error instanceof DrizzleError) throw new ApplyError(`Module ${name}, schemaversie ${step.version}: ${error.message}`);
           throw error;
         }
-        if (generated.length === 0) {
+        if (generated.length === 0 && absorbedBy === undefined) {
           warnings.push(`Module ${name}, schemaversie ${step.version}: drizzle-kit zag geen schemawijziging en maakte geen migratie. Dat klopt alleen als de tabellen er al stonden.`);
         }
         for (const migration of generated) {
           if (!tags.includes(migration.tag)) tags.push(migration.tag);
           migrationOutcomes.push({ module: name, version: step.version, ...migration });
+          if (migration.kind === "generated") absorbedBy ??= migration.tag;
         }
         reached = step.version;
       }

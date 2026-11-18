@@ -139,6 +139,8 @@ Dan deze acht stappen.
 - [ ] Onder Beheer, AI de prijzen per model ingevuld, met de datum in `docs/inrichting.md` (wat
       handleiding 24 onder "Vul in" vraagt).
 - [ ] Geen prompt stuurt tekst van klanten mee (handleiding 24, Beveiliging).
+- [ ] Onder Beheer, AI, Grenzen staat een maandplafond dat lager is dan de uitgavenlimiet in de
+      Console, en de noodstop is één keer geprobeerd (handleiding 24, Kosten).
 
 ### Lokaal werken (handleiding 07)
 
@@ -166,12 +168,17 @@ Dan deze acht stappen.
 
 - [ ] De deploy naar productie slaagt en `pnpm smoke:prod` is groen.
 - [ ] Je kunt inloggen en ziet de versie linksonder in de rail.
+- [ ] `docs/veiligheid.md` is nagelopen voordat er echte gebruikers of echte gegevens in de tool
+      komen: de eigenaar en de datum staan erin, en elk punt is klaar, niet van toepassing, of open
+      met een reden.
 
 ## Terugkerende controles
 
 - [ ] **Wekelijks**: Beheer, Systeem is groen.
 - [ ] **Maandelijks**: de kosten per dienst tegen het plafond; de tabel Vervaldata nagelopen.
 - [ ] **Jaarlijks**: `public/.well-known/security.txt` en de lijst met accounts nagelopen.
+- [ ] **Bij elke ronde die een inlog, een upload, een model of een tweede bedrijf toevoegt**:
+      `docs/veiligheid.md` nagelopen, met de nieuwe datum erin.
 
 ## Vervaldata
 

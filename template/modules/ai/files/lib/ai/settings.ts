@@ -1,15 +1,18 @@
 /* template-owned (module ai). Wordt overschreven door pnpm template:update; wijzig dit bestand niet. */
 /**
  * Wat een beheerder instelt onder Beheer, AI: per prompt aan of uit, het model, het denkniveau en de
- * daglimiet per persoon, en per model de prijzen. Niets hiervan staat in de code. Geen rij betekent:
- * de prompt staat uit. Schrijven kan alleen met het recht `admin:ai` en laat een auditregel achter.
+ * daglimiet per persoon, per model de prijzen, en voor de hele organisatie het maandplafond en de
+ * noodstop. Niets hiervan staat in de code. Geen rij betekent: de prompt staat uit, er is geen
+ * plafond en geen noodstop. Schrijven kan alleen met het recht `admin:ai` en laat een auditregel
+ * achter.
  */
 import { and, eq, sql } from "drizzle-orm";
 import type { Actor } from "@/lib/auth/actor";
 import { assertCan } from "@/lib/auth/can";
 import { appendAuditLog } from "@/lib/db/audit";
 import type { DbOrTransaction } from "@/lib/db/client";
-import { aiModelPrices, aiPromptSettings, type AiEffort } from "@/lib/db/schema";
+import { aiLimits, aiModelPrices, aiPromptSettings, users, type AiEffort } from "@/lib/db/schema";
+import { parseCap } from "./budget";
 import { DEFAULT_CURRENCY, parsePrice } from "./cost";
 import { EFFORTS, isModelId } from "./models";
 import { AI_PROMPTS, promptFor } from "./prompts";
@@ -154,4 +157,83 @@ export async function savePrice(db: DbOrTransaction, actor: Actor, input: PriceI
     after,
   });
   return { ok: true };
+}
+
+export interface Limits {
+  /** Het plafond per kalendermaand in centen; null is geen plafond. */
+  readonly monthlyCapCents: number | null;
+  readonly currency: string;
+  /** De noodstop: een tijdstip betekent dat geen enkele prompt wordt uitgevoerd. */
+  readonly stoppedAt: Date | null;
+  readonly stoppedByName: string | null;
+}
+
+/** Zonder rij: geen plafond en geen noodstop. */
+export const NO_LIMITS: Limits = { monthlyCapCents: null, currency: DEFAULT_CURRENCY, stoppedAt: null, stoppedByName: null };
+
+/** De grenzen van de organisatie. Zonder recht: `runPrompt` leest ze bij elke aanroep. */
+export async function loadLimits(db: DbOrTransaction, organisationId: string): Promise<Limits> {
+  const row = (
+    await db
+      .select({ monthlyCapCents: aiLimits.monthlyCapCents, currency: aiLimits.currency, stoppedAt: aiLimits.stoppedAt, stoppedByName: users.displayName })
+      .from(aiLimits)
+      .leftJoin(users, eq(users.id, aiLimits.stoppedBy))
+      .where(eq(aiLimits.organisationId, organisationId))
+      .limit(1)
+  )[0];
+  return row ?? NO_LIMITS;
+}
+
+export interface CapInput {
+  readonly cap: string;
+}
+
+export interface CapTexts {
+  readonly badCap: string;
+  readonly zeroCap: string;
+}
+
+/** Het maandplafond zetten, wijzigen of (met een leeg veld) weghalen. Altijd in de valuta van de prijzen. */
+export async function saveMonthlyCap(db: DbOrTransaction, actor: Actor, input: CapInput, texts: CapTexts): Promise<SaveResult> {
+  assertCan(actor, "admin:ai");
+  const parsed = parseCap(input.cap);
+  if (!parsed.ok) return { ok: false, errors: { cap: parsed.reason === "zero" ? texts.zeroCap : texts.badCap } };
+
+  const before = await loadLimits(db, actor.organisationId);
+  const after = { monthlyCapCents: parsed.cents, currency: DEFAULT_CURRENCY };
+  await db
+    .insert(aiLimits)
+    .values({ organisationId: actor.organisationId, ...after })
+    .onConflictDoUpdate({ target: aiLimits.organisationId, set: { ...after, updatedAt: sql`now()` } });
+  await appendAuditLog(db, actor, {
+    entityTable: "ai_limits",
+    entityId: actor.organisationId,
+    action: "update",
+    before: { monthlyCapCents: before.monthlyCapCents, currency: before.currency },
+    after,
+  });
+  return { ok: true };
+}
+
+/**
+ * De noodstop zetten of eraf halen. Zetten wat al zo staat, doet niets en laat geen auditregel
+ * achter: het tijdstip en de naam blijven die van wie hem het eerst zette.
+ */
+export async function setEmergencyStop(db: DbOrTransaction, actor: Actor, stop: boolean): Promise<void> {
+  assertCan(actor, "admin:ai");
+  const before = await loadLimits(db, actor.organisationId);
+  if ((before.stoppedAt !== null) === stop) return;
+
+  const state = stop ? { stoppedAt: sql`now()`, stoppedBy: actor.id } : { stoppedAt: null, stoppedBy: null };
+  await db
+    .insert(aiLimits)
+    .values({ organisationId: actor.organisationId, ...state })
+    .onConflictDoUpdate({ target: aiLimits.organisationId, set: { ...state, updatedAt: sql`now()` } });
+  await appendAuditLog(db, actor, {
+    entityTable: "ai_limits",
+    entityId: actor.organisationId,
+    action: "update",
+    before: { stopped: !stop },
+    after: { stopped: stop },
+  });
 }

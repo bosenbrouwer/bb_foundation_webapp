@@ -36,12 +36,17 @@ zodat je het in een kwartier kunt nalopen. Doe dat maandelijks (kosten en verval
       wat er gebeurde.
 - [ ] `public/.well-known/security.txt` klopt (het adres waar iemand een lek kan melden).
 - [ ] De pull requests van Dependabot meenemen in een ronde, en een rode audit, geheimenscan of
-      licentiecheck in de CI meteen oppakken. Een melding van Gitleaks over de historie is advies en
-      maakt de run niet rood: beoordeel hem toch (02).
+      licentiecheck in de CI meteen oppakken. Ook een vondst van Gitleaks in de historie maakt de run
+      rood: een echt geheim intrekken en uit de historie halen, een valse bevinding met de reden in
+      `.gitleaks.toml` (02).
+- [ ] `docs/veiligheid.md` heeft een eigenaar en een datum, en van elk punt dat nog open staat weet
+      je waarom.
 - [ ] `seed` is de default branch van het Neon-project, en een preview toont geen gegevens van
       productie (04, 09).
 - [ ] Met de module ai: geen prompt stuurt tekst van klanten mee, en de privacyverklaring noemt elke
       toepassing bij naam (24).
+- [ ] Met de module ai: het maandplafond staat onder de uitgavenlimiet van de Console, en je weet
+      waar de noodstop zit (24).
 - [ ] `DATABASE_URL_APP` staat op Production en `pg_stat_activity` toont de inlogrol van de app (04).
 - [ ] De Data API van Neon staat uit op elke branch. Controle in de SQL Editor: `select relname from
       pg_class where relrowsecurity and relnamespace = 'public'::regnamespace;` noemt elke tabel, en
@@ -89,7 +94,7 @@ waarde zou anders elke preview en elk script op productie zetten. `pnpm doctor` 
 | Neon | Free | Free of Launch | het plan; autosuspend en minimum compute | compute die wakker blijft, schrijfvolume, branches |
 | Azure (opslag) | pay as you go | pay as you go | een budget met waarschuwing op de resource group | opslag en transacties, centen |
 | Mailaanbieder | gratis plan | gratis of laagste | het plan zelf | volume |
-| Claude API | tegoed vooraf | tegoed vooraf | de uitgavenlimiet op de workspace, automatisch bijkopen uit, en de daglimiet per persoon in de tool | tokens per verzoek, nadenken telt als output |
+| Claude API | tegoed vooraf | tegoed vooraf | de uitgavenlimiet op de workspace, automatisch bijkopen uit, en in de tool het maandplafond en de daglimiet per persoon | tokens per verzoek, nadenken telt als output |
 | Microsoft 365 | bestaand | bestaand | niet van toepassing | niets extra |
 
 Geen bedragen hier: die veranderen. Het bedrag per dienst uit je eigen budget staat in je checklist

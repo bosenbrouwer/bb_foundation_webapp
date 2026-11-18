@@ -86,14 +86,17 @@ van de organisatie bevat; geheimen staan er nooit in, maar namen en plannen wel.
   productie gaat (`pnpm audit --prod --audit-level=high`), geheimen in de code
   (`pnpm check:secrets`), en de licenties (`pnpm check:licenses`: geen GPL of AGPL in wat naar
   productie gaat; LGPL mag, en een onbekende licentie geeft alleen een waarschuwing).
-- Twee controles zijn advies: een melding maakt de run niet rood. **Gitleaks** leest de hele
-  historie van de repo na op geheimen, ook wat later is weggehaald (een vaste versie, met de checksum
-  van de release). Een valse bevinding zet je met de reden in `.gitleaks.toml`. Een echte vondst
-  trek je in bij de dienst waar het geheim vandaan komt en haal je uit de historie; doe dat met
-  Claude. Pas als een run zo is beoordeeld, gaat `continue-on-error` van die stap weg en is het een
-  poort. `.github/workflows/ci.yml` is van het template: in een project wijzig je hem via
-  `pnpm template:adopt`, of met de versie van het template die het omzet. **Semgrep** (statische
-  analyse) is advies tot de eerste run beoordeeld en groen is.
+- **Gitleaks** leest de hele historie van de repo na op geheimen, ook wat later is weggehaald (een
+  vaste versie, met de checksum van de release). Een vondst maakt de run rood, en de stap noemt per
+  vondst de regel, het bestand en de commit, met de waarde weggelakt. Een valse bevinding zet je met
+  de reden in `.gitleaks.toml`; de testwaarden van het template zelf staan er al in. Een echte
+  vondst trek je in bij de dienst waar het geheim vandaan komt en haal je uit de historie; doe dat
+  met Claude.
+- Eén controle is advies: een melding maakt de run niet rood. **Semgrep** (statische analyse) is
+  advies tot een latere versie van het template er een poort van maakt. Een vals alarm zet je per
+  regel uit met `// nosemgrep: <regel-id>` op de regel erboven, met de reden als commentaar
+  daarboven. `.github/workflows/ci.yml` is van het template: in een project wijzig je hem via
+  `pnpm template:adopt`, of met de versie van het template die het omzet.
 - De actions in de CI staan op een vaste commit; Dependabot houdt die bij.
 
 ## Kosten
@@ -118,7 +121,7 @@ aan Actions-minuten, en dat haalt een project van deze omvang niet. Stand van ok
 | Een collega ziet de repo niet | Hij is lid van de organisatie maar heeft geen rol op de repo; voeg hem toe onder Collaborators and teams |
 | GitHub vraagt bij elke push om een wachtwoord | Gebruik een SSH-sleutel of de GitHub CLI (`gh auth login`); een wachtwoord werkt niet meer voor git |
 | De stap "Geen GPL of AGPL in de productieafhankelijkheden" is rood | Een pakket dat naar productie gaat, staat onder GPL of AGPL; de log noemt het. Kies een ander pakket, of neem een besluit en leg het vast in `docs/SPEC.md` voordat het naar productie gaat |
-| De stap "Geen geheimen in de historie (advies)" meldt iets | Advies, de run blijft groen. Beoordeel de vondst toch: een echt geheim intrekken en uit de historie halen, een valse bevinding met de reden in `.gitleaks.toml` |
+| De stap "Geen geheimen in de historie" is rood | De stap noemt per vondst de regel, het bestand en de commit. Een echt geheim intrekken en uit de historie halen, een valse bevinding met de reden in `.gitleaks.toml` |
 
 ## Vul in
 

@@ -3,13 +3,15 @@ import { getDb } from "@/lib/db/client";
 import { organisations } from "@/lib/db/schema";
 import { labels } from "@/lib/i18n/labels";
 import type { HealthProvider } from "@/lib/integrations/health";
+import { capState } from "./budget";
 import { aiKey, AI_KEY_ENV } from "./client";
-import { loadPromptSettings } from "./settings";
-import { todayLine } from "./usage";
+import { loadLimits, loadPromptSettings } from "./settings";
+import { monthSpend, todayLine } from "./usage";
 
 /**
- * AI op Beheer, Systeem: is er een sleutel, staat er een prompt aan, en ging er vandaag iets mis. Deze
- * controle roept de API niet aan: dat kost geld. Een proef met de echte sleutel doe je met pnpm ai:test.
+ * AI op Beheer, Systeem: is er een sleutel, staat de noodstop aan, staat er een prompt aan, hoe ver is
+ * het maandplafond, en ging er vandaag iets mis. Deze controle roept de API niet aan: dat kost geld.
+ * Een proef met de echte sleutel doe je met pnpm ai:test.
  */
 export const aiHealth: HealthProvider = {
   name: labels.ai.healthName,
@@ -20,8 +22,17 @@ export const aiHealth: HealthProvider = {
     const organisation = (await db.select({ id: organisations.id }).from(organisations).limit(1))[0];
     if (organisation === undefined) return { status: "off", detail: labels.ai.healthNoPrompts };
 
+    const limits = await loadLimits(db, organisation.id);
+    if (limits.stoppedAt !== null) return { status: "warning", detail: labels.ai.healthStopped };
+
     const enabled = (await loadPromptSettings(db, organisation.id)).filter((setting) => setting.enabled).length;
     if (enabled === 0) return { status: "off", detail: labels.ai.healthNoPrompts };
+
+    if (limits.monthlyCapCents !== null) {
+      const cap = capState(await monthSpend(db, organisation.id, limits.currency), limits.monthlyCapCents);
+      if (cap.level === "reached") return { status: "warning", detail: labels.ai.healthCapReached };
+      if (cap.level === "warning") return { status: "warning", detail: labels.ai.healthCapWarning(cap.percent ?? 0) };
+    }
 
     const today = await todayLine(db, organisation.id);
     const detail = labels.ai.healthDetail(enabled, today.requests, today.failed);

@@ -11,8 +11,9 @@ kiest een beheerder onder Beheer, AI; de kosten van elk verzoek staan daar ook.
   taak: een sleutel die nooit verandert, een versie, de instructie als volledige systeemtekst, de
   velden die meegaan en de vaste structuur van het antwoord. Begint leeg.
 - **`runPrompt`** (`lib/ai/run.ts`) is de enige plek die Claude aanroept. Hij controleert het recht
-  `ai:use`, of de prompt aan staat met een model, of de sleutel er is en of de daglimiet van deze
-  persoon voor deze prompt nog niet op is. Daarna één verzoek met structured outputs, en het antwoord
+  `ai:use`, of de noodstop uit staat, of de prompt aan staat met een model, of de daglimiet van deze
+  persoon voor deze prompt nog niet op is, of de maand onder het plafond zit, en of de sleutel er is
+  (zie De grenzen). Daarna één verzoek met structured outputs, en het antwoord
   wordt nog een keer nagekeken tegen de structuur (lengtes, grenzen en aantallen kan het schema van de
   API niet afdwingen).
 - **Alleen de velden uit `fields` gaan mee** (`lib/ai/message.ts`), als regels "Veld: waarde" tussen
@@ -24,11 +25,11 @@ kiest een beheerder onder Beheer, AI; de kosten van elk verzoek staan daar ook.
   (`components/ai/plain-text.tsx`): nooit HTML, nooit markdown, nooit een link uit het antwoord.
 - **Elke poging die de API bereikt** staat als regel in `ai_requests`: wie, welke prompt en versie,
   welk model, de uitkomst, de tokens, de duur en de prijs van dat moment. Nooit de inhoud.
-- **Beheer, AI** (recht `admin:ai`): de prompts met hun instellingen, de prijzen per model in centen
-  per miljoen tokens, en het verbruik met de kosten per verzoek en per maand. Elke wijziging laat een
-  auditregel achter.
-- **Beheer, Systeem** toont of er een sleutel is, hoeveel prompts aan staan en wat er vandaag misging,
-  zonder de API aan te roepen.
+- **Beheer, AI** (recht `admin:ai`): de grenzen van de organisatie (de noodstop en het maandplafond),
+  de prompts met hun instellingen, de prijzen per model in centen per miljoen tokens, en het verbruik
+  met de kosten per verzoek en per maand. Elke wijziging laat een auditregel achter.
+- **Beheer, Systeem** toont of er een sleutel is, of de noodstop aan staat, hoeveel prompts aan staan,
+  hoe ver het maandplafond is en wat er vandaag misging, zonder de API aan te roepen.
 - **Een nagemaakt model** (`lib/ai/fake.ts`) antwoordt in plaats van de API als `AI_FAKE=1` staat in
   een uitdrukkelijk lokale omgeving: voor de e2e en voor lokaal werken zonder sleutel. Zie Testen.
 
@@ -41,6 +42,35 @@ kiest een beheerder onder Beheer, AI; de kosten van elk verzoek staan daar ook.
 | A3 | **Prijzen vult een beheerder in, in centen per miljoen tokens; elk verzoek bewaart de prijs van dat moment.** | De API geeft geen prijs terug. Kost: een prijs die niet is bijgewerkt, geeft een verkeerde schatting; de rekening in de Console blijft de waarheid. |
 | A4 | **De inhoud van een verzoek wordt niet bewaard.** | Minder persoonsgegevens op een tweede plek. Kost: een slecht voorstel kun je achteraf niet teruglezen; daarvoor zijn de testgevallen van de prompt. |
 | A5 | **Een nagemaakt model achter hetzelfde slot als de dev-login.** Met `AI_FAKE=1` en `APP_ENV=local` maakt `fakeAnswer` uit de vaste structuur van de prompt een voorspelbaar antwoord, dat door dezelfde toets gaat als een echt (`interpret`). | Een e2e hoort de knop te kunnen indrukken en het voorstel te kunnen overnemen, en het echte model kost per verzoek geld en geeft nooit twee keer hetzelfde antwoord. In een test, een check of de CI gaat nooit een echte aanroep. Kost: het bewijst niets over het echte model (zie Testen). En een vlag voor testen kan in een deploy belanden: daarom gooit `aiFake` in elke omgeving die niet uitdrukkelijk lokaal is, en begint elke nagemaakte tekst met "Nagemaakt". |
+| A6 | **Een maandplafond en een noodstop in de tool, voor de hele organisatie; bij 100% weigert de tool.** De stand is de som van `ai_requests`, er is geen aparte teller. Met een plafond wordt een model zonder prijs geweigerd. | De daglimiet begrenst één persoon en niet de rekening, en de limiet in de Console ziet een beheerder van de tool niet. Weigeren en geen wachtrij: een wachtrij vraagt de module jobs en laat de rekening alsnog komen. Kost: het plafond is geen harde grens (de toets loopt vooraf, de kosten zijn pas achteraf bekend), een beheerder moet de prijzen bijhouden of zijn prompts vallen uit, en elke aanroep kost een query extra, twee met een plafond. 18 november 2026. |
+
+## De grenzen
+
+Vier grenzen, van klein naar groot. De eerste drie zet een beheerder in de tool, de vierde in de
+Console.
+
+| Grens | Waar | Wat de gebruiker merkt |
+|---|---|---|
+| De daglimiet per persoon per prompt | Beheer, AI, per prompt | `limit`: morgen kan het weer |
+| Het maandplafond van de organisatie | Beheer, AI, Grenzen | `monthLimit`: vanaf de eerste van de volgende maand, of eerder als een beheerder het plafond verhoogt |
+| De noodstop | Beheer, AI, Grenzen | `stopped`: geen enkele prompt, voor niemand, tot een beheerder hem eraf haalt |
+| De uitgavenlimiet op de workspace | de Console | de API weigert, en in de tool mislukt het verzoek |
+
+- **Het maandplafond** is een bedrag per kalendermaand, in de valuta van de prijzen en in de
+  tijdzone van het project. De stand is de som van `ai_requests`: er is geen aparte teller die
+  ernaast kan lopen. Vanaf 80% waarschuwen Beheer, AI en Beheer, Systeem.
+- **Met een plafond wordt een model zonder prijs geweigerd** (`noPrice`). Een verzoek zonder prijs is
+  niet te tellen en zou het plafond ongezien laten lekken. Beheer, AI zegt welke modellen het raakt.
+- **Het plafond is niet de harde grens.** De toets loopt voor de aanroep en de kosten zijn pas na
+  afloop bekend, dus een maand kan er net boven eindigen, en twee verzoeken tegelijk komen allebei
+  door de toets. De harde grens is de uitgavenlimiet in de Console: zet het plafond daaronder.
+- **De noodstop** is één schakelaar, met wie hem zette en wanneer, en een auditregel bij het zetten
+  en bij het eraf halen. De instellingen per prompt blijven staan. Hij houdt ook het nagemaakte model
+  tegen. Hij houdt niet tegen wat buiten de tool om gaat: `pnpm ai:test` vanaf een laptop, en een
+  verzoek dat al onderweg is.
+- De toets is puur en staat in `lib/ai/budget.ts` (`capState`, `capVerdict`, `parseCap`); `runPrompt`
+  roept hem aan. Bouw er in een server action geen tweede toets naast: toon bij `stopped`,
+  `monthLimit` en `noPrice` gewoon `labels.ai.outcome[reason]`.
 
 ## Een prompt schrijven
 
@@ -296,6 +326,9 @@ Sensitive voor Production en Preview, en een eigen sleutel in `.env.local`. Zie 
   Geen deploy.
 - **Een prijswijziging**: pas de prijs aan onder Beheer, AI. Verzoeken van eerder houden hun prijs.
 - **Een gelekte sleutel**: intrekken in de Console, nieuwe in Vercel, opnieuw deployen.
+- **De rekening loopt op, of een prompt doet iets wat niet mag**: zet de noodstop onder Beheer, AI,
+  Grenzen. Zoek daarna in het verbruik wie en welke prompt, en haal de noodstop er pas af als je het
+  weet.
 - **Een nieuwe versie van de SDK**: `@anthropic-ai/sdk` staat op een vaste versie. Een versie die
   jonger is dan een week, installeert pnpm niet (`minimumReleaseAge` in `pnpm-workspace.yaml`); pin
   een versie die ouder is.
@@ -303,14 +336,16 @@ Sensitive voor Production en Preview, en een eigen sleutel in `.env.local`. Zie 
 ## Bewijs
 
 `pnpm check:ai`: de catalogus, de instellingen, de prijzen, de daglimiet, de kosten en de rechten
-(rubriek 1 tot 6), en in rubriek 7 de smokkeltest tegen de database met de gevallen van het project;
-alles teruggedraaid, en zonder de sleutel in de omgeving. De vitest-bestanden onder `lib/ai/`,
-waaronder `keys.test.ts` (`keyed`, `enumOr`), `outgoing.test.ts` (de smokkeltest, ook voor elke
-prompt uit de catalogus) en `fake.test.ts` (het slot en het nagemaakte antwoord). De huisregels
+(rubriek 1 tot 6), in rubriek 7 de smokkeltest tegen de database met de gevallen van het project, en
+in rubriek 8 de noodstop en het maandplafond dwars door `runPrompt`; alles teruggedraaid, en zonder
+de sleutel in de omgeving. De vitest-bestanden onder `lib/ai/`, waaronder `keys.test.ts` (`keyed`,
+`enumOr`), `outgoing.test.ts` (de smokkeltest, ook voor elke prompt uit de catalogus), `fake.test.ts`
+(het slot en het nagemaakte antwoord) en `budget.test.ts` (het plafond op de grens, elke maand van
+het jaar, en wat een beheerder typt: nul, negatief, drie decimalen, een andere valuta). De huisregels
 `ai-output` en `ai-imports` in `pnpm lint`. En `pnpm ai:test -- <model>` voor één proef met de echte
 sleutel.
 
-De rubrieken 1 tot 7 van `pnpm check:ai` zijn in het template nog niet tegen een database gedraaid
+De rubrieken 1 tot 8 van `pnpm check:ai` zijn in het template nog niet tegen een database gedraaid
 (`template/README.md`, Uitgestelde bewijzen).
 
 ## Lessen en patronen

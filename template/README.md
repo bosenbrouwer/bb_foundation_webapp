@@ -92,6 +92,13 @@ aan, nooit genest `pnpm`: een `&` in een Windows-gebruikerspad breekt dat, ook d
    met Engelse interface, andere rollen en de wachtwoordlogin.
 4. Nooit een kolom hernoemen tussen schemaversies van een module; uitbreiden en inkrimpen in
    stappen. Een nieuwe enumwaarde en het gebruik ervan in twee schemaversies.
+4b. Een module krijgt een nieuwe schemaversie zo: het schemabestand aanpassen, `schemaVersion` in het
+   manifest verhogen, en `template/modules/<module>/migrations/<versie>/down.sql` erbij met alleen
+   wat die versie toevoegde. De terugweg van een eerdere versie wijzig je niet. `template:apply`
+   maakt in een bestaand project een eigen migratie met die terugweg; in een vers project zit het
+   hele schema in de eerste migratie en gaat de terugweg van elke latere versie daar voorop
+   (`template/lib/drizzle.ts`). Bewijs allebei: de gouden test met `voorbeeld` voor het verse
+   project, en een `template:update --from` van een project op de vorige versie voor het bestaande.
 5. Een ronde is klaar als de batterij groen is: typecheck, lint plus huisregels, vitest,
    check:secrets, check:licenses, check:migrations, check:drift, check:contrast, template:verify,
    build, de migraties heen en terug op de dev-branch, alle `check:<domein>`, en de e2e tegen
@@ -143,4 +150,5 @@ niet was. Allemaal inhalen zodra `.env.local` van de templatemap een dev-branch 
 | v1.7.0 en v1.8.0 | de CSP in een echte browser: één header, de nonce op elk script in de HTML van de server, een pagina met een punt in het adres, en de vaste CSP op `/api/auth` | e2e `05b-csp.spec.ts` |
 | v1.2.0 en v1.8.0 | de sloten van de module ai, en in rubriek 7 de smokkeltest tegen de database | `pnpm check:ai` in een project met de module ai, met minstens één geval in `scripts/check-ai.project.ts` |
 | v1.8.0 | de cronroutes op `runSteps`: het antwoord `{ results, failed }` van de kern, de wachtrij en de outbox. De mislukte stap en de 500 bewijst `lib/cron/steps.test.ts` zonder database | e2e `04-cron.spec.ts`, en in een project met jobs en messaging `06-jobs.spec.ts` en `07-messages.spec.ts` |
+| v1.9.0 | de noodstop en het maandplafond van de module ai: de sloten en de toets dwars door `runPrompt`; de migratie `template_ai_2` heen en terug in een bestaand project, de samengevoegde terugweg in een vers project, en de rechten van de rol van de app op `ai_limits` | `pnpm check:ai` (rubriek 8), `pnpm db:roundtrip` en `pnpm check:grants` in een project met de module ai, één keer vers en één keer bijgewerkt vanaf v1.8.0 |
 | v1.8.0 | de preview uit `seed`: de route voor een nieuw project (handleiding 04, stap 2 en 07, stap 4c), de seed-branch achteraf met alleen het schema en de overgenomen migratielijst, en een account met wachtwoord op `seed` (handleiding 09) | met de hand, in een Neon-project met een Vercel-koppeling; geen van de drie is gedraaid |
