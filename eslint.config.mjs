@@ -5,6 +5,14 @@ import nextTypescript from "eslint-config-next/typescript";
 const noEmDash =
   "Geen em-dashes. Gebruik een komma, dubbele punt, haakjes of een nieuwe zin.";
 
+const noBrowserStorage = (name) => `Geen ${name} voor domeindata of voorkeuren. Voorkeuren staan in user_preferences, zie CLAUDE.md.`;
+const noBareFetch = "Geen kale fetch: gebruik fetchWithTimeout uit lib/integrations/http.ts, zodat elke aanroep naar buiten een tijdslimiet heeft.";
+
+/* Opslag in de browser, ook met `window.`, `globalThis.` of `self.` ervoor: die schrijfwijze zag de regel eerst niet. */
+const STORAGE_GLOBALS = ["localStorage", "sessionStorage", "indexedDB"].map((name) => ({ name, message: noBrowserStorage(name) }));
+const STORAGE_PROPERTIES = ["window", "globalThis", "self"].flatMap((object) => ["localStorage", "sessionStorage", "indexedDB"].map((property) => ({ object, property, message: noBrowserStorage(property) })));
+const FETCH_PROPERTIES = ["window", "globalThis", "self"].map((object) => ({ object, property: "fetch", message: noBareFetch }));
+
 const config = [
   {
     ignores: [
@@ -51,19 +59,15 @@ const config = [
       ],
 
       // Domeindata en voorkeuren horen in de database, niet in de browser. Zie CLAUDE.md.
-      "no-restricted-globals": [
-        "error",
-        {
-          name: "localStorage",
-          message:
-            "Geen localStorage voor domeindata of voorkeuren. Voorkeuren staan in user_preferences, zie CLAUDE.md.",
-        },
-        {
-          name: "sessionStorage",
-          message:
-            "Geen sessionStorage voor domeindata of voorkeuren. Voorkeuren staan in user_preferences, zie CLAUDE.md.",
-        },
-      ],
+      "no-restricted-globals": ["error", ...STORAGE_GLOBALS, { name: "fetch", message: noBareFetch }],
+      "no-restricted-properties": ["error", ...STORAGE_PROPERTIES, ...FETCH_PROPERTIES],
+    },
+  },
+  {
+    /* De enige plek waar de kale fetch mag staan: de functie die er de tijdslimiet omheen zet. */
+    files: ["lib/integrations/http.ts"],
+    rules: {
+      "no-restricted-globals": ["error", ...STORAGE_GLOBALS],
     },
   },
 ];

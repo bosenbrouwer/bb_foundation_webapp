@@ -19,15 +19,15 @@ heeft daar nooit schade gedaan; hij staat hier zodat dat zo blijft.
 | Bestand | Laag | Lessen |
 |---|---|---|
 | [drizzle-postgres](drizzle-postgres.md) | Drizzle en Postgres: migraties, query's, transacties, wachtrijen, het slot | L-DRZ-01 tot L-DRZ-18 |
-| [neon](neon.md) | Neon: pooled en direct, branches, kosten, rechten, de rol van de app, de driver, verbinden met uitdrukkelijk recht, previews zonder echte gegevens | L-NEON-01 tot L-NEON-13 |
-| [nextjs](nextjs.md) | Next.js 16 en React 19, inclusief e2e met Playwright, de CSP en middleware, route handlers achter meer dan één adres, variabelen uit `.env.local`, hydrateren | L-NEXT-01 tot L-NEXT-22 |
-| [authjs](authjs.md) | Auth.js v5: identiteit, sessies, de dev-login, tokens, server actions, de uitgever, accounts van buiten, `checks` | L-AUTH-01 tot L-AUTH-10 |
+| [neon](neon.md) | Neon: pooled en direct, branches, kosten, rechten, de rol van de app, de driver, verbinden met uitdrukkelijk recht, previews zonder echte gegevens | L-NEON-01 tot L-NEON-15 |
+| [nextjs](nextjs.md) | Next.js 16 en React 19, inclusief e2e met Playwright, de CSP en middleware, route handlers achter meer dan één adres, variabelen uit `.env.local`, hydrateren, zoekmachines, de matcher van de proxy | L-NEXT-01 tot L-NEXT-24 |
+| [authjs](authjs.md) | Auth.js v5: identiteit, sessies, de dev-login, tokens, server actions, de uitgever, accounts van buiten, `checks`, geen rol | L-AUTH-01 tot L-AUTH-11 |
 | [entra-graph](entra-graph.md) | Entra ID en Microsoft Graph: tenant, rollen, secrets, mail, gasten | L-ENTRA-01 tot L-ENTRA-09 |
-| [vercel](vercel.md) | Vercel: de build, variabelen, crons, limieten, regio, plan | L-VRC-01 tot L-VRC-08 |
+| [vercel](vercel.md) | Vercel: de build, variabelen, crons, limieten, regio, plan | L-VRC-01 tot L-VRC-09 |
 | [toolchain-windows](toolchain-windows.md) | De toolchain en Windows: pnpm, env-files, PowerShell, pins, strict, de geheimenscan, Tailwind met een tweede app | L-WIN-01 tot L-WIN-09 |
-| [http-bestanden](http-bestanden.md) | Uploads, downloads, contenttype, CSV | L-HTTP-01 tot L-HTTP-04 |
+| [http-bestanden](http-bestanden.md) | Uploads, downloads, contenttype, CSV, UTF-8 | L-HTTP-01 tot L-HTTP-05 |
 | [ai](ai.md) | AI in de tool: het antwoord als invoer, de witte lijst en de smokkeltest, tekst van buiten, het nagemaakte model, kosten, meten, een gesprek bewaren | L-AI-01 tot L-AI-11 |
-| [werkwijze](werkwijze.md) | Werkwijze: versie, batterij, huisregels, koppelingen, fail closed, checks die iets bewijzen, de supply chain, stappen met eigen opvang, foutmeldingen met oorzaak, bewakers, de checklist | L-WERK-01 tot L-WERK-17 |
+| [werkwijze](werkwijze.md) | Werkwijze: versie, batterij, huisregels, koppelingen, fail closed, checks die iets bewijzen, de supply chain, stappen met eigen opvang, foutmeldingen met oorzaak, bewakers, de checklist, de laptop | L-WERK-01 tot L-WERK-18 |
 
 ## Een les toevoegen
 

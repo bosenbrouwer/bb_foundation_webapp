@@ -47,6 +47,16 @@ export const TEMPLATE_HEADERS = [
   { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
 ];
 
+/**
+ * Alles behalve het inlogscherm zelf vraagt een zoekmachine om het niet op te nemen. `robots.txt` zegt
+ * alleen dat een crawler er niet hoort te komen; een adres waar ergens naar gelinkt wordt, kan dan nog
+ * steeds in een index belanden. Het inlogscherm mag wel gezien worden: een crawler die de ingang
+ * niet mag lezen, moet raden wat dit is, en een jong domein met een pagina "log in met je account"
+ * lijkt dan op phishing (les L-NEXT-23).
+ */
+export const NOINDEX_SOURCE = "/((?!sign-in$).*)";
+export const NOINDEX_HEADER = { key: "X-Robots-Tag", value: "noindex, nofollow" };
+
 /** De paden buiten de proxy waar HTML kan staan: de eigen pagina's van Auth.js. Zie `STATIC_CSP`. */
 export const STATIC_CSP_SOURCE = "/api/auth/:path*";
 
@@ -57,7 +67,12 @@ export function withTemplateDefaults(project: NextConfig = {}): NextConfig {
     ...project,
     async headers() {
       const own = project.headers === undefined ? [] : await project.headers();
-      return [{ source: "/(.*)", headers: TEMPLATE_HEADERS }, { source: STATIC_CSP_SOURCE, headers: [{ key: "Content-Security-Policy", value: STATIC_CSP }] }, ...own];
+      return [
+        { source: "/(.*)", headers: TEMPLATE_HEADERS },
+        { source: NOINDEX_SOURCE, headers: [NOINDEX_HEADER] },
+        { source: STATIC_CSP_SOURCE, headers: [{ key: "Content-Security-Policy", value: STATIC_CSP }] },
+        ...own,
+      ];
     },
     experimental: {
       ...project.experimental,

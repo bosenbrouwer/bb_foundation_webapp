@@ -100,6 +100,8 @@ Geen. Een app-registratie is onderdeel van Microsoft 365. Stand van oktober 2026
 | Opeens kan niemand meer inloggen | Het client secret is verlopen; maak een nieuw en zet het in Vercel |
 | De build bij Vercel faalt met "AUTH_MICROSOFT_ENTRA_ID_ISSUER ontbreekt, en dan valt de login terug op /common/" | Met opzet: de variabele staat niet in die omgeving (Production of Preview). Zet hem op `https://login.microsoftonline.com/<tenant-id>/v2.0` (06) en deploy opnieuw |
 | De build of de app faalt met "AUTH_MICROSOFT_ENTRA_ID_ISSUER wijst naar /common/ in plaats van naar de eigen tenant" (of `/organizations/`, `/consumers/`) | Met opzet, ook lokaal: in de issuer staat geen tenant-id. Zet de Directory (tenant) ID van de Overview erin |
+| De build of de app faalt met "AUTH_MICROSOFT_ENTRA_ID_ISSUER noemt de tenant niet bij zijn id (een GUID)" | Met opzet: er staat een domeinnaam in (`bedrijf.onmicrosoft.com`), en met een domeinnaam toetst de inlogbibliotheek de tenant uit het token niet. Zet de Directory (tenant) ID van de Overview erin, de GUID |
+| Iemand ziet na het inloggen bij Microsoft "Inloggen is niet gelukt" | Die persoon heeft geen rol uit `project.config.json` (besluit D26). In de serverlog staat "Login geweigerd: de inlog draagt geen rol". Wijs de rol toe (11) en laat opnieuw inloggen |
 
 ## Vul in
 

@@ -54,11 +54,20 @@ jobs:
       - name: Build
         run: pnpm build
 
+      # Elke pagina en route uit de build, zonder sessie: met de poort van de proxy aan, met een
+      # waardeloze cookie en met de poort uit. Zonder database en zonder geheimen (besluit D24).
+      - name: Zonder sessie is alles dicht
+        run: pnpm check:public
+
   migrations:
     name: Migraties, drift en contrast
     runs-on: ubuntu-latest
     steps:
+      # Alle commits: de controle op een gewijzigde migratie vergelijkt met main. Met een ondiepe
+      # checkout kan dat niet, en dan faalt de controle in de CI in plaats van stil over te slaan.
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with:
+          fetch-depth: 0
 
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4.3.0
 
@@ -149,8 +158,11 @@ jobs:
   semgrep:
     name: Statische analyse (advies)
     runs-on: ubuntu-latest
+    # De scanner zelf staat vast op de versie die hier groen draaide (18 november 2026), net als de
+    # actions op een SHA: een versie die zweeft, kan zonder wijziging in deze repo iets anders doen.
+    # Vernieuw de digest bij een ronde, en lees dan de bevindingen na.
     container:
-      image: semgrep/semgrep
+      image: semgrep/semgrep@sha256:67518c174185a2043fdbed16c70631b79209499b3671178e7194379b48295a0d
     continue-on-error: true
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0

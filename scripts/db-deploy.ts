@@ -138,6 +138,11 @@ runScript(async () => {
       /* Binnen hetzelfde slot: twee deploys tegelijk maken zo nooit allebei de organisatie aan. */
       console.log("Basisgegevens (de organisatie en wat het project op elke omgeving nodig heeft):");
       await ensureBaseData(scriptDb(pool));
+      if (process.env.VERCEL_ENV === "production" && (process.env.DATABASE_URL_APP ?? "").trim() === "") {
+        console.warn(
+          "\nLET OP: DATABASE_URL_APP ontbreekt. De app verbindt op productie als eigenaar van de database, langs het slot op elke tabel. Maak de inlogrol en zet de variabele: docs/handleiding/04-neon.md, \"De rol van de app op productie\".\n",
+        );
+      }
     } finally {
       await release();
     }

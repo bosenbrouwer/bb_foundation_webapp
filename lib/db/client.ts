@@ -24,6 +24,7 @@
 
 import { Pool } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
+import { errorForLog } from "@/lib/monitoring/error-text";
 import * as schema from "./schema";
 
 function required(name: string): string {
@@ -32,6 +33,16 @@ function required(name: string): string {
     throw new Error(`Omgevingsvariabele ${name} ontbreekt. Haal hem op met: vercel env pull .env.local`);
   }
   return value;
+}
+
+/**
+ * Verbindt de app als eigenaar van de database, omdat `DATABASE_URL_APP` ontbreekt? De eigenaar gaat
+ * langs het slot op elke tabel en mag het schema wijzigen. Op productie is dat een waarschuwing op
+ * elk scherm van een beheerder en een rode regel op Beheer, Systeem (besluit D29): de tool blijft
+ * werken, want op de eerste dag van een project bestaat de rol van de app nog niet.
+ */
+export function connectsAsOwner(env: Readonly<Record<string, string | undefined>> = process.env): boolean {
+  return (env["DATABASE_URL_APP"] ?? "").trim() === "";
 }
 
 /** De verbinding van de app: de rol van de app als die gezet is, anders de gewone. */
@@ -49,6 +60,15 @@ let cachedPool: Pool | undefined;
 
 function createDb() {
   const pool = new Pool({ connectionString: appUrl() });
+  /*
+   * Een verbinding die wegvalt of geweigerd wordt terwijl hij in de pool rust, meldt zich als
+   * gebeurtenis op de pool. Zonder luisteraar stopt Node daarop met "Unhandled error", en dan valt een
+   * hele instantie om in plaats van één verzoek (les L-NEON-14). De pool ruimt de verbinding zelf op;
+   * hier hoeft alleen de melding de log in, zonder de verbindingsstring.
+   */
+  pool.on("error", (error: unknown) => {
+    console.error(`De databasepool verloor een verbinding: ${errorForLog(error)}`);
+  });
   cachedPool = pool;
   return drizzle({ client: pool, schema });
 }

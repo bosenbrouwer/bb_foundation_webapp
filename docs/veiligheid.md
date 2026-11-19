@@ -29,15 +29,19 @@ Zo vul je hem in:
 | Een uitnodiging per persoon, het account vastgepind | B | open | `docs/handleiding/11-toegang-beheren.md` |
 | Een sessie van hoogstens acht uur, per persoon in te trekken | B | open | De duur: `lib/auth/session-age.ts`. Eén sessie intrekken: `docs/patronen/intrekbare-sessie.md`, niet in het template |
 | Rollen | B | open | `project.config.json` en `lib/auth/matrix.ts` |
-| Een tweede factor op het account van de gebruiker | A | open | Bij Entra het beleid van de tenant; bij de wachtwoordlogin de tweestapsverificatie in de tool |
+| Een tweede factor op het account van de gebruiker | I | open | Bij Entra een instelling in de tenant; bij de wachtwoordlogin dwingt de tool hem af voor beheerders |
+| Een tweede factor op elk account bij Vercel, Neon en GitHub | I | open | `docs/handleiding/00-checklist.md`, Klaar voor echte gebruikers |
+| Een inlog zonder rol komt er niet in | B | open | `lib/auth/callbacks.ts` en de test ernaast (besluit D26) |
 
 ## Netwerk en firewall
 
 | Punt | B, I of A | Stand | Waar of wie |
 |---|---|---|---|
-| Regels bij de host, en de rem op de inlogpaden | I | open | De rem in de tool: `consumeRateLimit`. Regels bij de host stel je zelf in |
+| Eén eigen regel bij de host: een rem per adres op het inlogscherm, eerst op alleen loggen | I | open | `docs/handleiding/03-vercel.md`, stap 8. De rem in de tool: `consumeRateLimit` |
+| Je weet waar de noodknop tegen een aanval zit | A | open | Attack Mode in de Firewall: `docs/handleiding/03-vercel.md`, stap 8 |
+| De regio na de eerste deploy gecontroleerd: functies en database in Frankfurt | I | open | `vercel.json` zet `fra1`; kijken doe je zelf (L-VRC-09) |
 | Geen preview met echte gegevens | I | open | De branch `seed`: `docs/handleiding/04-neon.md` en `09-werken-met-een-releasebranch.md` |
-| Niet vindbaar, geen publieke pagina behalve de inlog | B | open | Alles onder `app/(app)/` staat achter de sessie |
+| Niet vindbaar, geen publieke pagina behalve de inlog | B | open | De lijst in `lib/auth/public-paths.ts`, de proxy, de huisregel `public-routes` en `pnpm check:public` (D24, D25); `X-Robots-Tag: noindex` op alles behalve de inlog |
 | Een CSP met nonce, HSTS, niet in te bedden | B | open | `proxy.ts` en `lib/config/next-base.ts` |
 
 ## Limieten en kosten
@@ -65,7 +69,9 @@ Zo vul je hem in:
 | Database en opslag per bedrijf, elk met een eigen sleutel | I | open | Alleen bij meer dan één bedrijf: `docs/patronen/omgeving-per-adres.md` |
 | De rol met de minste rechten en een slot per tabel | B | open | `pnpm check:grants` en `lib/db/schema/rls.test.ts` |
 | Geen geheim van de ene app in de andere | I | open | Alleen bij een tweede app: `docs/patronen/tweede-app-in-de-repo.md` |
-| Een back-up, en één keer een terugzet geprobeerd voordat er echte gegevens in staan | I | open | Het herstelvenster: `docs/handleiding/30-beveiliging-en-kosten.md`. Een kopie buiten de leverancier levert het template niet |
+| Een tweede kopie van de database buiten de leverancier, en één keer een terugzet geprobeerd met de duur erbij. Zonder dat geen echte gegevens | I | open | Het herstelvenster: `docs/handleiding/30-beveiliging-en-kosten.md`. Een kopie buiten de leverancier levert het template nog niet |
+| De app verbindt op productie als de rol van de app, niet als eigenaar | I | open | `docs/handleiding/04-neon.md`; anders kleurt Beheer, Systeem rood (D29) |
+| Op een laptop alleen de verbinding met de dev-branch | A | open | `docs/handleiding/07-lokaal-werken.md` (L-WERK-18) |
 
 ## Het model
 
@@ -79,9 +85,10 @@ Zo vul je hem in:
 
 | Punt | B, I of A | Stand | Waar of wie |
 |---|---|---|---|
-| Een logboek van wie inlogde, bekeek, uploadde en corrigeerde | B | open | Wijzigingen: de audit log. Inloggen en bekijken logt het template niet |
+| Een logboek van wie inlogde, bekeek, uploadde en corrigeerde, met alleen feiten en nooit inhoud | B | open | Wijzigingen: de audit log, die vrije tekst weigert (D27). Inloggen en bekijken logt het template niet |
 | Foutmeldingen zonder inhoud, in een eigen project | I | open | `lib/monitoring/report.ts` en `docs/patronen/sentry-envelope.md` |
 | Dezelfde poorten als de hoofdapp | B | open | `.github/workflows/ci.yml` |
+| De controles van de CI verplicht voor een merge naar `main` | I | open | Branch protection; op een privérepo vraagt dat GitHub Team (D12) |
 | Een aanvalsronde met de identiteiten van twee bedrijven tegen elkaar | B | open | Niet in het template |
 
 ## Afspraken

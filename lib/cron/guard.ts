@@ -19,14 +19,21 @@ export type CronContext = { readonly ok: true; readonly organisationId: string }
  * Fail closed: ontbreekt `CRON_SECRET`, dan gaat de route niet door. Anders zou een vergeten variabele
  * de deur openzetten in plaats van hem dicht te houden.
  */
-export async function requireCron(request: Request): Promise<CronContext> {
-  const expected = process.env.CRON_SECRET;
+/** Is het geheim van de cron ingesteld? Zonder weigert elke cronroute. Voor Beheer, Systeem. */
+export function cronSecretSet(env: Readonly<Record<string, string | undefined>> = process.env): boolean {
+  return (env["CRON_SECRET"] ?? "") !== "";
+}
 
-  if (expected === undefined || expected === "") {
-    return {
-      ok: false,
-      response: Response.json({ error: "CRON_SECRET ontbreekt. Zonder die variabele weigert deze route, want anders kan iedereen hem aanroepen." }, { status: 500 }),
-    };
+export async function requireCron(request: Request): Promise<CronContext> {
+  const expected = process.env.CRON_SECRET ?? "";
+
+  if (!cronSecretSet()) {
+    /*
+     * Geen uitleg naar buiten: wie aanklopt, hoeft niet te weten dat de route bestaat of wat er
+     * ontbreekt. De uitleg staat in de log van de server en op Beheer, Systeem.
+     */
+    console.error("CRON_SECRET ontbreekt: elke cronroute antwoordt met een 404 tot de variabele is gezet.");
+    return { ok: false, response: new Response(null, { status: 404 }) };
   }
 
   if (!sameSecret(request.headers.get("authorization") ?? "", `Bearer ${expected}`)) {

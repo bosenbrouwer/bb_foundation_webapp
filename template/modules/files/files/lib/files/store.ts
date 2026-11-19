@@ -7,7 +7,7 @@
 import { and, desc, eq, isNull, sql } from "drizzle-orm";
 import type { Actor } from "@/lib/auth/actor";
 import { assertCan, AuthorisationError } from "@/lib/auth/can";
-import { appendAuditLog } from "@/lib/db/audit";
+import { appendAuditLog, auditCode, auditLength } from "@/lib/db/audit";
 import type { DbOrTransaction } from "@/lib/db/client";
 import { files } from "@/lib/db/schema";
 import { consumeRateLimit } from "@/lib/domain/rate-limit";
@@ -80,7 +80,7 @@ export async function uploadFile(db: DbOrTransaction, actor: Actor, scope: FileS
       .returning(SUMMARY)
   )[0];
   if (row === undefined) throw new Error("Het bestand is opgeslagen maar niet geregistreerd.");
-  await appendAuditLog(db, actor, { entityTable: "files", entityId: row.id, action: "insert", after: { purpose: scope.purpose, entityType: scope.entityType, entityId: scope.entityId, name: row.name, sizeBytes: row.sizeBytes } });
+  await appendAuditLog(db, actor, { entityTable: "files", entityId: row.id, action: "insert", after: { purpose: auditCode(scope.purpose), entityType: auditCode(scope.entityType), entityId: auditCode(scope.entityId), nameLength: auditLength(row.name), sizeBytes: row.sizeBytes } });
   return { ok: true, file: row };
 }
 
@@ -113,7 +113,7 @@ export async function removeFile(db: DbOrTransaction, actor: Actor, id: string):
   const row = await fileById(db, actor, id);
   if (row === undefined || !(await canWriteFile(actor, row))) return false;
   await db.update(files).set({ deletedAt: sql`now()`, updatedAt: sql`now()` }).where(eq(files.id, id));
-  await appendAuditLog(db, actor, { entityTable: "files", entityId: id, action: "delete", before: { name: row.name, blobPath: row.blobPath } });
+  await appendAuditLog(db, actor, { entityTable: "files", entityId: id, action: "delete", before: { nameLength: auditLength(row.name) } });
   return true;
 }
 

@@ -9,7 +9,7 @@ import { and, asc, eq, isNull, sql } from "drizzle-orm";
 import type { Actor } from "@/lib/auth/actor";
 import { assertCan } from "@/lib/auth/can";
 import { ADMIN_ROLES, isAppRole, parseRoles, type AppRole } from "@/lib/auth/roles";
-import { appendAuditLog } from "@/lib/db/audit";
+import { appendAuditLog, auditCodes } from "@/lib/db/audit";
 import type { DbOrTransaction } from "@/lib/db/client";
 import { credentials, users } from "@/lib/db/schema";
 import { sameId } from "@/lib/domain/ids";
@@ -78,7 +78,8 @@ export async function inviteUser(db: DbOrTransaction, actor: Actor, input: { ema
   )[0];
   if (row === undefined) return { ok: false, problem: "invalid" };
 
-  await appendAuditLog(db, actor, { entityTable: "users", entityId: row.id, action: "insert", after: { email, displayName, roles } });
+  /* De naam en het adres staan op de rij, waar ze op te schonen zijn; het logboek noemt alleen de rij en de rollen. */
+  await appendAuditLog(db, actor, { entityTable: "users", entityId: row.id, action: "insert", after: { roles: auditCodes(roles) } });
   await sendInvite(db, actor, { id: row.id, organisationId: actor.organisationId, email, displayName, roles, isActive: true }, origin);
   return { ok: true };
 }
@@ -125,7 +126,7 @@ export async function setRoles(db: DbOrTransaction, actor: Actor, userId: string
   if (!roles.some((role) => ADMIN_ROLES.includes(role)) && (await isLastAdmin(db, actor.organisationId, userId))) return { ok: false, problem: "lastAdmin" };
 
   await db.update(users).set({ roles, updatedAt: sql`now()` }).where(eq(users.id, userId));
-  await appendAuditLog(db, actor, { entityTable: "users", entityId: userId, action: "update", before: { roles: account.roles }, after: { roles } });
+  await appendAuditLog(db, actor, { entityTable: "users", entityId: userId, action: "update", before: { roles: auditCodes(account.roles) }, after: { roles: auditCodes(roles) } });
   return { ok: true };
 }
 

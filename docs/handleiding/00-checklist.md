@@ -172,6 +172,25 @@ Dan deze acht stappen.
       komen: de eigenaar en de datum staan erin, en elk punt is klaar, niet van toepassing, of open
       met een reden.
 
+### Klaar voor echte gebruikers (handleiding 30)
+
+Deze zeven gaan over instellingen in consoles en over afspraken: de code kan ze niet zien. Ze staan
+ook in `docs/veiligheid.md`. Pas als ze alle zeven kloppen, gaan er echte gegevens in de tool.
+
+- [ ] Tweestapsverificatie staat aan bij de inlogbron voor iedereen die mag inloggen. Met Microsoft
+      is dat een instelling in de tenant; met de wachtwoordlogin dwingt de tool het zelf af voor
+      beheerders.
+- [ ] Tweestapsverificatie staat aan op elk account met toegang tot Vercel, Neon en GitHub.
+- [ ] Bij Vercel staat één eigen firewallregel: een rem per adres op het versturen naar het
+      inlogscherm, eerst op alleen loggen. En je weet waar in de Firewall de noodknop tegen een
+      aanval zit.
+- [ ] De regio is na de eerste deploy gecontroleerd: de functies en de database staan in Frankfurt.
+- [ ] Er staat een tweede kopie van de database buiten Neon, en het terugzetten is één keer
+      geprobeerd, met de duur erbij. Zonder dat is de tool niet klaar voor echte gegevens.
+- [ ] Op een laptop staat alleen de verbinding met de dev-branch, nooit die van productie.
+- [ ] De controles van de CI zijn verplicht voor een merge naar `main`, als je abonnement bij GitHub
+      dat toelaat.
+
 ## Terugkerende controles
 
 - [ ] **Wekelijks**: Beheer, Systeem is groen.

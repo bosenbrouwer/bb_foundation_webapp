@@ -17,6 +17,10 @@ zodat je het in een kwartier kunt nalopen. Doe dat maandelijks (kosten en verval
 | Audit | Elke mutatie een regel die nooit meer verandert, met wie, wat, wanneer en vanwaar |
 | Server actions | Elke action begint met de sessie, vóór de invoer (huisregel `session-first`); alles wat van buiten te raken is, heeft een rem per adres of per account |
 | Buitenkant | Security headers (een CSP met een nonce per verzoek, zodat alleen onze eigen scripts draaien; nosniff; geen framing), cronroutes dicht zonder token, downloads via de server met het recht erbij |
+| Wat openbaar is | Eén lijst van adressen zonder sessie: de inlog, de inlogbibliotheek en de crons. De proxy stuurt de rest zonder sessiecookie naar de inlog; de huisregel `public-routes` en `pnpm check:public` in de CI bewijzen dat elke pagina en route ook zonder de proxy dicht is. Alles behalve de inlog vraagt zoekmachines om het niet op te nemen |
+| Rollen | Een inlog zonder rol uit `project.config.json` komt er niet in, en krijgt bij Microsoft ook geen rij |
+| Logboek | Alleen feiten: codes, lengtes, getallen en tijdstippen. Het type weigert vrije tekst, en het schrijven toetst het nog eens |
+| Rol van de app | Verbindt productie als eigenaar, dan kleurt Beheer, Systeem rood en ziet een beheerder een balk. De tool werkt door; de rooktest van buiten ziet het niet |
 | Mail en bestanden | Tekst van buiten als citaat; de inhoud van een bestand nagekeken voordat hij de opslag in gaat. Een Teams-bericht gaat buiten productie alleen naar een testkanaal |
 | AI | Alleen de velden van een prompt gaan mee, als gegevens; elke aanroep via de server met een recht; de inhoud wordt niet bewaard; wat het model zegt, staat als platte tekst op het scherm; in een test gaat nooit een echte aanroep |
 | Previews | De database van een preview komt uit de branch `seed`: het schema en de seed, geen echte gegevens. Alleen `main` en `release/next` rollen uit |
@@ -26,6 +30,11 @@ zodat je het in een kwartier kunt nalopen. Doe dat maandelijks (kosten en verval
 
 ## Beveiliging: wat jij doet
 
+- [ ] De zeven regels onder "Klaar voor echte gebruikers" in je checklist (00) kloppen: tweestaps-
+      verificatie bij de inlogbron en op elk account bij Vercel, Neon en GitHub, één regel in de
+      firewall en de noodknop gevonden (03, stap 8), de regio gecontroleerd, een tweede kopie van de
+      database met een geprobeerde terugzet, alleen de dev-branch op een laptop (07), en de CI
+      verplicht voor een merge als je abonnement dat toelaat.
 - [ ] Tweestapsverificatie aan op GitHub, Vercel, Neon, Azure en bij de mailaanbieder, voor iedereen.
 - [ ] Accounts van de organisatie, niet van een persoon.
 - [ ] Zo weinig mogelijk beheerders; de lijst jaarlijks nalopen (11).
@@ -52,8 +61,9 @@ zodat je het in een kwartier kunt nalopen. Doe dat maandelijks (kosten en verval
       pg_class where relrowsecurity and relnamespace = 'public'::regnamespace;` noemt elke tabel, en
       `select count(*) from pg_policies where policyname = 'app_rw_all';` evenveel. Een tabel met slot
       en zonder regel is voor de app leeg.
-- [ ] Het herstelvenster van Neon is bekend (op Free hoogstens zes uur, stand oktober 2026), en bij
-      geld- of personeelsgegevens staat er een tweede kopie buiten Neon.
+- [ ] Het herstelvenster van Neon is bekend (op Free hoogstens zes uur, stand oktober 2026), en er
+      staat een tweede kopie buiten Neon, met één geprobeerde terugzet en de duur erbij. Zonder dat
+      is de tool niet klaar voor echte gegevens. Een module die dat doet, levert het template nog niet.
 
 ## Het wachtwoord van de eigenaar draaien
 

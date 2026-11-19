@@ -87,6 +87,10 @@ laden, dus hij kan nooit in een deploy terechtkomen, ook niet buiten Vercel. `SE
 
 ## Beveiliging
 
+- Op je laptop staat alleen de verbinding met je eigen dev-branch, nooit die van productie. Moet je
+  één keer iets op productie nakijken, zet de verbinding dan op dat moment in een tijdelijk bestand en
+  haal hem daarna meteen weg. De database is vanaf internet bereikbaar: wie de verbinding heeft, komt
+  binnen (lessen L-NEON-15 en L-WERK-18).
 - `.env.local` bevat geheimen. Nooit committen, nooit delen, nooit in de chat.
 - De dev-accounts komen uit `auth.devUsers` in `project.config.json` (in de standaard
   `dev@voorbeeld.invalid`). `pnpm db:seed` zet ze alleen op de branch uit `SEED_TARGET`, dus op `dev`

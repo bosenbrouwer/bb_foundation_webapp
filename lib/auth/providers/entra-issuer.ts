@@ -19,6 +19,7 @@ export const ENTRA_ISSUER_ENV = "AUTH_MICROSOFT_ENTRA_ID_ISSUER";
 
 /** Geen tenant maar een verzamelendpoint. `consumers` zijn persoonlijke accounts. */
 const MULTI_TENANT = new Set(["common", "organizations", "consumers"]);
+const TENANT_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 
 /** Wat er mis is met de uitgever, of `undefined` als hij goed is (of in deze omgeving mag ontbreken). */
 export function entraIssuerProblem(issuer: string | undefined, environment: DeployEnvironment): string | undefined {
@@ -32,6 +33,10 @@ export function entraIssuerProblem(issuer: string | undefined, environment: Depl
   const tenant = /^https?:\/\/[^/]+\/([^/]+)/.exec(value)?.[1]?.toLowerCase() ?? "";
   if (MULTI_TENANT.has(tenant)) {
     return `${ENTRA_ISSUER_ENV} wijst naar /${tenant}/ in plaats van naar de eigen tenant, en dan mag ieder Microsoft-account het proberen`;
+  }
+  /* Een domeinnaam op de plek van het id werkt bij het inloggen, maar dan wordt de tenant in het token niet getoetst. */
+  if (!TENANT_ID.test(tenant)) {
+    return `${ENTRA_ISSUER_ENV} noemt de tenant niet bij zijn id (een GUID), en dan wordt de tenant uit het token niet getoetst`;
   }
   return undefined;
 }

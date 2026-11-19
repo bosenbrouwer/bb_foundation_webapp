@@ -1,6 +1,6 @@
 /* template-owned (module core). Wordt overschreven door pnpm template:update; wijzig dit bestand niet. */
 import { describe, expect, it } from "vitest";
-import { contentSecurityPolicy, newNonce } from "./csp";
+import { contentSecurityPolicy, isPrefetch, newNonce, wantsNonce } from "./csp";
 
 function directive(policy: string, name: string): string | undefined {
   return policy.split("; ").find((part) => part.startsWith(`${name} `));
@@ -33,5 +33,23 @@ describe("de CSP met een nonce", () => {
     const seen = new Set(Array.from({ length: 50 }, () => newNonce()));
     expect(seen.size).toBe(50);
     for (const nonce of seen) expect(nonce).toMatch(/^[A-Za-z0-9+/]{22}==$/);
+  });
+});
+
+describe("wie een nonce krijgt", () => {
+  it("herkent een prefetch aan een van de twee koppen", () => {
+    expect(isPrefetch(new Headers({ "next-router-prefetch": "1" }))).toBe(true);
+    expect(isPrefetch(new Headers({ purpose: "prefetch" }))).toBe(true);
+    expect(isPrefetch(new Headers({ purpose: "preview" }))).toBe(false);
+    expect(isPrefetch(new Headers())).toBe(false);
+  });
+
+  it("geeft een pagina de nonce, ook met een punt in het adres", () => {
+    for (const path of ["/", "/home", "/sign-in", "/iets.x", "/apis", "/admin/api/x"]) expect(wantsNonce(path, false), path).toBe(true);
+  });
+
+  it("geeft een route onder /api en een prefetch er geen", () => {
+    for (const path of ["/api", "/api/cron/prune", "/api/auth/error", "/api/files/1"]) expect(wantsNonce(path, false), path).toBe(false);
+    expect(wantsNonce("/home", true)).toBe(false);
   });
 });

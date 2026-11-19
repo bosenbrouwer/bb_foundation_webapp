@@ -11,6 +11,12 @@ describe("de uitgever van de Entra-login", () => {
     }
   });
 
+  it("weigert een uitgever die de tenant bij zijn domeinnaam noemt: dan wordt de tenant niet getoetst", () => {
+    for (const environment of ["production", "preview", "local", "unknown"] as const) {
+      expect(entraIssuerProblem("https://login.microsoftonline.com/voorbeeld.onmicrosoft.com/v2.0", environment), environment).toMatch(/niet bij zijn id/);
+    }
+  });
+
   it("weigert een ontbrekende uitgever in een deploy", () => {
     expect(entraIssuerProblem(undefined, "production")).toMatch(/ontbreekt/);
     expect(entraIssuerProblem("  ", "preview")).toMatch(/ontbreekt/);

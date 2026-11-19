@@ -146,3 +146,20 @@ uitrollen staat sinds besluit D20 ook in `vercel.json` (`git.deploymentEnabled`)
 Step is het tweede slot. De consoleinstellingen zijn afspraak, zie `docs/handleiding/03-vercel.md`
 (stap 5 voor de Ignored Build Step, Kosten voor Fluid compute, Web Analytics en Observability) en
 `23-crons-en-taken.md` (het kwartierrooster in werkuren).
+
+## L-VRC-09 Zonder regio in de repo staan de functies buiten Europa
+
+**Symptoom.** (voorkomen) Een nieuw project draait zijn functies in een regio buiten Europa, terwijl
+de database in Frankfurt staat. Elke query reist dan over de oceaan, en gegevens verlaten de EU
+zonder dat iemand dat koos.
+
+**Oorzaak.** De host kiest een standaardregio buiten Europa, tenzij de configuratie in de repo het
+anders zegt. De voordeur van de app draait daarnaast in alle regio's, wat je ook kiest; dat is
+alleen het doorgeven van het verzoek.
+
+**Regel.** Leg de regio vast in `vercel.json` (`regions: ["fra1"]`), kies de database, de opslag
+en een foutmonitor ook bewust in de EU, en kijk na de eerste uitrol of het klopt: in Vercel bij
+Settings, Functions, en in Neon op de Overview van het project.
+
+**Afgedwongen door.** De patcher van `vercel.json` zet `regions` als hij ontbreekt. De controle na
+de eerste uitrol is handwerk, en staat in `docs/handleiding/00-checklist.md`.

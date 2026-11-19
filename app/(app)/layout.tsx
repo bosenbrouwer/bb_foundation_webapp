@@ -3,8 +3,11 @@ import { NavRail, type NavItem } from "@/components/nav-rail";
 import { SignOut } from "@/components/sign-out";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { FeedbackButton } from "@/components/tool-feedback/feedback-button";
+import { can } from "@/lib/auth/can";
 import { roleLabel } from "@/lib/auth/roles";
 import { requireSession } from "@/lib/auth/session";
+import { connectsAsOwner } from "@/lib/db/client";
+import { deployEnvironment } from "@/lib/domain/deploy-environment";
 import { themeForRequest } from "@/lib/domain/theme-for-request";
 import { labels } from "@/lib/i18n/labels";
 import { PROJECT } from "@/lib/project/config.generated";
@@ -37,6 +40,12 @@ export default async function AppLayout({ children }: Readonly<{ children: React
   }
   if (adminTabs(actor).length > 0) items.push({ href: "/admin", label: labels.nav.admin });
 
+  /*
+   * Productie hoort te verbinden als de rol van de app. Zolang dat niet zo is, ziet wie Beheer,
+   * Systeem mag zien dat op elk scherm (besluit D29): een waarschuwing op één pagina kun je mislopen.
+   */
+  const ownerWarning = deployEnvironment() === "production" && connectsAsOwner() && can(actor, "admin:system");
+
   return (
     <div className="grid min-h-screen grid-cols-[236px_minmax(0,1fr)] max-md:grid-cols-1">
       <NavRail
@@ -45,7 +54,14 @@ export default async function AppLayout({ children }: Readonly<{ children: React
         signOut={<SignOut />}
         themeToggle={PROJECT.darkMode === "off" ? null : <ThemeToggle theme={theme} />}
       />
-      <main className="min-w-0">{children}</main>
+      <main className="min-w-0">
+        {ownerWarning && (
+          <p role="alert" className="border-warning/40 bg-warning/10 text-foreground border-b px-4 py-2 text-[12px]">
+            {labels.system.ownerBanner("DATABASE_URL_APP")}
+          </p>
+        )}
+        {children}
+      </main>
 
       {/* De feedbackknop rechtsonder, op elk scherm achter de sessie: een melding gaat over waar je op dat moment bent. */}
       <FeedbackButton />

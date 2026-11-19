@@ -193,3 +193,21 @@ het daarna nog werkt.
 want zonder tenant is niet te bewijzen dat de inlog blijft werken. Een project met een tenant dat
 het wil omzetten, neemt `lib/auth/providers/entra.ts` over (`pnpm template:adopt`) en bewijst het
 met een echte inlog.
+
+## L-AUTH-11 Een inlog zonder rol komt er niet in, en een kopie van de rollen beslist nooit
+
+**Symptoom.** In een eerder project liep een token zonder rol het gewone pad in en kreeg een rij in
+de database; het enige slot was een schakelaar in de console van de inlogbron. Later bleek een kopie
+van de rollen in de database, bedoeld voor een overzicht, op twee plekken toch te beslissen.
+
+**Oorzaak.** Een lege lijst rollen is geen fout voor de inlogbibliotheek, en een rij aanmaken gaat
+vóór elke vraag naar rechten. En een kopie die naast de bron staat, wordt vroeg of laat gelezen
+door iemand die niet weet dat het een kopie is.
+
+**Regel.** Een inlog zonder een rol die het project kent, krijgt geen sessie; bij rollen uit het
+token ook geen rij, want de weigering valt vóór het opzoeken (D26). Wie wat mag, komt uit één bron:
+het token bij Entra, `users.roles` bij de wachtwoordlogin. Een kopie voor rapportage is nooit een
+argument in `can()`.
+
+**Afgedwongen door.** `jwtCallback` in `lib/auth/callbacks.ts` met `NoRoleError`, en
+`lib/auth/callbacks.test.ts`. Dat een kopie nooit beslist, is alleen afspraak.

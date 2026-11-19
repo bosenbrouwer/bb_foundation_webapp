@@ -23,7 +23,8 @@ De bouw volgt het plan van 2 oktober 2026 in veertien rondes; de stand staat in 
 
 1. **Rollen komen uit de inlogmodule.** Bij Entra uit de `roles`-claim van het token, bij de
    wachtwoordlogin uit `users.roles`, beheerd door een beheerder in de tool. Nooit uit een cookie of
-   de request body. Onbekende rollen vallen weg; wie geen rol heeft, mag niets.
+   de request body. Onbekende rollen vallen weg; wie geen rol heeft, komt er niet in: geen sessie,
+   en bij rollen uit het token ook geen rij (besluit D26). Een kopie van de rollen beslist nooit.
 2. **`organisation_id` staat op elke tabel met domeinbetekenis** en de data-access laag geeft hem
    verplicht mee. Eén organisatie: multi-tenant-ready, niet multi-tenant.
 3. **Alle tijdstippen zijn `timestamptz` in UTC.** Een datum is een aparte `date`-kolom, afgeleid in
@@ -35,7 +36,9 @@ De bouw volgt het plan van 2 oktober 2026 in veertien rondes; de stand staat in 
    de app mag hem alleen aanvullen. Loggen gebeurt in dezelfde transactie als de mutatie. In een log
    die je niet kunt opschonen, staan sleutels en aantallen, nooit inhoud: geen gezondheidsgegeven,
    geen vrije tekst over een persoon en geen volledige inhoud van een bewerking in `before` of
-   `after`.
+   `after`. Het type dwingt dat af (besluit D27): `before` en `after` nemen alleen een code
+   (`auditCode`), een lengte (`auditLength`), een getal, een waar of onwaar en een tijdstip aan,
+   uit `lib/db/audit-facts.ts`, en `appendAuditLog` toetst het nog eens bij het schrijven.
 6. **Elke schrijfactie naar buiten is idempotent**: via `outbox` of `jobs`, met een unieke
    idempotency key en een lease (`claimed_until`, `for update skip locked`). Nooit rechtstreeks
    vanuit een server action.
@@ -55,7 +58,13 @@ De bouw volgt het plan van 2 oktober 2026 in veertien rondes; de stand staat in 
     de query, nooit in de UI: `display:none` is geen autorisatie. Een id van buiten gaat eerst door
     `uuidOrUndefined` (`lib/domain/ids.ts`), een keuze door `oneOf` (`lib/domain/one-of.ts`) en
     zoektekst in een `like` door `escapeLike` (`lib/domain/like.ts`): een vreemde waarde is een 404
-    of een lege lijst, geen 500.
+    of een lege lijst, geen 500. Vrije tekst gaat door `limitedText` (`lib/domain/text-limit.ts`):
+    boven het maximum weigeren, niet afkappen, en een `check` op de kolom als harde grens.
+    **Wat zonder sessie bereikbaar is, staat op één lijst** (`lib/auth/public-paths.ts`, eigen
+    adressen in `public-paths.project.ts`, besluit D25): de huisregel `public-routes` weigert een
+    pagina of route erbuiten zonder eigen poort, de proxy stuurt de rest zonder cookie naar de inlog
+    (een extra ring, geen grens, D24), en `pnpm check:public` bewijst dat elke pagina en route ook
+    zonder de proxy dicht is.
 12. **Elke migratie heeft een geteste terugweg**, een gedraaide migratie wordt nooit gewijzigd, een
     nieuwe enumwaarde en het gebruik ervan staan in twee migraties, en hernoemen is uitbreiden en
     inkrimpen in stappen. Zie `lib/db/migrations/README.md`.
@@ -87,10 +96,12 @@ componentenbibliotheek (de tokens volgen het shadcn/ui-contract), deploy op Verc
 
 - Mutaties via server actions. Route handlers alleen voor cron, webhooks en downloads.
 - De CSP komt uit `proxy.ts`, met een nonce per verzoek; de andere headers uit
-  `lib/config/next-base.ts`. Nooit een tweede CSP-header. Een eigen `<script>` of `next/script`
-  krijgt de nonce uit `(await headers()).get("x-nonce")`, anders weigert de browser hem. Een pagina
-  met een punt in het adres is ook een pagina en krijgt de nonce; de eigen pagina's van Auth.js
-  onder `/api/auth` krijgen een vaste CSP zonder scripts.
+  `lib/config/next-base.ts`. Nooit een tweede CSP-header. De matcher van de proxy slaat alleen de
+  bestanden van Next en een pad met de extensie van een bestand over, nooit iets op grond van een
+  kop (L-NEXT-24): wat daar wegvalt, ziet ook de poort van de inlog niet. Een eigen `<script>` of
+  `next/script` krijgt de nonce uit `(await headers()).get("x-nonce")`, anders weigert de browser
+  hem. Een pagina met een punt in het adres is ook een pagina en krijgt de nonce; de eigen pagina's
+  van Auth.js onder `/api/auth` krijgen een vaste CSP zonder scripts.
 - Migraties met `drizzle-kit`. Elke migratie heeft een geteste terugweg.
 - Achtergrondwerk met Vercel Cron, elke cron ook als `pnpm task:<naam>`. Een cron met meer dan
   één ronde draait ze als stappen met `runSteps` (`lib/cron/steps.ts`): een fout in de ene houdt de
@@ -107,7 +118,7 @@ app/                    App Router: layout, (app)/ achter de sessie, sign-in/, a
 app/theme.css           gegenereerd uit project.config.json; app/project.css is van het project
 components/ui/          de UI-kit van het template; components/<domein>/ van het project
 lib/project/            config.generated.ts (PROJECT), modules.ts, registry.generated.ts
-lib/auth/               actor, can, session, token, roles.generated, actions.ts en matrix.ts (project)
+lib/auth/               actor, can, session, token, public-paths, roles.generated, actions.ts en matrix.ts (project)
 lib/db/                 client, rows, errors, audit, schema/ (template-index.ts gegenereerd, index.ts project)
 lib/i18n/               template/ (beide talen), labels.ts en domain/ (project)
 lib/jobs|messaging|files|ai   modules, alleen als ze zijn toegepast
@@ -139,8 +150,9 @@ Vuistregels: één bestand, één onderwerp; datatabellen apart van logica; sche
   het vervangt.
 - **Roadmap.** `docs/ROADMAP.md` werk je bij in dezelfde wijziging als het onderdeel.
 - **De batterij** voordat iets klaar heet: typecheck, lint plus huisregels, vitest, check:secrets,
-  check:licenses, check:migrations, check:drift, check:contrast, template:verify, build, migraties
-  heen en terug op de dev-branch, alle `check:<domein>`, en de e2e tegen `next start`.
+  check:licenses, check:migrations, check:drift, check:contrast, template:verify, build,
+  check:public (elke pagina en route zonder sessie, tegen die build), migraties heen en terug op de
+  dev-branch, alle `check:<domein>`, en de e2e tegen `next start`.
   `pnpm check:all` draait alles en de samenvatting komt in de rubriek Bewijs.
 - **Zeg wat bewezen is en wat niet.** Wat zonder database of zonder de echte dienst niet te bewijzen
   was, staat als lijst in het verslag, met waar het bij de eerste echte run het eerst mis kan gaan.
@@ -201,6 +213,7 @@ codevoorbeeld). Lees ze wanneer het onderwerp aan de orde is:
 | een migratie schrijven | `docs/lessen/drizzle-postgres.md`, `docs/lessen/neon.md` |
 | een cron of taak | `docs/lessen/vercel.md`, `docs/patronen/cronroute.md`, `docs/lessen/werkwijze.md` (L-WERK-14) |
 | iets met inloggen of rollen | `docs/lessen/authjs.md`, `docs/lessen/entra-graph.md` |
+| een pagina of route die zonder sessie bereikbaar moet zijn | `lib/auth/public-paths.ts`, `docs/lessen/nextjs.md` (L-NEXT-19, L-NEXT-24) |
 | een scherm met formulier of upload | `docs/lessen/nextjs.md`, `docs/lessen/http-bestanden.md` |
 | een e2e schrijven | `docs/lessen/nextjs.md` (de e2e-lessen), `docs/lessen/neon.md` |
 | een koppeling naar buiten | `docs/patronen/idempotentie-en-lease.md`, `docs/patronen/outbox-en-berichtencatalogus.md` |

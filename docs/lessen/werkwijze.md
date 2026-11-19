@@ -296,3 +296,20 @@ die niemand gelooft.
 **Afgedwongen door.** Het template zet de lijst klaar als `docs/veiligheid.md` (een seed, besluit
 D23), met het patroon `veiligheidschecklist` als uitleg. Dat hij wordt nagelopen is afspraak: geen
 controle kijkt of de stand klopt.
+
+## L-WERK-18 Op een laptop staat alleen de dev-branch
+
+**Symptoom.** Bij een doorlichting van een eerder project stonden op een laptop een directe
+verbinding met productie, het geheim van de tenant en vier andere sleutels. Niets daarvan liet een
+spoor na in een logboek.
+
+**Oorzaak.** `vercel env pull` haalt wat er voor Development staat, en wie één keer iets op
+productie moest nakijken, plakte de string erbij en vergat hem weer.
+
+**Regel.** Op een laptop staan alleen de verbinding met de eigen dev-branch en lokale vlaggen. Voor
+één vraag aan productie zet je de verbinding op dat moment in een tijdelijk bestand, en haal je hem
+daarna meteen weg. Een geheim dat er toch stond, roteer je (L-NEON-15).
+
+**Afgedwongen door.** `pnpm db:seed` en de scripts weigeren het productie-endpoint
+(`scripts/lib/seed-guard.ts`, `scripts/lib/production-guard.ts`). Wat er verder in `.env.local`
+staat, ziet geen controle: alleen afspraak, en een regel in `docs/handleiding/00-checklist.md`.

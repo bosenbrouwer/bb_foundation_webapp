@@ -25,12 +25,14 @@
  * **Een eigen `<script>` of `next/script` in een project** krijgt de nonce uit
  * `(await headers()).get("x-nonce")`; zonder weigert de browser hem.
  *
- * **Wat de proxy overslaat.** `/api`, de bestanden van Next, en een pad dat op de extensie van een
- * bestand eindigt (`STATIC_FILE_EXTENSIONS`): daar staat geen pagina. Een pad met een punt dat
- * daar niet op eindigt (`/iemand/jan.jansen`, `/v1.2/notities`, een onbekend adres als `/iets.x`)
- * is wel een pagina en krijgt de nonce; in een eerder project viel de CSP weg op elk adres met een
- * punt erin. De HTML-pagina's van Auth.js onder `/api/auth` (de foutpagina, uitloggen) krijgen de
- * vaste `STATIC_CSP` zonder scripts, uit `lib/config/next-base.ts`. Besluit D17.
+ * **Wat geen nonce krijgt.** De bestanden van Next en een pad dat op de extensie van een bestand
+ * eindigt (`STATIC_FILE_EXTENSIONS`) komen niet langs de proxy: daar staat geen pagina. Een route
+ * onder `/api` en een prefetch van `next/link` komen er wel langs, voor de poort van de inlog, maar
+ * krijgen geen nonce (`wantsNonce` hieronder). Een pad met een punt dat niet op zo'n extensie
+ * eindigt (`/iemand/jan.jansen`, `/v1.2/notities`, een onbekend adres als `/iets.x`) is wel een
+ * pagina en krijgt de nonce; in een eerder project viel de CSP weg op elk adres met een punt erin.
+ * De HTML-pagina's van Auth.js onder `/api/auth` (de foutpagina, uitloggen) krijgen de vaste
+ * `STATIC_CSP` zonder scripts, uit `lib/config/next-base.ts`. Besluit D17.
  *
  * Puur, zodat het te testen is zonder verzoek.
  */
@@ -48,6 +50,20 @@ export const STATIC_FILE_EXTENSIONS = ["ico", "png", "jpg", "jpeg", "gif", "svg"
  * de proxy.
  */
 export const STATIC_CSP = "default-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self'; form-action 'self'; frame-ancestors 'none'; base-uri 'none'";
+
+/**
+ * Een verzoek waarmee `next/link` een pagina vooruit ophaalt. De proxy besliste dit eerst in zijn
+ * matcher, en sloeg zo'n verzoek dan helemaal over: wie de kop zelf meestuurde, kwam ook langs de
+ * poort van de inlog. Nu komt elk verzoek langs de poort, en beslist deze functie alleen over de nonce.
+ */
+export function isPrefetch(headers: { get(name: string): string | null }): boolean {
+  return headers.get("next-router-prefetch") !== null || headers.get("purpose") === "prefetch";
+}
+
+/** Krijgt dit verzoek een nonce en de CSP die hem noemt? Alleen een pagina, en geen prefetch. */
+export function wantsNonce(pathname: string, prefetch: boolean): boolean {
+  return !prefetch && pathname !== "/api" && !pathname.startsWith("/api/");
+}
 
 /** Een onvoorspelbaar getal voor één verzoek, als base64. 128 bits, zoals CSP aanraadt. */
 export function newNonce(): string {

@@ -250,3 +250,37 @@ seed-branch achteraf"), `docs/handleiding/07-lokaal-werken.md` (stap 4c),
 `docs/handleiding/09-werken-met-een-releasebranch.md` en de regels in
 `docs/handleiding/00-checklist.md`. `pnpm db:seed` schrijft alleen op de branch uit `SEED_TARGET`
 en weigert op het productie-endpoint (`scripts/lib/seed-guard.ts`).
+
+## L-NEON-14 Een pool zonder luisteraar op fouten laat een hele instantie vallen
+
+**Symptoom.** (voorkomen) Een verbinding die in de pool rust en wegvalt, of die de database
+weigert, stopt het hele proces met "Unhandled error". Alle verzoeken op die instantie falen, niet
+alleen het ene.
+
+**Oorzaak.** De pool meldt zo'n fout als gebeurtenis (`error`) en niet bij een query, want er loopt
+er op dat moment geen. Een gebeurtenis `error` zonder luisteraar laat Node stoppen. Een serverloze
+database die in slaap valt of een verbinding na een tijd afsluit, maakt dat geen zeldzaamheid.
+
+**Regel.** Elke pool krijgt bij het maken een luisteraar op `error` die de melding naar de log
+schrijft, zonder de verbindingsstring. De pool ruimt de verbinding zelf op; de volgende query
+krijgt een nieuwe.
+
+**Afgedwongen door.** `createDb` in `lib/db/client.ts` zet de luisteraar, met `errorForLog`. Een
+test die een verbinding laat wegvallen is er niet; dat is pas tegen een echte database te zien.
+
+## L-NEON-15 De database is vanaf internet bereikbaar: het wachtwoord is het hele slot
+
+**Symptoom.** (voorkomen) Wie de verbindingsstring van een rol heeft, komt vanaf elk adres binnen.
+Een gelekte string op een laptop, in een chat of in een oude `.env` is dus meteen toegang.
+
+**Oorzaak.** De database staat open op internet, en de functies van de host hebben geen vast
+adres. Een lijst van toegestane adressen bij de database zou de app zelf buitensluiten.
+
+**Regel.** Behandel elke verbindingsstring als een sleutel tot de hele database. De app verbindt
+als een rol zonder DDL (D13), de eigenaar staat alleen waar migraties draaien, op een laptop staat
+alleen de dev-branch (L-WERK-18), en een string die ergens heeft gestaan waar hij niet hoort, roteer
+je meteen: nieuw wachtwoord voor de rol in Neon, nieuwe waarde in Vercel.
+
+**Afgedwongen door.** De rol van de app met `pnpm check:grants`; Beheer, Systeem kleurt rood als
+productie als eigenaar verbindt (D29). Waar een string verder staat, ziet geen controle: alleen
+afspraak, in `docs/veiligheid.md`.

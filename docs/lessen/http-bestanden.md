@@ -75,3 +75,17 @@ scheidingsteken raden uit de eerste regel.
 
 **Afgedwongen door.** `lib/domain/csv-safe.ts` (`csvDocument`, `csvField`, `stripNeutralisation`,
 `guessSeparator`) met zijn test; elke export van een project gaat daar doorheen.
+
+## L-HTTP-05 Een bestand dat geen UTF-8 is, wordt stil kapot gelezen
+
+**Symptoom.** Een CSV uit Excel, opgeslagen in een oudere codering, kwam binnen met een kapotte
+naam: een ü werd een vraagteken in een ruit. Er was geen melding, en het origineel was niet bewaard.
+
+**Oorzaak.** De standaard manier om bytes als tekst te lezen (`file.text()`, `TextDecoder` zonder
+`fatal`) vervangt elke byte die geen UTF-8 is door een vervangteken, zonder fout.
+
+**Regel.** Lees een geüpload tekstbestand strikt als UTF-8 en weiger het anders, met de uitleg hoe
+je het als UTF-8 opslaat. Raad de codering niet.
+
+**Afgedwongen door.** `decodeUtf8Strict` in `lib/domain/utf8.ts`, met tests. Een huisregel die
+`file.text()` weigert is er niet: gebruik de functie bij elke upload van tekst.

@@ -3,7 +3,7 @@
 
 import type { FormState } from "@/components/ui/form-state";
 import { requireActor } from "@/lib/auth/session";
-import { appendAuditLog } from "@/lib/db/audit";
+import { appendAuditLog, auditLength } from "@/lib/db/audit";
 import { getDb } from "@/lib/db/client";
 import { toolFeedback } from "@/lib/db/schema";
 import { consumeRateLimit } from "@/lib/domain/rate-limit";
@@ -32,7 +32,7 @@ export async function submitToolFeedback(_previous: FormState, form: FormData): 
         .returning({ id: toolFeedback.id })
     )[0];
     if (row === undefined) throw new Error("De melding kon niet worden opgeslagen.");
-    await appendAuditLog(tx, actor, { entityTable: "tool_feedback", entityId: row.id, action: "insert", after: { title: check.value.title, path: check.value.path } });
+    await appendAuditLog(tx, actor, { entityTable: "tool_feedback", entityId: row.id, action: "insert", after: { titleLength: auditLength(check.value.title), bodyLength: auditLength(check.value.body) } });
   });
 
   return { errors: {}, done: labels.toolFeedback.thanks };

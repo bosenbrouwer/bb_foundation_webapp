@@ -16,6 +16,20 @@ import { errorForLog } from "@/lib/monitoring/error-text";
 
 type Token = Record<string, unknown>;
 
+/** De inlog draagt geen enkele rol die het project kent. Geen naam of adres in de log: alleen dat het gebeurde. */
+export class NoRoleError extends Error {
+  constructor() {
+    super("Login geweigerd: de inlog draagt geen rol uit project.config.json.");
+    this.name = "NoRoleError";
+  }
+}
+
+function noRole(): NoRoleError {
+  const error = new NoRoleError();
+  console.warn(`${error.message} Ken de rol toe bij de inlogbron, of in Beheer bij de wachtwoordlogin.`);
+  return error;
+}
+
 /**
  * Elke fout in de jwt-callback komt bij de gebruiker aan als `Configuration`, met de tekst "There is
  * a problem with the server configuration". Dat is voor elke oorzaak dezelfde melding en dus
@@ -59,8 +73,15 @@ export async function jwtCallback({ token, user, account }: { token: Token; user
     throw new Error(`Onbekende inlogmethode "${account.provider}". Staat de module in project.config.json en is pnpm template:generate gedraaid?`);
   }
 
+  /*
+   * Een token zonder rol komt er niet in en krijgt geen rij (besluit D26). In een eerder project liep
+   * zo een token het gewone pad in: het enige slot was een schakelaar in een console.
+   */
+  if (provider.rolesFrom === "token" && parseRoles(user.roles).length === 0) throw noRole();
+
   const synced = await withReadableFailure(() => provider.resolve(user, account));
   const roles = provider.rolesFrom === "token" ? parseRoles(user.roles) : parseRoles(synced.roles);
+  if (roles.length === 0) throw noRole();
 
   token[TOKEN_FIELDS.userId] = synced.id;
   token[TOKEN_FIELDS.organisationId] = synced.organisationId;

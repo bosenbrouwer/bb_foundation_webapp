@@ -13,6 +13,7 @@ const SCRIPTS = {
   "check:contrast": "node scripts/check-contrast.mjs",
   "template:verify": "node template/cli/bootstrap.mjs verify",
   build: "next build",
+  "check:public": "node node_modules/tsx/dist/cli.mjs scripts/check-public.ts",
   "db:roundtrip": "node --env-file-if-exists=.env.local node_modules/tsx/dist/cli.mjs scripts/db-roundtrip.ts",
   "check:files": "node --env-file-if-exists=.env.local node_modules/tsx/dist/cli.mjs scripts/check-files.ts",
   "check:core": "node --env-file-if-exists=.env.local node_modules/tsx/dist/cli.mjs scripts/check-core.ts",

@@ -46,6 +46,10 @@ import { checkSameId } from "./house-rules/same-id.mjs";
 import { checkSecretPatterns } from "./house-rules/secret-patterns.mjs";
 import { checkAiOutput } from "./house-rules/ai-output.mjs";
 import { checkAiImports } from "./house-rules/ai-imports.mjs";
+import { checkRawHtml } from "./house-rules/raw-html.mjs";
+import { checkRawSql } from "./house-rules/raw-sql.mjs";
+import { checkPublicRoutes } from "./house-rules/public-routes.mjs";
+import { checkOrganisationScope } from "./house-rules/organisation-scope.mjs";
 import { PROJECT_PER_FILE_RULES, PROJECT_WHOLE_REPO_RULES } from "./house-rules/project-rules.mjs";
 
 /** Regels die per bestand kijken, met de vorm (rel, text, report). */
@@ -63,11 +67,21 @@ const PER_FILE_RULES = [
   checkSecretPatterns,
   checkAiOutput,
   checkAiImports,
+  checkRawHtml,
+  checkRawSql,
   ...PROJECT_PER_FILE_RULES,
 ];
 
 /** Regels die over de repo als geheel gaan, met de vorm (root, report); een asynchrone regel wordt afgewacht. */
-const WHOLE_REPO_RULES = [checkTokenDrift, checkEnvTemplate, checkClientGraph, ...PROJECT_WHOLE_REPO_RULES];
+const WHOLE_REPO_RULES = [checkTokenDrift, checkEnvTemplate, checkClientGraph, checkPublicRoutes, ...PROJECT_WHOLE_REPO_RULES];
+
+/**
+ * Regels die nog advies zijn: ze melden, maar houden de lint niet tegen. `organisation-scope` is nieuw
+ * in v1.10.0 en vindt in bestaande code plekken die elk een oordeel vragen (het filter erbij, of een
+ * bewuste uitzondering met de reden). Een volgende versie maakt er een poort van, zoals bij de
+ * scanners in de CI: eerst beoordelen, dan afdwingen.
+ */
+const ADVISORY_RULES = [checkOrganisationScope];
 
 const root = process.cwd();
 const problems = [];
@@ -84,6 +98,25 @@ for (const rel of files) {
 
 for (const rule of WHOLE_REPO_RULES) {
   await rule(root, report);
+}
+
+const advice = [];
+for (const rule of ADVISORY_RULES) {
+  await rule(root, (message) => advice.push(message));
+}
+if (advice.length > 0) {
+  const perFile = new Map();
+  for (const message of advice) {
+    const file = message.slice(0, message.indexOf(":"));
+    perFile.set(file, (perFile.get(file) ?? 0) + 1);
+  }
+  const all = process.argv.includes("--advies");
+  console.log(`Advies, nog geen poort: ${advice.length} keer een query zonder filter op de organisatie, in ${perFile.size} bestand(en).`);
+  if (all) for (const message of advice) console.log(`  ${message}`);
+  else {
+    for (const [file, count] of perFile) console.log(`  ${String(count).padStart(3)}  ${file}`);
+    console.log("  Elke plek met regelnummer: node scripts/lint-house-rules.mjs --advies\n");
+  }
 }
 
 if (problems.length > 0) {

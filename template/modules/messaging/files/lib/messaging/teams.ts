@@ -12,6 +12,7 @@
  * een variabele die alleen in productie telt, kun je niet vergeten.
  */
 import { deployEnvironment } from "@/lib/domain/deploy-environment";
+import { fetchWithTimeout } from "@/lib/integrations/http";
 import { PROJECT } from "@/lib/project/config.generated";
 
 export const TEAMS_WEBHOOK = "TEAMS_WEBHOOK_URL";
@@ -36,11 +37,10 @@ export async function sendTeams(message: { readonly subject: string; readonly bo
   const { variable, url } = teamsWebhook();
   if (url === "") throw new Error(`${variable} ontbreekt, dus er kan niets naar Teams.`);
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(card(message)),
-    signal: AbortSignal.timeout(20_000),
   });
   if (!response.ok) {
     const detail = await response.text().catch(() => "");

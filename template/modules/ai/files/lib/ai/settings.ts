@@ -9,7 +9,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { Actor } from "@/lib/auth/actor";
 import { assertCan } from "@/lib/auth/can";
-import { appendAuditLog } from "@/lib/db/audit";
+import { appendAuditLog, auditCode, auditFacts } from "@/lib/db/audit";
 import type { DbOrTransaction } from "@/lib/db/client";
 import { aiLimits, aiModelPrices, aiPromptSettings, users, type AiEffort } from "@/lib/db/schema";
 import { parseCap } from "./budget";
@@ -100,8 +100,8 @@ export async function savePromptSetting(db: DbOrTransaction, actor: Actor, input
     entityTable: "ai_prompt_settings",
     entityId: actor.organisationId,
     action: before === undefined ? "insert" : "update",
-    ...(before === undefined ? {} : { before }),
-    after,
+    ...(before === undefined ? {} : { before: auditFacts(before) }),
+    after: auditFacts(after),
   });
   return { ok: true };
 }
@@ -153,8 +153,8 @@ export async function savePrice(db: DbOrTransaction, actor: Actor, input: PriceI
     entityTable: "ai_model_prices",
     entityId: actor.organisationId,
     action: before === undefined ? "insert" : "update",
-    ...(before === undefined ? {} : { before }),
-    after,
+    ...(before === undefined ? {} : { before: auditFacts(before) }),
+    after: auditFacts(after),
   });
   return { ok: true };
 }
@@ -209,8 +209,8 @@ export async function saveMonthlyCap(db: DbOrTransaction, actor: Actor, input: C
     entityTable: "ai_limits",
     entityId: actor.organisationId,
     action: "update",
-    before: { monthlyCapCents: before.monthlyCapCents, currency: before.currency },
-    after,
+    before: { monthlyCapCents: before.monthlyCapCents, currency: auditCode(before.currency) },
+    after: auditFacts(after),
   });
   return { ok: true };
 }

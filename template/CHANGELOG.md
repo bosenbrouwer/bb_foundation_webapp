@@ -15,6 +15,129 @@ versie na het bijwerken.
 
 - Nog niets.
 
+## v1.10.0 (19 november 2026)
+
+### Wat verandert
+
+Het overzicht van de veiligheid van een eerder project, naast het template gelegd. Wat er nog niet
+was, is erbij gekomen; wat het template al had, is niet opnieuw gebouwd. Vier besluiten van de
+eigenaar van 18 november 2026: de proxy als extra ring, luid waarschuwen bij de eigenaar op
+productie, alleen feiten in het logboek, en het lesmateriaal in blokken.
+
+- **De buitenste ring (besluiten D24 en D25).** Wat zonder sessie bereikbaar is, staat op één lijst
+  in `lib/auth/public-paths.ts`: de inlog, de inlogbibliotheek en de crons, plus de eigen adressen
+  van het project in de nieuwe seed `lib/auth/public-paths.project.ts`. Drie plekken lezen hem.
+  `proxy.ts` stuurt zonder sessiecookie elke pagina buiten de lijst naar de inlog en geeft elke route
+  onder `/api` buiten de lijst een 401, ook een adres dat niet bestaat. De nieuwe huisregel
+  `public-routes` weigert bij de lint een pagina buiten `app/(app)/` of een route die niet op de lijst
+  staat en geen eigen poort heeft. En het nieuwe `pnpm check:public` vraagt elk adres uit de build
+  zonder sessie op: met de poort aan, met een waardeloze cookie, en met de poort uit
+  (`PROXY_GATE=off`, werkt alleen lokaal). Het eist de inlog, een 401, 403, 404 of 405, nooit een
+  200 of een 500, en een kale 404 op elke cron zonder token. Het draait zonder database en zonder
+  geheimen, in de batterij direct na de build, in de CI na de build en in de gouden test. De proxy
+  blijft een ring en geen grens (L-NEXT-19): hij kijkt of er een cookie is, niet of hij klopt.
+- **De matcher van de proxy slaat niets meer over op grond van een kop.** Een prefetch van
+  `next/link` en elke route onder `/api` komen nu langs de poort; de proxy beslist zelf of er een
+  nonce bij hoort (`isPrefetch` en `wantsNonce` in `lib/security/csp.ts`). Stond de uitzondering voor
+  een prefetch in de matcher, dan sloeg wie die kop zelf meestuurde de poort over (L-NEXT-24).
+  `csp-coverage.test.ts` weigert `missing` en `has` in de matcher.
+- **Geen rol, geen toegang (D26).** Een inlog zonder een rol uit `project.config.json` krijgt geen
+  sessie (`NoRoleError` in `lib/auth/callbacks.ts`); bij rollen uit het token valt de weigering vóór
+  het opzoeken, dus er komt ook geen rij. Nieuw: `lib/auth/callbacks.test.ts`.
+- **Alleen feiten in het logboek (D27).** `before` en `after` van `appendAuditLog` nemen geen vrije
+  tekst meer aan, alleen een code, een lengte, een getal, een waar of onwaar, een tijdstip of een
+  lijst codes: `auditCode`, `auditLength`, `auditCodes` en `auditFacts` uit het nieuwe
+  `lib/db/audit-facts.ts`. `appendAuditLog` toetst het bij het schrijven nog eens met
+  `assertAuditFacts`; de melding noemt de plek en de lengte, nooit de waarde. Alle aanroepen van het
+  template zijn omgezet: de feedback logt lengtes, de wachtwoordlogin logt bij een uitnodiging alleen
+  de rollen en niet meer naam en adres, en de modules ai, files en messaging loggen codes.
+- **Een cronroute zonder ingesteld geheim geeft een kale 404 (D28),** net als een verkeerd token,
+  in plaats van een 500 met uitleg. De oorzaak gaat naar de serverlog. Beheer, Systeem toont of
+  `CRON_SECRET` staat, en kleurt rood op productie als hij ontbreekt.
+- **De eigenaar op productie valt op (D29).** Zonder `DATABASE_URL_APP` verbindt de tool als
+  eigenaar. Beheer, Systeem toont nu welke rol verbindt en kleurt rood op productie, wie
+  `admin:system` heeft ziet een balk bovenaan, en `pnpm db:deploy` schrijft een waarschuwing in de
+  buildlog (`connectsAsOwner` in `lib/db/client.ts`). De tool werkt door, met opzet.
+- **De databasepool heeft een luisteraar op fouten** (L-NEON-14). Een verbinding die in rust wegvalt,
+  laat niet meer de hele instantie vallen.
+- **De uitgever van Entra noemt de tenant bij zijn id.** Een domeinnaam in
+  `AUTH_MICROSOFT_ENTRA_ID_ISSUER` laat de provider bij het opstarten gooien, net als `/common/`: met
+  een domeinnaam toetst de inlogbibliotheek de tenant uit het token niet.
+- **Niet in een zoekmachine, behalve de ingang** (L-NEXT-23). Alles behalve het inlogscherm krijgt
+  `X-Robots-Tag: noindex, nofollow` (`NOINDEX_HEADER` in `lib/config/next-base.ts`, met een test).
+- **Vier nieuwe huisregels.** `raw-html` weigert `dangerouslySetInnerHTML`, `innerHTML =`,
+  `insertAdjacentHTML` en `document.write`. `raw-sql` weigert `sql.raw` met een variabele, `.unsafe`,
+  en een query uit een sjabloon met een variabele of uit geplakte tekst; een bewuste uitzondering
+  krijgt `/* sql: <reden> */` erboven, zoals de twee in `scripts/db-app-login.ts`, die de rolnaam nu
+  eerst toetst. `public-routes` staat hierboven. `organisation-scope` zoekt queries op een tabel met
+  `organisationId` zonder dat filter; die is advies en geen poort (D30): hij vindt in het template
+  46 plekken, en die zonder database herschrijven is niet te bewijzen. De lint noemt het aantal,
+  `node scripts/lint-house-rules.mjs --advies` elke plek.
+- **ESLint is strenger.** `window.localStorage`, `globalThis.sessionStorage` en `self.indexedDB`
+  vallen nu onder dezelfde regel als de kale namen (CLAUDE.md regel 4), en een kale `fetch` buiten
+  `lib/integrations/http.ts` is verboden: elke aanroep naar buiten gaat via `fetchWithTimeout`.
+  `scripts/smoke-prod.ts` en de Teams-koppeling van messaging zijn omgezet.
+- **Twee pure hulpfuncties.** `decodeUtf8Strict` (`lib/domain/utf8.ts`) leest een upload strikt als
+  UTF-8 en weigert anders (L-HTTP-05). `limitedText` (`lib/domain/text-limit.ts`) weigert vrije tekst
+  boven het maximum in plaats van hem af te kappen.
+- **De CI.** `check:migrations` faalt in de CI als hij niet met `main` kan vergelijken, in plaats van
+  die regel over te slaan; de job haalt daarom de hele historie op. Semgrep staat op een vaste digest.
+  En `pnpm check:public` draait na de build.
+- **Documentatie.** Besluiten D24 tot en met D30 in `docs/SPEC.md`. Nieuwe lessen L-NEXT-23 en 24,
+  L-NEON-14 en 15, L-AUTH-11, L-VRC-09, L-HTTP-05 en L-WERK-18; L-NEXT-19 zegt nu dat de proxy een
+  ring is. In `CLAUDE.md` regels 1, 5 en 11 aangevuld. Handleiding 00 heeft een blok "Klaar voor echte
+  gebruikers" met zeven punten uit consoles en afspraken, gelijk aan het lesmateriaal; 03 heeft een
+  stap voor één regel in de firewall van Vercel en de plek van Attack Mode, en zei ten onrechte nog
+  dat de proxy niets weigert; 05, 07 en 30 zijn bijgewerkt. `docs/veiligheid.md` (seed) heeft er
+  acht punten bij en maakt de tweede kopie van de database een harde eis.
+- **Bewezen en niet bewezen.** Bewezen zonder database: typecheck, lint met de huisregels, alle
+  unittests, `pnpm check:public` tegen de build (55 controles), en met een expres open pagina en
+  route erbij vonden de huisregel en de ronde ze allebei. De gouden tests (voorbeeld, default,
+  minimaal, nu met `check:public`) en de updatetest zijn groen, en een project op v1.9.0 met alle
+  modules is bijgewerkt naar v1.10.0: geen migratie, en typecheck, lint, tests, verify, build en
+  `check:public` (90 controles) groen. Niet bewezen: de luisteraar op de pool en
+  de weigering zonder rol tegen een echte database en een echte inlog, de regel in de firewall en
+  Attack Mode in een echt Vercel-project, en hoe Vercel een cron met een 404 in zijn overzicht toont.
+
+### Let op bij bijwerken
+
+- **Het logboek, de typecheck:** elke eigen aanroep van `appendAuditLog` met tekst uit een variabele
+  in `before` of `after` geeft na het bijwerken een typefout. Zet een code door `auditCode`, een
+  vrije tekst door `auditLength` (alleen de lengte), een rij door `auditFacts`. Een code die geen
+  code is (een spatie, meer dan 120 tekens) gooit bij het schrijven, en dan gaat de mutatie in
+  dezelfde transactie ook niet door: draai je e2e en je `check:<domein>` voordat je uitrolt.
+- **Openbare adressen van het project:** een eigen pagina of route zonder sessie (een webhook, een
+  publieke pagina, een route voor een ander systeem) krijgt na het bijwerken van de proxy een
+  doorverwijzing naar de inlog of een 401, en de huisregel `public-routes` weigert hem bij de lint.
+  Zet het pad bewust in `lib/auth/public-paths.project.ts` (komt erbij als nieuw bestand), en laat de
+  route zelf zijn poort houden.
+- **Elk verzoek naar `/api` en elke prefetch gaat nu door de proxy.** Dat is een aanroep van de
+  proxy per verzoek erbij; op een druk project zie je dat terug in het verbruik bij Vercel.
+- **Een eigen e2e** die zonder in te loggen een pagina opvraagt en een 200 of een 404 verwacht, krijgt
+  nu de inlog. Log eerst in, zoals `e2e/05b-csp.spec.ts` nu doet.
+- **Zonder rol geen toegang:** bij Microsoft kwam iemand zonder app role tot nu toe binnen met een
+  lege sessie die niets mocht. Na het bijwerken ziet die persoon "Inloggen is niet gelukt". Kijk vóór
+  de uitrol in Entra of iedereen die binnen moet een rol heeft.
+- **De uitgever:** staat er een domeinnaam in `AUTH_MICROSOFT_ENTRA_ID_ISSUER`, dan start de build
+  niet meer. Zet de Directory (tenant) ID erin, in elke omgeving.
+- **De crons:** een monitor die op een 500 van een cronroute let, ziet een ontbrekend geheim nu niet
+  meer aan de route. Kijk in Beheer, Systeem of in de serverlog.
+- **ESLint:** een eigen kale `fetch` of `window.localStorage` geeft na het bijwerken een fout. Zet de
+  aanroep om naar `fetchWithTimeout` uit `lib/integrations/http.ts`; een voorkeur hoort in
+  `user_preferences`.
+- **De huisregel `raw-sql`:** een eigen script met een query uit een sjabloon met een variabele erin
+  geeft een fout. Maak er parameters van, of zet `/* sql: <reden> */` erboven en toets de waarde zelf.
+- **De adviesregel `organisation-scope`** noemt na de lint een aantal. Daar hoef je nu niets mee;
+  een eigen query zonder filter met een goede reden krijgt `/* organisatie: <reden> */`.
+- **`pnpm check:public`** komt in `package.json` en in de CI erbij. Hij heeft een build nodig: lokaal
+  eerst `pnpm build`.
+- **De veiligheidslijst is een seed:** je eigen `docs/veiligheid.md` krijgt de nieuwe punten niet
+  vanzelf. Neem uit die van het template de regels over de tweede factor bij Vercel, Neon en GitHub,
+  de inlog zonder rol, de regel in de firewall, de noodknop, de regio, de tweede kopie van de
+  database, de rol van de app, de laptop en de CI als verplichte controle over.
+- **De checklist:** loop het nieuwe blok "Klaar voor echte gebruikers" in handleiding 00 na, en zet
+  de regel in de firewall uit handleiding 03, stap 8.
+
 ## v1.9.0 (18 november 2026)
 
 ### Wat verandert

@@ -63,6 +63,21 @@ productie vanaf `main`. **Tijd:** een half uur.
 7. Installeer de CLI op je machine en koppel de map: `npm i -g vercel`, `vercel login`, en in de
    map van de repo `vercel link` (kies het team en het project).
    **Controle:** `vercel env pull .env.local` schrijft een bestand (nog bijna leeg).
+8. **Firewall** in de zijbalk van het project: één eigen regel, een rem per adres op het inlogscherm.
+   Kies rechtsboven **Configure**, dan **+ New Rule**. Naam: `inlog per adres`. Onder **If**:
+   **Request Path**, **Equals**, `/sign-in`. Daar komt elke poging binnen, met Microsoft en met
+   wachtwoord. Onder **Then**: **Rate Limit**, **Fixed Window**, **Time Window** 60 seconden,
+   **Request Limit** 20, als sleutel **IP**, en als actie eerst **Log**: die houdt niets tegen, je
+   ziet alleen wat de regel zou doen. Klik **Save Rule**, dan rechtsboven **Review Changes** en
+   **Publish**. Op Hobby is dit de ene regel met een rem die je per project hebt.
+   **Controle:** de regel staat in de lijst. Kijk na een week op het overzicht van de Firewall wat hij
+   heeft gelogd. Was dat nooit een gewone gebruiker, zet de actie dan op **Too Many Requests (429)**.
+
+   Zoek ook de noodknop, maar zet hem niet aan: het menu **⋯** rechtsboven op het overzicht van de
+   Firewall, **Enable Attack Mode**. Bij een aanval laat die alleen bezoekers door die een controle in
+   de browser halen, voor een uur, zes uur of een dag. Je crons en je eigen functies gaan er gewoon
+   langs. Uit zetten: hetzelfde menu, **Disable Attack Mode**.
+   **Controle:** het menu **⋯** toont **Enable Attack Mode**. Klik niet verder: sluit het menu.
 
 ## Waarom zo
 
@@ -83,8 +98,12 @@ code.
 - De tool zet zelf security headers; je hoeft daar niets voor te doen. De Content-Security-Policy
   komt uit `proxy.ts` (zo heet middleware in Next 16), met per verzoek een nonce, zodat de browser
   alleen de eigen scripts uitvoert. De vaste headers (nosniff, geen framing, HSTS) staan in
-  `lib/config/next-base.ts`. De proxy kijkt niet naar de sessie en weigert niets: wie wat mag, blijft
-  `requireSession()` in de code regelen.
+  `lib/config/next-base.ts`. De proxy stuurt bovendien wie geen sessiecookie heeft meteen naar de
+  inlog, behalve op de paar openbare adressen (`lib/auth/public-paths.ts`). Dat is een extra ring en
+  geen grens: wie wat mag, blijft `requireSession()` in de code regelen, en `pnpm check:public` bewijst
+  in de CI dat elke pagina ook zonder de proxy dicht is.
+- Eén eigen regel in de firewall (stap 8) remt het versturen naar het inlogscherm per adres, vóór de
+  tool er iets van ziet. De tool heeft zijn eigen rem per adres en per account; deze komt erbij.
 
 ## Kosten
 
@@ -102,7 +121,10 @@ twijfelt.
 - Een pull request krijgt binnen een paar minuten een preview-adres en een groene check. Vanaf
   `release/next` is dat altijd hetzelfde adres (09).
 - Een merge naar `main` zet een nieuwe deploy op productie, en het inlogscherm toont de nieuwe versie.
-- **Settings, Functions** zegt fra1; **Settings, Cron Jobs** toont de crons uit `vercel.json`.
+- **Settings, Functions** zegt fra1; **Settings, Cron Jobs** toont de crons uit `vercel.json`. Kijk
+  dat na de eerste deploy echt na: zonder regio in de repo kiest Vercel er een buiten Europa (les
+  L-VRC-09). In Neon staat de regio op de Overview van het project.
+- Onder **Firewall** staat de regel `inlog per adres`.
 
 ## Als het misgaat
 

@@ -12,7 +12,8 @@
  * Stappen: kopie van de werkkopie (zonder node_modules en .next), de voorbeeldconfig over
  * project.config.json, git init en commit, pnpm install, template:apply --strict, de batterij
  * zonder database (typecheck, lint, test, check:migrations, check:drift, check:contrast,
- * template:verify, build), een tweede apply en template:generate die niets mogen veranderen.
+ * template:verify, build, en check:public tegen die build), een tweede apply en template:generate die
+ * niets mogen veranderen.
  */
 
 import { spawnSync } from "node:child_process";
@@ -100,7 +101,7 @@ console.log("\n3. Het template toepassen");
 run("pnpm", ["template:apply", "--strict", "--allow-dirty"]);
 
 console.log("\n4. De batterij zonder database");
-for (const script of ["typecheck", "lint", "test", "check:migrations", "check:drift", "check:contrast", "template:verify", "build"]) {
+for (const script of ["typecheck", "lint", "test", "check:migrations", "check:drift", "check:contrast", "template:verify", "build", "check:public"]) {
   run("pnpm", [script]);
 }
 

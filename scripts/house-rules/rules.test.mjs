@@ -14,6 +14,10 @@ import { checkSessionFirst } from "./session-first.mjs";
 import { checkLabelsSize } from "./labels-size.mjs";
 import { checkNoConfigImport } from "./no-config-import.mjs";
 import { templateOwnershipRule } from "./template-ownership.mjs";
+import { checkRawHtml } from "./raw-html.mjs";
+import { checkRawSql } from "./raw-sql.mjs";
+import { isListed, pathsIn, publicRoutesRule, routeOf } from "./public-routes.mjs";
+import { organisationScopeRule, organisationTables } from "./organisation-scope.mjs";
 
 function run(rule, rel, text) {
   const found = [];
@@ -283,5 +287,118 @@ describe("client-graph", () => {
       "lib/public.ts": `export const name = process.env.NEXT_PUBLIC_NAME ?? process.env.NODE_ENV;\n`,
     });
     expect(found).toEqual([]);
+  });
+});
+
+describe("raw-html", () => {
+  it("vindt ruwe HTML in elke vorm, met het regelnummer", () => {
+    expect(run(checkRawHtml, "components/x.tsx", "const a = 1;\nexport const X = () => <div dangerouslySetInnerHTML={{ __html: a }} />;")).toHaveLength(1);
+    expect(run(checkRawHtml, "components/x.tsx", "node.innerHTML = text;")[0]).toMatch(/^components\/x\.tsx:1 /);
+    expect(run(checkRawHtml, "lib/x.ts", "node.outerHTML += text;\nnode.insertAdjacentHTML(\"beforeend\", text);\ndocument.write(text);")).toHaveLength(3);
+  });
+
+  it("laat uitlezen, een vergelijking, commentaar en tests met rust", () => {
+    expect(run(checkRawHtml, "lib/x.ts", "const html = node.innerHTML;\nif (node.innerHTML === \"\") stop();\n/* geen dangerouslySetInnerHTML */\n// node.innerHTML = x")).toEqual([]);
+    expect(run(checkRawHtml, "lib/x.test.ts", "node.innerHTML = text;")).toEqual([]);
+    expect(run(checkRawHtml, "docs/x.md", "dangerouslySetInnerHTML")).toEqual([]);
+  });
+});
+
+describe("raw-sql", () => {
+  it("vindt sql.raw met een variabele, unsafe, en een query uit een sjabloon of uit geplakte tekst", () => {
+    expect(run(checkRawSql, "lib/x.ts", "db.execute(sql.raw(order));")).toHaveLength(1);
+    expect(run(checkRawSql, "lib/x.ts", "db.execute(sql.raw(`select * from ${table}`));")).toHaveLength(1);
+    expect(run(checkRawSql, "lib/x.ts", "client.unsafe(text);")).toHaveLength(1);
+    expect(run(checkRawSql, "scripts/x.ts", "await pool.query(`delete from ${table}`);")).toHaveLength(1);
+    expect(run(checkRawSql, "scripts/x.ts", "await pool.query(\"select * from \" + table);")).toHaveLength(1);
+  });
+
+  it("laat een vaste tekst, parameters en de gelabelde vorm met rust", () => {
+    expect(run(checkRawSql, "lib/x.ts", "db.execute(sql.raw(\"select 1\"));\ndb.execute(sql`select * from users where id = ${id}`);\nawait pool.query(\"select $1::int\", [n]);\nawait pool.query(text);")).toEqual([]);
+    expect(run(checkRawSql, "lib/x.test.ts", "db.execute(sql.raw(order));")).toEqual([]);
+  });
+
+  it("laat een bewuste uitzondering door als de reden erboven staat, ook bij een opdracht over meer regels", () => {
+    const statement = "await pool.query(`\n  do $$ begin\n    create role ${role} login;\n    grant ${group} to ${role};\n  end $$`);";
+    expect(run(checkRawSql, "scripts/x.ts", statement)).toHaveLength(1);
+    expect(run(checkRawSql, "scripts/x.ts", `/* sql: een rol aanmaken kent geen parameters, de naam is hierboven getoetst */\n${statement}`)).toEqual([]);
+    /* Zonder reden telt het niet, en een reden die te ver erboven staat ook niet. */
+    expect(run(checkRawSql, "scripts/x.ts", `/* sql: */\n${statement}`)).toHaveLength(1);
+    expect(run(checkRawSql, "scripts/x.ts", `/* sql: een reden */\nconst a = 1;\nconst b = 2;\nconst c = 3;\nconst d = 4;\n${statement}`)).toHaveLength(1);
+  });
+});
+
+describe("public-routes", () => {
+  const rule = publicRoutesRule(["/sign-in", "/api/auth", "/api/cron"]);
+
+  it("leest het adres van een pagina of route, ook in een module en met een groep in het pad", () => {
+    expect(routeOf("app/(app)/admin/ai/page.tsx")).toEqual({ kind: "page", behindSession: true, path: "/admin/ai" });
+    expect(routeOf("app/sign-in/reset/[token]/page.tsx")).toEqual({ kind: "page", behindSession: false, path: "/sign-in/reset/[token]" });
+    expect(routeOf("template/modules/files/files/app/api/files/[id]/route.ts")).toEqual({ kind: "route", behindSession: false, path: "/api/files/[id]" });
+    expect(routeOf("app/page.tsx")).toEqual({ kind: "page", behindSession: false, path: "/" });
+    expect(routeOf("app/layout.tsx")).toBeNull();
+    expect(routeOf("e2e/app/page.tsx")).toBeNull();
+  });
+
+  it("leest de lijst uit de bron, en telt alleen op de grens van een padstuk", () => {
+    expect(pathsIn("export const TEMPLATE_PUBLIC_PATHS: readonly string[] = [\"/sign-in\", \"/api/auth\"];", "TEMPLATE_PUBLIC_PATHS")).toEqual(["/sign-in", "/api/auth"]);
+    expect(pathsIn("export const PROJECT_PUBLIC_PATHS: readonly string[] = [];", "PROJECT_PUBLIC_PATHS")).toEqual([]);
+    expect(isListed("/sign-in/reset", ["/sign-in"])).toBe(true);
+    expect(isListed("/sign-inner", ["/sign-in"])).toBe(false);
+  });
+
+  it("weigert een pagina buiten het afgeschermde deel die niet op de lijst staat", () => {
+    const found = run(rule, "app/rapport/page.tsx", "export default function Page() { return <main>cijfers</main>; }");
+    expect(found).toHaveLength(1);
+    expect(found[0]).toContain("/rapport");
+  });
+
+  it("laat een pagina door die afgeschermd is, op de lijst staat, of zelf met de sessie begint", () => {
+    expect(run(rule, "app/(app)/rapport/page.tsx", "export default function Page() { return <main />; }")).toEqual([]);
+    expect(run(rule, "app/sign-in/reset/page.tsx", "export default function Page() { return <main />; }")).toEqual([]);
+    expect(run(rule, "app/(portal)/overzicht/page.tsx", "export default async function Page() { const actor = await requireSession(); return <main>{actor.name}</main>; }")).toEqual([]);
+  });
+
+  it("laat de startpagina door die alleen doorstuurt, maar niet een die iets toont", () => {
+    expect(run(rule, "app/page.tsx", "export default function Page(): never { redirect(\"/home\"); }")).toEqual([]);
+    expect(run(rule, "app/page.tsx", "export default function Page() { return <main>welkom</main>; }")).toHaveLength(1);
+  });
+
+  it("weigert een route zonder poort, en ziet een poort in commentaar niet aan voor een poort", () => {
+    expect(run(rule, "app/api/export/route.ts", "export async function GET() { return Response.json(await rows()); }")).toHaveLength(1);
+    expect(run(rule, "app/api/export/route.ts", "// requireSession() komt later\nexport async function GET() { return Response.json([]); }")).toHaveLength(1);
+    expect(run(rule, "app/api/export/route.ts", "export async function GET() { const actor = await requireActor(); return Response.json(await rows(actor)); }")).toEqual([]);
+    expect(run(rule, "app/api/cron/nacht/route.ts", "export async function GET(request) { return run(request); }")).toEqual([]);
+  });
+});
+
+describe("organisation-scope", () => {
+  const schema = "export const users = pgTable(\n  \"users\",\n  { id: uuid(\"id\"), organisationId: uuid(\"organisation_id\") },\n);\n\nexport const organisations = pgTable(\n  \"organisations\",\n  { id: uuid(\"id\") },\n);\n";
+  const rule = organisationScopeRule(organisationTables(schema));
+
+  it("kent alleen de tabellen met een kolom voor de organisatie", () => {
+    expect(organisationTables(schema)).toEqual(["users"]);
+  });
+
+  it("vindt lezen, wijzigen en verwijderen zonder het filter", () => {
+    expect(run(rule, "lib/x.ts", "const rows = await db.select().from(users).where(eq(users.id, id));")).toHaveLength(1);
+    expect(run(rule, "lib/x.ts", "await db.update(users).set({ isActive: false }).where(eq(users.id, id));")).toHaveLength(1);
+    expect(run(rule, "lib/x.ts", "await db.delete(users).where(eq(users.id, id));")).toHaveLength(1);
+  });
+
+  it("laat een query met het filter door, ook als het filter in een variabele staat", () => {
+    expect(run(rule, "lib/x.ts", "const rows = await db.select().from(users).where(and(eq(users.id, id), eq(users.organisationId, actor.organisationId)));")).toEqual([]);
+    expect(run(rule, "lib/x.ts", "const scope = and(eq(users.organisationId, organisationId), isNull(users.deletedAt));\nconst rows = await db.select().from(users).where(scope);")).toEqual([]);
+  });
+
+  it("laat een bewuste uitzondering door als de reden erbij staat, en anders niet", () => {
+    expect(run(rule, "lib/x.ts", "/* organisatie: bij het inloggen is er nog geen sessie */\nconst rows = await db.select().from(users).where(eq(users.externalId, id));")).toEqual([]);
+    expect(run(rule, "lib/x.ts", "/* organisatie: */\nconst rows = await db.select().from(users).where(eq(users.externalId, id));")).toHaveLength(1);
+  });
+
+  it("laat een tabel zonder die kolom, een insert, tests en scripts met rust", () => {
+    expect(run(rule, "lib/x.ts", "await db.select().from(organisations).limit(1);\nawait db.insert(users).values(row);")).toEqual([]);
+    expect(run(rule, "lib/x.test.ts", "await db.select().from(users);")).toEqual([]);
+    expect(run(rule, "scripts/check-x.ts", "await db.select().from(users);")).toEqual([]);
   });
 });

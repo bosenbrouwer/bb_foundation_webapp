@@ -76,14 +76,19 @@ runScript(async () => {
   /* Alleen letters, cijfers, - en _: veilig in een SQL-tekst en in een URL. */
   const password = randomBytes(24).toString("base64url");
 
+  /* De naam gaat als tekst een opdracht in die geen parameters kent: alleen letters, cijfers en _. */
+  if (!/^[a-z_][a-z0-9_]{0,62}$/.test(role)) throw new Error(`De naam van de inlogrol (${role}) bevat tekens die niet in een rolnaam horen. Er is niets gedaan.`);
+
   const pool = new Pool({ connectionString: direct });
   try {
+    /* sql: een rol aanmaken kent geen parameters. De naam is hierboven getoetst en komt uit de configuratie, niet uit invoer. */
     await pool.query(`
       do $$ begin
         if not exists (select 1 from pg_roles where rolname = '${role}') then
           create role ${role} login in role app_rw;
         end if;
       end $$`);
+    /* sql: een wachtwoord zetten kent geen parameters. Het wachtwoord is zojuist gemaakt en bestaat uit base64url, de naam is getoetst. */
     await pool.query(`alter role ${role} with login password '${password}'`);
   } finally {
     await pool.end();

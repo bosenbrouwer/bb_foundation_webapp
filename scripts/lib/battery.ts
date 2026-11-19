@@ -10,7 +10,8 @@
  * Een regel die zo niet uit te voeren is, wordt een probleem en geen stille overslag.
  *
  * **Goedkoopste eerst**, zoals de standaard: typecheck, lint, unittests, geheimen, licenties, migraties, drift,
- * contrast, het template, de build; dan pas wat een database vraagt: migraties heen en terug, elke
+ * contrast, het template, de build en de ronde zonder sessie tegen die build; dan pas wat een
+ * database vraagt: migraties heen en terug, elke
  * `check:<domein>`, en de e2e tegen `next start`.
  */
 
@@ -23,10 +24,11 @@ export interface Step {
 }
 
 /** De stappen zonder database, in deze volgorde. Ontbreekt er een in package.json, dan is dat een probleem. */
-export const OFFLINE_STEPS = ["typecheck", "lint", "test", "check:secrets", "check:licenses", "check:migrations", "check:drift", "check:contrast", "template:verify", "build"] as const;
+/* `check:public` start de build die er net staat, zonder database: daarom direct na de build. */
+export const OFFLINE_STEPS = ["typecheck", "lint", "test", "check:secrets", "check:licenses", "check:migrations", "check:drift", "check:contrast", "template:verify", "build", "check:public"] as const;
 
 /** Checks die geen database vragen, en dus niet bij de databasestappen horen. */
-const OFFLINE_CHECKS = new Set<string>(["check:secrets", "check:licenses", "check:migrations", "check:drift", "check:contrast", "check:all"]);
+const OFFLINE_CHECKS = new Set<string>(["check:secrets", "check:licenses", "check:migrations", "check:drift", "check:contrast", "check:public", "check:all"]);
 
 /** De binaries die de batterij gebruikt, als bestand dat `node` kan draaien. */
 const BINARIES: Readonly<Record<string, string>> = {

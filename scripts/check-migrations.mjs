@@ -100,7 +100,9 @@ for (const file of downFiles) {
  * al heeft niet, terwijl een latere migratie er wel van uitgaat. De regel is dus niet "wijzig geen
  * migratie" maar "schrijf een nieuwe". Deze controle maakt van die afspraak iets dat afgaat.
  *
- * Slaat over als git er niet is of main nog niet bestaat: dit is een vangnet en geen slot.
+ * Lokaal slaat hij over als git er niet is of main nog niet bestaat. In de CI niet: daar faalt hij
+ * als hij niet kan vergelijken. Een ondiepe checkout heeft geen main, en dan sloeg deze regel in een
+ * eerder project bij elke run stil over terwijl de job groen bleef.
  */
 function changedMigrations() {
   const run = (args) => execFileSync("git", args, { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
@@ -134,7 +136,9 @@ try {
 } catch {
   changed = undefined;
 }
-if (changed === undefined) {
+if (changed === undefined && process.env.CI !== undefined && process.env.CI !== "" && process.env.CI !== "false") {
+  problems.push("Regel 6 kan niet vergelijken: deze checkout heeft geen main. Zet fetch-depth: 0 op de checkout van deze job; een controle die overslaat en groen blijft, bewijst niets.");
+} else if (changed === undefined) {
   console.log("Regel 6 overgeslagen: geen git-repository met een main om tegen te vergelijken.\n");
 } else {
   for (const file of changed) {

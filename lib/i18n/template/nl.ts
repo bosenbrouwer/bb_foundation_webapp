@@ -167,6 +167,14 @@ export const nl = {
     schemaOk: (applied: number, latest: string) => `${applied} migraties, tot en met ${latest}`,
     schemaBehind: (applied: number, expected: number) => `De database loopt achter: ${applied} van ${expected} migraties. Draai de deploy of pnpm db:migrate.`,
     schemaUnknown: "Niet op te vragen.",
+    databaseRole: "Databaserol",
+    databaseRoleApp: "de rol van de app",
+    databaseRoleOwner: (variable: string) => `de eigenaar: ${variable} ontbreekt`,
+    cron: "Geplande taken",
+    cronOk: "het geheim is ingesteld",
+    cronMissing: (variable: string) => `${variable} ontbreekt: elke geplande taak weigert`,
+    /** Op elk scherm van wie Beheer, Systeem mag zien, zolang productie als eigenaar van de database verbindt. */
+    ownerBanner: (variable: string) => `Deze tool verbindt op productie als eigenaar van de database, langs het slot op elke tabel. Maak de rol van de app en zet ${variable} (handleiding 04).`,
     /** Op een scherm in plaats van een databasefout zonder bruikbare oorzaak; de details staan in de log. */
     errorDetailsInLog: "Een fout in de database; de details staan in de serverlog.",
     integrationsTitle: "Koppelingen",

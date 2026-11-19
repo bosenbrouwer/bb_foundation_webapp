@@ -321,12 +321,17 @@ omzeilen. Middleware draait vóór de route en kan door een fout in het framewor
 de route zelf niet.
 
 **Regel.** Elke pagina, server action en route handler controleert zelf sessie en recht
-(CLAUDE.md regel 11). `proxy.ts` zet alleen de CSP en weigert niets. En de patchversie van Next
-bijhouden: in 2026 kwamen de kritieke fixes in 15.5.18, 16.2.6, 16.3.3 en 16.4.1 (stand oktober
-2026; controleer de advisory).
+(CLAUDE.md regel 11). Sinds besluit D24 houdt `proxy.ts` ook een buitenste ring: zonder
+sessiecookie gaat alles buiten de lijst van openbare adressen naar de inlog of krijgt een 401.
+Dat is een ring erbij en geen grens: de proxy kijkt of er een cookie is, niet of hij klopt, en hij
+kan wegvallen zoals hierboven. Daarom moet de binnenkant aantoonbaar houden zonder de proxy. En de
+patchversie van Next bijhouden: in 2026 kwamen de kritieke fixes in 15.5.18, 16.2.6, 16.3.3 en
+16.4.1 (stand oktober 2026; controleer de advisory).
 
-**Afgedwongen door.** De huisregel `session-first` en `requireSession()` op elke plek; `proxy.ts`
-heeft geen autorisatie. De versie bewaakt Dependabot met `pnpm audit --prod` in de CI.
+**Afgedwongen door.** De huisregels `session-first` en `public-routes`, en `requireSession()` op
+elke plek. `pnpm check:public` vraagt elk adres uit de build zonder sessie op, met de proxy aan,
+met een waardeloze cookie en met de proxy uit (`PROXY_GATE=off`, alleen lokaal), en draait in de
+CI na de build. De versie bewaakt Dependabot met `pnpm audit --prod` in de CI.
 
 ## L-NEXT-20 In een route handler komt `request.url` uit de servernaam, niet uit de `host`-kop
 
@@ -373,3 +378,39 @@ Wat al in de HTML van de server kan staan, heeft geen effect nodig (vergelijk L-
 
 **Afgedwongen door.** Alleen afspraak. In het eerdere project bewaakt een e2e het; het template
 heeft er geen.
+
+## L-NEXT-23 Een inlogscherm dat een zoekmachine niet mag lezen, lijkt op phishing
+
+**Symptoom.** In een eerder project toonde Chrome de rode waarschuwing voor phishing op de
+terugkeerpagina van de inlog.
+
+**Oorzaak.** Vermoedelijk het patroon: een jong domein met een openbare pagina "log in met je
+Microsoft-account", waar mensen van andere organisaties inloggen, en een crawler die niet mag
+lezen wat de pagina is. `robots.txt` zegt alleen dat een crawler er niet hoort te komen; een adres
+waar ergens naar gelinkt wordt, kan toch in een index belanden.
+
+**Regel.** Het inlogscherm mag gelezen worden en zegt wat het is, en dat de tool nooit om een
+wachtwoord vraagt. Alles daarachter vraagt een zoekmachine met `X-Robots-Tag: noindex, nofollow`
+om het niet op te nemen. `security.txt` noemt een contact en een vervaldatum.
+
+**Afgedwongen door.** `NOINDEX_HEADER` in `lib/config/next-base.ts` met `next-base.test.ts`;
+`public/robots.txt` en `public/.well-known/security.txt`, en `pnpm smoke:prod` kijkt of ze er
+staan. Of de waarschuwing wegblijft, bewijst geen test: dat ligt bij de browser.
+
+## L-NEXT-24 Een uitzondering in de matcher van de proxy is een weg langs de poort
+
+**Symptoom.** (voorkomen) De matcher van `proxy.ts` sloeg een verzoek met de kop van een prefetch
+over, zodat zo'n verzoek geen nonce kreeg. Toen de proxy ook de poort van de inlog werd, kon wie
+die kop zelf meestuurde de poort overslaan.
+
+**Oorzaak.** Wat de matcher overslaat, ziet de proxy helemaal niet: niet voor de nonce en niet voor
+de poort. Een kop van het verzoek kiest de afzender zelf.
+
+**Regel.** De matcher slaat alleen over wat geen pagina en geen route kan zijn (de bestanden van
+het framework en een pad dat op de extensie van een bestand eindigt), nooit iets op grond van een
+kop. Wat alleen voor de nonce een uitzondering is, beslist de proxy zelf, ná de poort
+(`wantsNonce` in `lib/security/csp.ts`).
+
+**Afgedwongen door.** `lib/security/csp-coverage.test.ts` leest de matcher uit `proxy.ts` en
+weigert `missing` en `has`; `pnpm check:public` stuurt elk afgeschermd adres ook met de kop van
+een prefetch en als aanroep van een server action, en eist de inlog.

@@ -74,7 +74,11 @@ test("na het inloggen weigert de browser niets, en de pagina is gehydrateerd", a
 });
 
 test("een adres met een punt erin is een pagina, en wat buiten de proxy valt heeft een vaste CSP", async ({ page }) => {
-  /* Besluit D17: in een eerder project viel de CSP weg op elk adres met een punt erin. */
+  /*
+   * Besluit D17: in een eerder project viel de CSP weg op elk adres met een punt erin. Met een sessie,
+   * want zonder stuurt de poort van de proxy elk adres naar de inlog en bewijst dit niets (besluit D24).
+   */
+  await signIn(page);
   for (const path of ["/bestaat-niet.x", "/iemand/jan.jansen"]) {
     const response = await page.request.get(path);
     const policy = response.headers()["content-security-policy"] ?? "";
