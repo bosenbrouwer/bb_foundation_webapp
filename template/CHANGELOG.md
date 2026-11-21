@@ -15,6 +15,79 @@ versie na het bijwerken.
 
 - Nog niets.
 
+## v1.11.0 (21 november 2026)
+
+### Wat verandert
+
+Kennis uit projecten komt terug naar het template met één opdracht (besluit D31 van 21 november
+2026). Tot nu toe kwam ze alleen terug als iemand erom vroeg, uit één project, en hield niemand bij
+wat al verwerkt was.
+
+- **`pnpm template:report-back`.** Verzamelt sinds de vorige melding vier soorten kennis, elk van een
+  vaste plek: de besluiten van het project uit `docs/SPEC.md` (de rijen waarvan de kern niet in de
+  seed van het template staat, als `P-D41`), de lessen uit de nieuwe seed `docs/lessen-project.md`
+  (`## P-01`), de overgenomen bestanden met hun reden, en de nieuwe rubriek `### Voor het template`
+  uit `RELEASE-NOTES.md`. Hij schrijft `.terugmelding.md` (niet in git) om na te lezen. Met `--send`
+  zet hij hem met de `gh` van de melder als issue bij het template, met een titel die begint met
+  `[Terugmelding]`; zonder `gh` zegt hij welke pagina je opent en legt `--sent <nummer>` de melding
+  vast. De code staat in `template/lib/report-back/` en `template/cli/report-back.ts`.
+- **Vijf sloten voor het versturen.** Geen naam uit `project.config.json` (behalve wat nog op de
+  neutrale standaard staat) of van de eigen lijst "Nooit in een terugmelding"; geen e-mailadres,
+  GUID, verbindingsstring, IP-adres, adres bij Vercel, endpoint van Neon of tenant van Microsoft;
+  geen geheim volgens secretlint en de huisregel `secret-patterns`, en een scan die niet kan draaien
+  telt als vondst; een aangevinkt akkoord; en een repo van het template die privé is. De opdracht
+  toont nooit een gevonden waarde, alleen de regel en de soort. In de templaterepo zelf weigert hij.
+- **De administratie: de nieuwe seed `docs/terugmeldingen.md`.** De woorden die nooit mee mogen, de
+  overgenomen bestanden met datum en reden, en per verstuurde melding welke punten erin zaten en
+  welke bewust zijn weggelaten (`niet:`), zodat niets twee keer gaat of steeds terugkomt. Wie het
+  bestand schrijft (adopt en de opdracht), zet ook de regel ervan in `template.lock.json` bij, zodat
+  de volgende update de lock niet alsnog verandert.
+- **`pnpm template:adopt` vraagt een reden:** `--reason "waarom"`, hooguit 300 tekens, in
+  `docs/terugmeldingen.md`. Een bestand dat al was overgenomen, opnieuw overnemen (om de kop te
+  herstellen) vraagt er geen. De meldingen van `verify`, `apply` en de huisregel
+  `template-ownership` noemen de optie.
+- **Twee herinneringen.** `pnpm template:status` en het slot van `pnpm template:update` noemen wat
+  nog niet is teruggemeld. De regel komt pas vanaf de volgende update na deze, want het slot van een
+  update draait met de tooling van de oude versie.
+- **Documentatie.** Nieuwe handleiding 12 (terugmelden), met een regel in 00 en 01, en in
+  `docs/WERKWIJZE.md` onder het ritme. In `CLAUDE.md`
+  regel 14 (de reden bij adopt), de rubriek Voor het template bij de release notes, een nieuw punt
+  "Terugmelden" onder Werkwijze en een regel in de tabel met lessen. `docs/lessen/README.md` wijst
+  projectlessen naar `docs/lessen-project.md`. `template/README.md` heeft een paragraaf
+  "Terugmeldingen verwerken": de toets aan het begin van elke versie, de labels, overnemen in eigen
+  woorden, en "(uit terugmelding #n)" in deze CHANGELOG. Besluit D31 in `docs/SPEC.md`.
+- **Tests.** Unittests per onderdeel en een test van de hele opdracht in een nagemaakt project met
+  een nagemaakte `gh`. De gouden test draait de opdracht in een echt project met de echte
+  geheimenscans tot vlak voor het versturen; de updatetest bewijst dat adopt zonder reden weigert.
+- **Bewezen en niet bewezen.** Bewezen zonder database: `pnpm check:all --zonder-database` groen
+  (typecheck, lint met de huisregels, 699 tests, check:secrets, check:licenses, check:migrations,
+  check:drift, check:contrast, template:verify, build, `check:public` met 55 controles). De gouden
+  tests (voorbeeld, minimaal, default) zijn groen, elk met de nieuwe stap: niets nieuws in een vers
+  project, de les verzameld, geweigerd zonder akkoord, met de naam van het project en met een
+  sleutel, en met de hand vastgelegd; op de standaardconfig weigert de opdracht. De updatetest is
+  groen. Een project op v1.10.0 met alle modules is bijgewerkt naar v1.11.0: geen migratie, de twee
+  seeds, het script, de regel in `.gitignore` en het punt in `CLAUDE.md` zijn er, adopt weigert
+  zonder reden, en typecheck, lint, de huisregels, 951 tests, verify, build en `check:public` (90
+  controles) zijn groen; een tweede update verandert niets. Niet bewezen: een echte melding met
+  `gh` naar de repo van het template (die is op 21 november nog openbaar, nagekeken met
+  `gh repo view`, en dan weigert de opdracht met opzet), en hoe GitHub de labels van een account
+  met alleen leesrecht behandelt.
+
+### Let op bij bijwerken
+
+- **`pnpm template:adopt` zonder `--reason` weigert.** Een eigen script of notitie die adopt zonder
+  reden aanroept, krijgt `--reason "waarom"` erbij.
+- **Twee nieuwe bestanden van het project:** `docs/lessen-project.md` en `docs/terugmeldingen.md`.
+  Staan je projectlessen nu in `docs/SPEC.md` of een eigen bestand, zet ze dan in
+  `docs/lessen-project.md` met een `## P-01`-kop, anders ziet de opdracht ze niet.
+- **Eerdere overnames:** een bestand dat je vóór deze versie overnam, staat zonder reden in de
+  eerste melding. Vul de reden daar in, of haal het punt weg.
+- **De eerste melding is groot:** alle besluiten van het project sinds het begin komen erin. Haal weg
+  wat alleen voor het project telt; een weggehaald punt komt niet terug.
+- **`.gitignore`** krijgt de regel `.terugmelding.md` via het beheerde blok.
+- **Versturen kan pas als de repo van het template privé is.** Tot dan weigert `--send`; het
+  verzamelen en nalezen werkt wel.
+
 ## v1.10.0 (19 november 2026)
 
 ### Wat verandert

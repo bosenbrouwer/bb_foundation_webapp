@@ -67,6 +67,7 @@ Aan het eind staat de lege tool online, en elke ronde daarna gaat via `release/n
 | GitHub, Vercel en Neon afmaken | 02, 03, 04 | Organisatie, tweestapsverificatie, regio, de branch `seed` waar previews uit komen, plafonds |
 | De modules die je in `project.config.json` aanzette | 20 of 20b (mail), 21 (Teams), 22 (bestanden), 23 (crons), 24 (AI) | Niets ervoor |
 | Altijd | 30, beveiliging en kosten; 90, als iets misgaat | Overzicht en rust |
+| Na een paar rondes | 12, terugmelden aan het template | Wat jij leerde, hoeft het volgende project niet opnieuw te leren |
 
 ## Wat je nodig hebt voordat je begint
 

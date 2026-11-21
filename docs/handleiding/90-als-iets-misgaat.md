@@ -38,7 +38,7 @@ wat je deed en wanneer.
 | Op de preview kan ik niet inloggen | De preview komt uit `seed`: je account van productie bestaat er niet | 09, "Inloggen op de preview" |
 | Een Teams-bericht van een preview of van je laptop komt niet aan | Buiten productie gaat Teams alleen naar het testkanaal, en zonder `TEAMS_WEBHOOK_URL_TEST` nergens heen | 21, stap 3 |
 | De rekening van Neon loopt op | Compute slaapt niet | Autosuspend korter, crons minder vaak, branches weg (04, 23) |
-| `pnpm template:verify` rood in de CI | Een owned bestand gewijzigd | `pnpm template:apply --force` of `pnpm template:adopt <pad>` |
+| `pnpm template:verify` rood in de CI | Een owned bestand gewijzigd | `pnpm template:apply --force` of `pnpm template:adopt <pad> --reason "waarom"` |
 | `pnpm template:apply` slaat bestanden over | Het project heeft owned bestanden gewijzigd | Bewust: adopt of force, zie `template/README.md` |
 | Een pnpm-script faalt met een half pad en "is not recognized" | Een `&` in het Windows-gebruikerspad en een genest `pnpm` | Roep `node` rechtstreeks aan in scripts, zoals het template doet (07) |
 | De e2e strandt op de webserver | `next build` met een `--env-file`-vlag | Zonder die vlag bouwen (07) |

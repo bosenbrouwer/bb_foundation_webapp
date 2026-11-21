@@ -152,4 +152,4 @@ van een app.
 
 **Afgedwongen door.** Alleen afspraak: het template is zelf één app. Patroon
 `tweede-app-in-de-repo`. `app/globals.css` is van het template, dus de regel toevoegen vraagt
-`pnpm template:adopt app/globals.css`.
+`pnpm template:adopt app/globals.css --reason "waarom"`.

@@ -198,6 +198,9 @@ ook in `docs/veiligheid.md`. Pas als ze alle zeven kloppen, gaan er echte gegeve
 - [ ] **Jaarlijks**: `public/.well-known/security.txt` en de lijst met accounts nagelopen.
 - [ ] **Bij elke ronde die een inlog, een upload, een model of een tweede bedrijf toevoegt**:
       `docs/veiligheid.md` nagelopen, met de nieuwe datum erin.
+- [ ] **Als `pnpm template:status` of `pnpm template:update` openstaande punten noemt**: lessen,
+      besluiten en overgenomen bestanden teruggemeld met `pnpm template:report-back`
+      (handleiding 12).
 
 ## Vervaldata
 

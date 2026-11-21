@@ -14,6 +14,7 @@ import { runAdopt } from "./adopt";
 import { runApply } from "./apply";
 import { generate } from "./generate";
 import { runRelease } from "./release";
+import { runReportBack } from "./report-back";
 import { runStatus } from "./status";
 import { runUpdate } from "./update";
 import { runVerify } from "./verify";
@@ -59,8 +60,12 @@ const COMMANDS: Readonly<Record<string, { readonly run: Command; readonly help: 
     run: (root) => runVerify(root),
   },
   adopt: {
-    help: "maakt een bestand van het template blijvend van het project: template:adopt <pad> [--remove]",
+    help: 'maakt een bestand van het template blijvend van het project: template:adopt <pad> --reason "waarom" [--remove]',
     run: (root, args) => runAdopt(root, args),
+  },
+  "report-back": {
+    help: "meldt lessen, besluiten en overgenomen bestanden terug aan het template (--send verstuurt na je akkoord, --sent <nummer> legt een geplakte melding vast)",
+    run: (root, args) => runReportBack(root, args),
   },
   generate: {
     help: "schrijft de gegenereerde bestanden (thema, tokens, PROJECT, rollen, schema-index, registers) opnieuw uit project.config.json",
@@ -109,7 +114,7 @@ function validate(root: string, args: readonly string[]): number {
 
 function help(): number {
   console.log("Gebruik: pnpm template:<opdracht> [argumenten]\n");
-  for (const [name, command] of Object.entries(COMMANDS)) console.log(`  ${name.padEnd(10)} ${command.help}`);
+  for (const [name, command] of Object.entries(COMMANDS)) console.log(`  ${name.padEnd(12)} ${command.help}`);
   return 0;
 }
 

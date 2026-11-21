@@ -35,3 +35,6 @@ test-results/
 
 # kopieën van bestanden die pnpm template:apply --force overschreef
 .template-backup/
+
+# een terugmelding aan het template die nog niet is verstuurd (pnpm template:report-back)
+.terugmelding.md

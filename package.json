@@ -51,7 +51,8 @@
     "check:grants": "node --env-file-if-exists=.env.local node_modules/tsx/dist/cli.mjs scripts/check-grants.ts",
     "db:app-login": "node --env-file-if-exists=.env.local node_modules/tsx/dist/cli.mjs scripts/db-app-login.ts",
     "check:licenses": "node scripts/check-licenses.mjs",
-    "check:public": "node node_modules/tsx/dist/cli.mjs scripts/check-public.ts"
+    "check:public": "node node_modules/tsx/dist/cli.mjs scripts/check-public.ts",
+    "template:report-back": "node template/cli/bootstrap.mjs report-back"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "0.131.0",

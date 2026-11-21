@@ -273,7 +273,7 @@ export function applyTemplate(root: string, sourceRoot: string, options: ApplyOp
       module,
       class: cls,
       status: "skipped-modified",
-      note: previous === undefined ? "wijkt af van het template en staat niet in de lock; template:adopt om het van het project te maken, of --force" : "door het project gewijzigd; template:adopt om dit blijvend te maken, of --force om te overschrijven",
+      note: previous === undefined ? 'wijkt af van het template en staat niet in de lock; template:adopt <pad> --reason "waarom" om het van het project te maken, of --force' : 'door het project gewijzigd; template:adopt <pad> --reason "waarom" om dit blijvend te maken, of --force om te overschrijven',
     });
   };
 

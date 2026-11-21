@@ -4,6 +4,7 @@
  * Haalt de nieuwe versie op, laat háár tooling apply draaien op dit project, en toont daarna wat er
  * tussen de oude en de nieuwe versie veranderde.
  */
+import { pendingReportLine } from "../lib/report-back/context";
 import { changesBetween, planUpdate, runHandoff, UpdateError } from "../lib/update";
 
 export function runUpdate(root: string, args: readonly string[]): number {
@@ -38,6 +39,8 @@ export function runUpdate(root: string, args: readonly string[]): number {
     }
     const changes = changesBetween(plan.sourceDir, plan.fromVersion, plan.toVersion);
     if (changes !== "") console.log(`\nWat er veranderde tussen ${plan.fromVersion} en ${plan.toVersion}:\n\n${changes}\n`);
+    const pending = pendingReportLine(root);
+    if (pending !== undefined) console.log(pending);
     return 0;
   } finally {
     plan.cleanup();

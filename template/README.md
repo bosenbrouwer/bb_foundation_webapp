@@ -26,7 +26,7 @@ bestand is de samenvatting die in de repo blijft.
 | seed | één keer aangemaakt, daarna van het project | geen kop; staat in `template.lock.json` als seed |
 | merge | gedeeld bestand met beheerde blokken | `package.json`, `vercel.json`, `.env.example`, `.gitignore`, `CLAUDE.md` |
 
-Een owned bestand toch veranderen: `pnpm template:adopt <pad>` maakt het van het project, met de kop
+Een owned bestand toch veranderen: `pnpm template:adopt <pad> --reason "waarom"` maakt het van het project, met de kop
 `template-adopted`. JSON is nooit owned, want een JSON-bestand kan geen kop dragen (`tsconfig.json`
 is JSONC en de uitzondering).
 
@@ -52,7 +52,8 @@ projectboom, en daarom sluit `tsconfig.json` die map uit.
 | `template:apply [--dry-run] [--force] [--strict] [--allow-dirty]` | past het template toe: generatoren, owned en seed bestanden per module, de gedeelde bestanden via de patchers, de lock, en een slottekst met wat de mens nu doet. Een owned bestand dat het project heeft gewijzigd wordt overgeslagen; `--force` overschrijft met een kopie in `.template-backup/`; `--strict` geeft exitcode 1 bij een overgeslagen bestand (voor CI); zonder `--allow-dirty` weigert apply op een werkmap met niet-gecommitte wijzigingen |
 | `template:status [--changes]` | de stand: versie, modules, bestanden ongewijzigd, gewijzigd, ontbreekt, overgenomen, seeds met een nieuwere opzet |
 | `template:verify` | voor CI: de lock klopt, geen owned bestand gewijzigd, de gegenereerde bestanden actueel, de gedeelde bestanden een vast punt van hun patcher, elke kop juist |
-| `template:adopt <pad> [--remove]` | maakt een owned bestand blijvend van het project, of verwijdert het bewust |
+| `template:adopt <pad> --reason "..." [--remove]` | maakt een owned bestand blijvend van het project, of verwijdert het bewust; de reden komt in `docs/terugmeldingen.md` |
+| `template:report-back [--send \| --sent <n>]` | verzamelt besluiten, projectlessen, overgenomen bestanden en de rubriek Voor het template in `.terugmelding.md`, controleert op namen, adressen en geheimen, en zet hem na het akkoord als issue bij het template (handleiding 12, besluit D31) |
 | `template:generate` | schrijft alleen de gegenereerde bestanden opnieuw |
 | `template:validate [pad]`, `template:schema` | controleert een configuratie; schrijft het JSON Schema (alleen in de templaterepo) |
 | `template:update [--to X.Y.Z] [--from <map>]` | haalt de nieuwste versietag van `template.source` op (of de map), laat de tooling uit die versie apply draaien op dit project, en toont wat er tussen oud en nieuw veranderde. Neemt de opties van apply over |
@@ -105,6 +106,32 @@ aan, nooit genest `pnpm`: een `&` in een Windows-gebruikerspad breekt dat, ook d
    `next start`. `pnpm check:all` draait alles in die volgorde (`scripts/lib/battery.ts`) en zegt wat
    het oversloeg; de samenvatting komt in de rubriek Bewijs. Voor het template zelf komen daar
    `node template/ci/check-template.mjs` en de gouden test bij (`template/ci/golden.mjs`).
+6. Een versie begint met de open terugmeldingen (hieronder).
+
+## Terugmeldingen verwerken
+
+Projecten en deelnemers melden met `pnpm template:report-back` terug wat ze leerden (besluit D31,
+handleiding 12). Een melding is een issue in deze repo met een titel die begint met
+`[Terugmelding]`. Labels zet de melder niet, want GitHub laat ze vallen van wie alleen leesrecht
+heeft.
+
+1. **Aan het begin van elke versie** de open meldingen ophalen:
+   `gh issue list --search "[Terugmelding] in:title" --state open`.
+2. **Per punt een oordeel**, in de chat aan de eigenaar van het template: had al (met waar het
+   staat), nieuw (voor deze versie), of niet overnemen (met de reden). Dubbele punten uit
+   verschillende meldingen gaan samen. Een punt haalt de lat als het tijd kostte, de oorzaak bekend
+   is en het opnieuw kan gebeuren; een wens mag ook, maar weegt lichter. De eigenaar kiest wat in de
+   versie komt.
+3. **Labels** bij het toetsen: `terugmelding`, een laag (`laag: neon`, `laag: nextjs`,
+   `laag: authjs` en zo verder, naar de bestanden in `docs/lessen/`) en een soort (`soort: les`,
+   `soort: besluit`, `soort: fout`, `soort: wens`).
+4. **Overnemen in eigen woorden.** Nooit code of tekst letterlijk uit een melding: een les komt in
+   `docs/lessen/` met een eigen nummer en de vorm van die map, een besluit krijgt een D-nummer van
+   het template. `node template/ci/check-template.mjs` toetst daarna de neutraliteit.
+5. **De kring sluiten.** In `template/CHANGELOG.md` staat achter wat eruit voortkwam "(uit
+   terugmelding #12)". Bij de release krijgt het issue een antwoord met de versie en per punt het
+   oordeel, en gaat het dicht. Antwoorden en sluiten doet de eigenaar van het template, of wie
+   daarvoor is aangewezen.
 
 ## Stand
 

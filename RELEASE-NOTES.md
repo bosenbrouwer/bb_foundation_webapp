@@ -3,7 +3,9 @@
 De naslag voor wie bouwt: volledig, met de waarom's. Wat collega's in de tool zien staat in
 `RELEASE-NOTES-KORT.md`. Elke PR die gedrag, schema of afspraken verandert, krijgt hier een eigen
 versiekop met de rubrieken Toegevoegd, Gewijzigd, Gerepareerd, Bewijs en, als er iets met de hand
-moet gebeuren, Let op bij bijwerken.
+moet gebeuren, Let op bij bijwerken. Leerde de ronde iets waar het template beter van wordt, dan
+komt er een rubriek Voor het template bij; `pnpm template:report-back` neemt die mee in de volgende
+terugmelding.
 
 ## v0.01
 

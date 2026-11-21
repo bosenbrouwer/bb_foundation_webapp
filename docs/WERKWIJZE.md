@@ -84,6 +84,9 @@ er, dan zit de reparatie erin.
 - **Per ronde**: opdracht, oplevering, pull request op `release/next`, controle op de preview, merge.
   Staan er pull requests van Dependabot open, neem ze dan mee in de ronde en sluit ze daarna; nooit
   los mergen, want ze gaan om de versie en de release notes heen.
+- **Na een paar rondes**: leerde je iets dat tijd kostte en opnieuw kan gebeuren, laat Claude het dan
+  als les in `docs/lessen-project.md` zetten, en meld het terug aan het template met
+  `pnpm template:report-back` (handleiding 12). Jij leest de melding na en drukt op de knop.
 - **Wekelijks**: kijk één keer op Beheer, Systeem. Alles groen is alles goed.
 - **Maandelijks**: de kosten van GitHub, Vercel en Neon tegen het plafond uit je checklist, en de
   vervaldata (client secrets, tokens) in dezelfde checklist.

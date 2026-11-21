@@ -4,6 +4,7 @@
  * gewijzigd of ontbrekend bestand; zonder staan alleen de tellingen.
  */
 import { lsRemoteTags } from "../lib/git";
+import { pendingReportLine } from "../lib/report-back/context";
 import { compareVersions, latestTag, parseVersion } from "../lib/semver";
 import { statusReport } from "../lib/status";
 
@@ -39,6 +40,9 @@ export function runStatus(root: string, args: readonly string[]): number {
   } else if (report.changed.length + report.missing.length > 0) {
     console.log("  (pnpm template:status --changes noemt ze)");
   }
+
+  const pending = pendingReportLine(root);
+  if (pending !== undefined) console.log(`\n${pending}`);
 
   console.log("");
   if (args.includes("--offline")) console.log("Versiecheck overgeslagen (--offline).");

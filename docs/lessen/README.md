@@ -36,5 +36,6 @@ oorzaak kent, niet alleen de oplossing. Kies het volgende nummer in de laag, hou
 aan, en kijk of er een goedkope check bestaat die de regel kan bewaken: een huisregel in
 `scripts/house-rules/`, een constraint, een unittest. Een afspraak zonder vangnet is een wens (zie
 L-WERK-03). Wijzig je een owned bestand in de templaterepo, dan hoort er een regel in
-`template/CHANGELOG.md` bij; in een project schrijf je projectlessen in `docs/SPEC.md` of een eigen
-bestand, want deze map wordt bij een update overschreven.
+`template/CHANGELOG.md` bij. In een project schrijf je projectlessen in `docs/lessen-project.md`
+(`## P-01`, dezelfde vier onderdelen), want deze map wordt bij een update overschreven; met
+`pnpm template:report-back` gaan ze terug naar het template (handleiding 12).

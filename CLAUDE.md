@@ -72,8 +72,9 @@ De bouw volgt het plan van 2 oktober 2026 in veertien rondes; de stand staat in 
     `.env.example` (de huisregel `env-template` controleert dat), en de dev-login werkt alleen met
     `APP_ENV=local` en weigert anders te laden.
 14. **Bestanden met de kop `template-owned` of `template-generated` wijzig je niet.** Ze worden bij
-    `pnpm template:update` overschreven. Eigen variant nodig: `pnpm template:adopt <pad>`. Een
-    gegenereerd bestand verander je via `project.config.json` en `pnpm template:generate`.
+    `pnpm template:update` overschreven. Eigen variant nodig: `pnpm template:adopt <pad> --reason
+    "waarom"`; de reden komt in `docs/terugmeldingen.md` en gaat mee bij de volgende terugmelding.
+    Een gegenereerd bestand verander je via `project.config.json` en `pnpm template:generate`.
 15. **Zit er geld of duur in dit project, dan is geld `amount_cents bigint` plus `currency char(3)`
     en duur een geheel aantal minuten.** Nooit een float; afronden gebeurt één keer, op het niveau
     waar het ertoe doet. Zie `docs/patronen/`.
@@ -128,7 +129,7 @@ lib/monitoring/         report.ts: serverfouten schoongemaakt naar de log, met d
 lib/domain/             pure functies, elk los te testen: van het template (dates, csv-safe, rate-limit) en van het project
 scripts/                pnpm-taken; scripts/lib/ gedeeld; check-<domein>.ts bewijst gedrag tegen de dev-branch
 e2e/                    00 tot 09 van het template, vanaf 10 van het project
-docs/                   PROJECTPLAN, SPEC (met besluitenlog), ROADMAP, THEME, WERKWIJZE, handleiding/, lessen/, patronen/
+docs/                   PROJECTPLAN, SPEC (met besluitenlog), ROADMAP, THEME, WERKWIJZE, handleiding/, lessen/, patronen/; lessen-project en terugmeldingen van het project
 template/               het gereedschap: manifest, lock-formaat, cli, patchers, generatoren, modules
 ```
 
@@ -141,9 +142,16 @@ Vuistregels: één bestand, één onderwerp; datatabellen apart van logica; sche
   levert een versie op en heet ernaar (`v0.02: eerste specificatie`); de tweede positie loopt per PR
   op, de eerste alleen op het woord van de eigenaar. Ververs ook `APP_HIGHLIGHTS`.
 - **Release notes.** Twee bestanden, elk met een eigen lezer. `RELEASE-NOTES.md` voor bouwers, met
-  de rubrieken Toegevoegd, Gewijzigd, Gerepareerd, Bewijs en (verplicht als er handwerk is) Let op
-  bij bijwerken. `RELEASE-NOTES-KORT.md` voor gebruikers, in gewone taal, met als kop exact
-  `## vX.YY` en de datum als eerste regel eronder; de e2e controleert erop.
+  de rubrieken Toegevoegd, Gewijzigd, Gerepareerd, Bewijs, (verplicht als er handwerk is) Let op
+  bij bijwerken en (als de ronde iets leerde waar het template beter van wordt) Voor het template.
+  `RELEASE-NOTES-KORT.md` voor gebruikers, in gewone taal, met als kop exact `## vX.YY` en de datum
+  als eerste regel eronder; de e2e controleert erop.
+- **Terugmelden.** Bij elke oplevering kijkt Claude of de ronde iets opleverde dat tijd kostte, een
+  bekende oorzaak heeft en opnieuw kan gebeuren. Zo ja: een les in `docs/lessen-project.md`
+  (`## P-01`, de vier onderdelen van `docs/lessen/`), of een punt onder Voor het template in
+  `RELEASE-NOTES.md`. `pnpm template:report-back` verzamelt het met de nieuwe besluiten en de
+  overgenomen bestanden, controleert op namen en geheimen, en zet het na het akkoord van de mens als
+  issue bij het template. Claude verstuurt nooit zelf; zie handleiding 12.
 - **Besluiten.** In `docs/SPEC.md` onder `## 3. Besluitenlog`, tabel `| # | Besluit | Waarom, en
   wat het kost |`, D-nummers die nooit veranderen, met datum. Een besluit omkeren: eerst tegengas
   met de prijs, de mens kiest, dan volledig uitvoeren, dan vastleggen met een verwijzing naar wat
@@ -226,6 +234,7 @@ codevoorbeeld). Lees ze wanneer het onderwerp aan de orde is:
 | rechten boven de beheerder, of iemand die over zichzelf beslist | `docs/patronen/eigenaar-boven-beheerder.md`, `docs/patronen/niemand-beslist-over-zichzelf.md` |
 | gebruikers van buiten, meer dan één adres of een tweede app | `docs/patronen/accounts-van-buiten.md`, `docs/patronen/omgeving-per-adres.md`, `docs/patronen/intrekbare-sessie.md`, `docs/patronen/tweede-app-in-de-repo.md` |
 | iets dat op Windows of met pnpm anders loopt dan verwacht | `docs/lessen/toolchain-windows.md` |
+| iets geleerd waar het template beter van wordt, of een bestand van het template overnemen | `docs/handleiding/12-terugmelden.md`, `docs/lessen-project.md` |
 <!-- template:end core -->
 
 <!-- template:begin auth-entra -->

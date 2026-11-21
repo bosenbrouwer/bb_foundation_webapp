@@ -1,6 +1,6 @@
 {
   "manifestVersion": 1,
-  "version": "1.10.0",
+  "version": "1.11.0",
   "source": "https://github.com/bosenbrouwer/bb_foundation_webapp.git",
   "rootRenderedOn": "2026-10-02",
   "modules": {
@@ -60,6 +60,8 @@
         { "to": "docs/ROADMAP.md", "class": "seed", "placeholders": true },
         { "to": "docs/SPEC.md", "class": "seed", "placeholders": true },
         { "to": "docs/veiligheid.md", "class": "seed" },
+        { "to": "docs/lessen-project.md", "class": "seed" },
+        { "to": "docs/terugmeldingen.md", "class": "seed" },
         { "to": "docs/THEME.md", "class": "owned" },
         { "to": "docs/WERKWIJZE.md", "class": "owned" },
         { "to": "docs/handleiding/", "class": "owned", "tree": true },
@@ -331,7 +333,8 @@
             "template:adopt": "node template/cli/bootstrap.mjs adopt",
             "template:update": "node template/cli/bootstrap.mjs update",
             "template:add": "node template/cli/bootstrap.mjs add",
-            "template:release": "node template/cli/bootstrap.mjs release"
+            "template:release": "node template/cli/bootstrap.mjs release",
+            "template:report-back": "node template/cli/bootstrap.mjs report-back"
           },
           "dependencies": {
             "@anthropic-ai/sdk": "0.131.0",

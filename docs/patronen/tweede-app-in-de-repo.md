@@ -51,7 +51,7 @@ code, die uit elkaar gaat lopen zodra één van de twee wordt bijgewerkt. Twee j
 uitrol van de eerste app bij elke wijziging in de tweede. In een project uit dit template zijn de
 bestanden waar het moet gebeuren van het template (`tsconfig.json`, `eslint.config.mjs`,
 `vitest.config.mts`, `app/globals.css`, `scripts/house-rules/files.mjs`, `.github/dependabot.yml`,
-`.github/workflows/ci.yml`): de map uitsluiten vraagt per bestand `pnpm template:adopt <pad>`, en
+`.github/workflows/ci.yml`): de map uitsluiten vraagt per bestand `pnpm template:adopt <pad> --reason "waarom"`, en
 een overgenomen bestand krijgt daarna geen updates meer.
 
 **Waar in het template.** Het template heeft dit niet in code: het is zelf één app, en dit is hoe een
