@@ -171,6 +171,8 @@ Dan deze acht stappen.
 - [ ] `docs/veiligheid.md` is nagelopen voordat er echte gebruikers of echte gegevens in de tool
       komen: de eigenaar en de datum staan erin, en elk punt is klaar, niet van toepassing, of open
       met een reden.
+- [ ] `docs/dreigingsmodel.md` is ingevuld: wat er te beschermen is, wie de aanvaller kan zijn, en
+      minstens drie scenario's in volgorde.
 
 ### Klaar voor echte gebruikers (handleiding 30)
 
@@ -197,7 +199,8 @@ ook in `docs/veiligheid.md`. Pas als ze alle zeven kloppen, gaan er echte gegeve
 - [ ] **Maandelijks**: de kosten per dienst tegen het plafond; de tabel Vervaldata nagelopen.
 - [ ] **Jaarlijks**: `public/.well-known/security.txt` en de lijst met accounts nagelopen.
 - [ ] **Bij elke ronde die een inlog, een upload, een model of een tweede bedrijf toevoegt**:
-      `docs/veiligheid.md` nagelopen, met de nieuwe datum erin.
+      `docs/veiligheid.md` nagelopen en `docs/dreigingsmodel.md` bijgewerkt, elk met de nieuwe datum
+      erin.
 - [ ] **Als `pnpm template:status` of `pnpm template:update` openstaande punten noemt**: lessen,
       besluiten en overgenomen bestanden teruggemeld met `pnpm template:report-back`
       (handleiding 12).

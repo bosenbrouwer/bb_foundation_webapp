@@ -151,10 +151,12 @@ jobs:
           tar -xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP" gitleaks
           "$RUNNER_TEMP/gitleaks" git . --config .gitleaks.toml --redact --no-banner --verbose
 
-  # Statische analyse met Semgrep CE: de standaardregels plus die voor TypeScript. Advies en geen
-  # poort tot een run hier beoordeeld en groen is: de echte bevindingen gerepareerd, een vals alarm
-  # per regel uit met // nosemgrep: <regel-id> en de reden op de regel erboven. Daarna gaat
-  # continue-on-error naar false. De e2e-tests vallen erbuiten: testcode met vaste waarden.
+  # Statische analyse met Semgrep CE: de standaardregels, die voor TypeScript en die voor de OWASP
+  # Top 10. Advies en geen poort tot een run hier beoordeeld en groen is: de echte bevindingen
+  # gerepareerd, een vals alarm per regel uit met // nosemgrep: <regel-id> en de reden op de regel
+  # erboven. Daarna gaat continue-on-error naar false. De set voor de OWASP Top 10 is er sinds
+  # v1.12.0 bij, vóór de poort: een set die na de poort komt, maakt een groene run achteraf rood.
+  # De e2e-tests vallen erbuiten: testcode met vaste waarden.
   semgrep:
     name: Statische analyse (advies)
     runs-on: ubuntu-latest
@@ -168,4 +170,4 @@ jobs:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Semgrep
-        run: semgrep scan --config p/default --config p/typescript --error --exclude node_modules --exclude .next --exclude playwright-report --exclude test-results --exclude e2e
+        run: semgrep scan --config p/default --config p/typescript --config p/owasp-top-ten --error --exclude node_modules --exclude .next --exclude playwright-report --exclude test-results --exclude e2e

@@ -313,3 +313,38 @@ daarna meteen weg. Een geheim dat er toch stond, roteer je (L-NEON-15).
 **Afgedwongen door.** `pnpm db:seed` en de scripts weigeren het productie-endpoint
 (`scripts/lib/seed-guard.ts`, `scripts/lib/production-guard.ts`). Wat er verder in `.env.local`
 staat, ziet geen controle: alleen afspraak, en een regel in `docs/handleiding/00-checklist.md`.
+
+## L-WERK-19 Eerst de bekende gaten beslissen, dan nieuwe zoeken
+
+**Symptoom.** (voorkomen) Een beveiligingsronde levert een rapport met nieuwe bevindingen op, terwijl
+de punten uit de vorige ronde en uit de eigen lijst nog open staan. Het rapport ligt er, de lijst is
+langer, en het voelt alsof er aan veiligheid is gewerkt.
+
+**Oorzaak.** Zoeken voelt als werk aan veiligheid, beslissen niet. Maar een ronde die nieuwe gaten
+vindt naast bekende die open staan, geeft schijnveiligheid: het risico is even groot, en wat er echt
+toe doet, zakt weg tussen de rest.
+
+**Regel.** Vóór een ronde heeft elk open punt een besluit: dichten met een datum, of aanvaarden met
+de reden en door wie. Een ronde begint met de vorige: wat open stond, wordt opnieuw getoetst, en wat
+besloten is, wordt niet opnieuw als nieuw gemeld.
+
+**Afgedwongen door.** Alleen afspraak: een regel in `docs/veiligheid.md` onder Sporen en toezicht, en
+de rubrieken Hertesten en Bekend en besloten in `docs/dreigingsmodel.md`.
+
+## L-WERK-20 Een norm heeft een editie: kijk welke geldt voordat je ernaar verwijst
+
+**Symptoom.** De opzet voor een beveiligingsronde in een eerder project verwees naar de lijst van
+OWASP voor webapplicaties in de editie van 2021, terwijl die van 2025 al gold: het vervalsen van
+verzoeken aan de serverkant was opgegaan in A01, en er waren twee categorieën bij. De lijst voor
+taalmodellen kreeg een nieuwe editie met een andere volgorde, zodat hetzelfde nummer een ander risico
+werd.
+
+**Oorzaak.** Een nummer als A03 of LLM05 zegt niets zonder het jaar. Wie een rapport van vorig jaar
+naast dat van dit jaar legt, vergelijkt dan twee verschillende risico's onder één nummer.
+
+**Regel.** Noem bij elke verwijzing de editie (`A01:2025`), en schrijf de naam van het risico erbij,
+niet alleen het nummer. Kijk aan het begin van een ronde bij de bron welke editie geldt, en noteer
+de datum waarop je keek.
+
+**Afgedwongen door.** Alleen afspraak: de invulregels en de kolom Kaders in `docs/dreigingsmodel.md`
+vragen om de editie en de naam.

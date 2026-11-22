@@ -350,7 +350,7 @@ De rubrieken 1 tot 8 van `pnpm check:ai` zijn in het template nog niet tegen een
 
 ## Lessen en patronen
 
-De lessen staan in `docs/lessen/ai.md` (L-AI-01 tot L-AI-11): per les het symptoom, de oorzaak, de
+De lessen staan in `docs/lessen/ai.md` (L-AI-01 tot L-AI-12): per les het symptoom, de oorzaak, de
 regel en wat hem afdwingt. Twee patronen voor wat de module niet in code heeft:
 `docs/patronen/ai-gesprek.md` (een gesprek met een wegwijzer, en wat bewaren kost) en
 `docs/patronen/ai-meten.md` (een testset met een waarheid, en opnieuw keuren zonder het model).

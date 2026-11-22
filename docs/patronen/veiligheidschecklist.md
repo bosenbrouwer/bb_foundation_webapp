@@ -72,3 +72,10 @@ in code, een mens beslist, en een maandplafond en een noodstop onder Beheer, AI)
 `.github/workflows/ci.yml`. De I-punten staan in `docs/handleiding/00-checklist.md` en
 `docs/handleiding/30-beveiliging-en-kosten.md`, voor zover het template ze kent. De overige patronen
 bij deze lijst: `accounts-van-buiten`, `intrekbare-sessie`, `omgeving-per-adres`.
+
+**Het dreigingsmodel ernaast.** De lijst zegt welke maatregelen er zijn; `docs/dreigingsmodel.md`
+(een seed sinds v1.12.0, besluit D32) zegt waartegen: wat er te beschermen is, wie de aanvaller kan
+zijn, waar iets van buiten naar binnen gaat, en de scenario's in volgorde. Een beveiligingsronde
+begint bij het model en bij de open punten van de lijst: eerst beslissen wat bekend is, dan nieuwe
+gaten zoeken (L-WERK-19). Het model kost tien minuten om in te vullen en een paar minuten per ronde
+om bij te houden; zonder eigenaar veroudert het net zo snel als de lijst.

@@ -74,7 +74,10 @@ getallen, en bij het opnieuw inlezen van een eigen export die apostrof weghalen.
 scheidingsteken raden uit de eerste regel.
 
 **Afgedwongen door.** `lib/domain/csv-safe.ts` (`csvDocument`, `csvField`, `stripNeutralisation`,
-`guessSeparator`) met zijn test; elke export van een project gaat daar doorheen.
+`guessSeparator`) met zijn test. Dat elke export daar doorheen gaat, dwingt de huisregel
+`csv-export` af: een antwoord, een opslag of een `Blob` als `text/csv` in een bestand dat
+`csvDocument`, `csvLine` of `csvField` niet aanroept, houdt de lint tegen. Een bestand dat alleen de
+bytes van een ander doorgeeft, krijgt het commentaar `csv:` met de reden.
 
 ## L-HTTP-05 Een bestand dat geen UTF-8 is, wordt stil kapot gelezen
 

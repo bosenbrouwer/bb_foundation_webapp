@@ -90,6 +90,8 @@ Zo vul je hem in:
 | Dezelfde poorten als de hoofdapp | B | open | `.github/workflows/ci.yml` |
 | De controles van de CI verplicht voor een merge naar `main` | I | open | Branch protection; op een privérepo vraagt dat GitHub Team (D12) |
 | Een aanvalsronde met de identiteiten van twee bedrijven tegen elkaar | B | open | Niet in het template |
+| Een dreigingsmodel: wat er te beschermen is, wie de aanvaller kan zijn en de scenario's, bijgewerkt na een grote wijziging | A | open | `docs/dreigingsmodel.md` |
+| Vóór een beveiligingsronde heeft elk open punt een besluit: dichten met een datum, of aanvaarden met de reden | A | open | Deze lijst, en Bekend en besloten in `docs/dreigingsmodel.md` (L-WERK-19) |
 
 ## Afspraken
 

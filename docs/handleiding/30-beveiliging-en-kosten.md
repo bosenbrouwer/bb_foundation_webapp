@@ -50,6 +50,9 @@ zodat je het in een kwartier kunt nalopen. Doe dat maandelijks (kosten en verval
       `.gitleaks.toml` (02).
 - [ ] `docs/veiligheid.md` heeft een eigenaar en een datum, en van elk punt dat nog open staat weet
       je waarom.
+- [ ] `docs/dreigingsmodel.md` is ingevuld en heeft een eigenaar en een datum. De lijst zegt welke
+      maatregelen er zijn, het model zegt waartegen. Vóór een beveiligingsronde heeft elk open punt
+      een besluit: dichten met een datum, of aanvaarden met de reden.
 - [ ] `seed` is de default branch van het Neon-project, en een preview toont geen gegevens van
       productie (04, 09).
 - [ ] Met de module ai: geen prompt stuurt tekst van klanten mee, en de privacyverklaring noemt elke

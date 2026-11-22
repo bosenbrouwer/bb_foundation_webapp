@@ -16,6 +16,7 @@ import { checkNoConfigImport } from "./no-config-import.mjs";
 import { templateOwnershipRule } from "./template-ownership.mjs";
 import { checkRawHtml } from "./raw-html.mjs";
 import { checkRawSql } from "./raw-sql.mjs";
+import { checkCsvExport } from "./csv-export.mjs";
 import { isListed, pathsIn, publicRoutesRule, routeOf } from "./public-routes.mjs";
 import { organisationScopeRule, organisationTables } from "./organisation-scope.mjs";
 
@@ -301,6 +302,32 @@ describe("raw-html", () => {
     expect(run(checkRawHtml, "lib/x.ts", "const html = node.innerHTML;\nif (node.innerHTML === \"\") stop();\n/* geen dangerouslySetInnerHTML */\n// node.innerHTML = x")).toEqual([]);
     expect(run(checkRawHtml, "lib/x.test.ts", "node.innerHTML = text;")).toEqual([]);
     expect(run(checkRawHtml, "docs/x.md", "dangerouslySetInnerHTML")).toEqual([]);
+  });
+});
+
+describe("csv-export", () => {
+  const answer = 'return new Response(body, { headers: { "Content-Type": "text/csv; charset=utf-8" } });';
+
+  it("vindt een antwoord, een opslag en een Blob als text/csv zonder csvDocument, met het regelnummer", () => {
+    expect(run(checkCsvExport, "app/api/export/route.ts", `const body = rows.map((row) => row.join(";")).join("\\n");\n${answer}`)[0]).toMatch(/^app\/api\/export\/route\.ts:2 een antwoord als text\/csv zonder csvDocument/);
+    expect(run(checkCsvExport, "app/api/export/route.ts", 'headers.set("content-type", "text/csv");')).toHaveLength(1);
+    expect(run(checkCsvExport, "lib/x.ts", 'await put(name, text, { contentType: "text/csv" });')).toHaveLength(1);
+    expect(run(checkCsvExport, "components/x.tsx", 'const blob = new Blob(\n  [lines.join(";")],\n  { type: "text/csv;charset=utf-8" },\n);')[0]).toMatch(/^components\/x\.tsx:3 een Blob als text\/csv/);
+  });
+
+  it("laat een export via csv-safe, het type van een upload, commentaar en tests met rust", () => {
+    expect(run(checkCsvExport, "app/api/export/route.ts", `import { csvDocument } from "@/lib/domain/csv-safe";\nconst body = csvDocument(rows);\n${answer}`)).toEqual([]);
+    expect(run(checkCsvExport, "lib/files/blob.ts", 'if (contentType === "text/csv") return verify(bytes);\nconst types = new Map([["text/csv", "csv"]]);\n// "Content-Type": "text/csv"')).toEqual([]);
+    expect(run(checkCsvExport, "lib/x.test.ts", 'headers.set("content-type", "text/csv");')).toEqual([]);
+    expect(run(checkCsvExport, "e2e/10-export.spec.ts", 'expect(headers).toHaveProperty("content-type", "text/csv");')).toEqual([]);
+    expect(run(checkCsvExport, "docs/x.md", '"Content-Type": "text/csv"')).toEqual([]);
+  });
+
+  it("laat een bewuste uitzondering alleen door met een reden, en alleen in commentaar", () => {
+    expect(run(checkCsvExport, "app/api/files/route.ts", `/* csv: de bytes van een opgeslagen upload, ongewijzigd */\n${answer}`)).toEqual([]);
+    expect(run(checkCsvExport, "app/api/files/route.ts", `// csv: de bytes van een opgeslagen upload\n${answer}`)).toEqual([]);
+    expect(run(checkCsvExport, "app/api/files/route.ts", `/* csv: */\n${answer}`)).toHaveLength(1);
+    expect(run(checkCsvExport, "app/api/files/route.ts", `const options = { csv: true };\n${answer}`)).toHaveLength(1);
   });
 });
 

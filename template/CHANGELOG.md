@@ -15,6 +15,72 @@ versie na het bijwerken.
 
 - Nog niets.
 
+## v1.12.0 (21 november 2026)
+
+### Wat verandert
+
+Beveiliging toetsen in drie delen (besluit D32 van 21 november 2026): de CI houdt de harde poorten,
+een ronde met een agent is periodiek werk met een mens erbij, en bijblijven met nieuwe dreigingen
+gebeurt met één wekelijkse update op het template. De aanleiding is een opzet uit een eerder
+project die daar nog geen ronde heeft gedraaid. Deze versie neemt daarom alleen over wat niet van
+die proef afhangt.
+
+- **Semgrep draait ook de set voor de OWASP Top 10** (`p/owasp-top-ten`, naast `p/default` en
+  `p/typescript`) in `.github/workflows/ci.yml`. De stap is nog advies; de set komt er vóór de poort
+  bij, want een set die na de poort komt, maakt een groene run achteraf rood.
+- **Nieuwe huisregel `csv-export`.** Een antwoord met `Content-Type` `text/csv`, een `contentType`
+  met die waarde of een `Blob` van dat type, in een bestand dat `csvDocument`, `csvLine` of
+  `csvField` uit `lib/domain/csv-safe.ts` niet aanroept, houdt de lint tegen. Dat elke export langs
+  `csv-safe` gaat, was tot nu toe een afspraak (L-HTTP-04). Het type van een upload vergelijken telt
+  niet; een bestand dat alleen bytes doorgeeft, krijgt het commentaar `csv:` met de reden.
+- **Nieuwe seed `docs/dreigingsmodel.md`.** Per project: wat er te beschermen is, wie de aanvaller
+  kan zijn (te beginnen bij wie de invoer van het model schrijft), de grenzen van vertrouwen, de
+  scenario's in volgorde met het kader erbij, wat een volgende ronde opnieuw toetst, en wat bekend
+  en besloten is. `docs/veiligheid.md` krijgt er twee punten bij onder Sporen en toezicht: het
+  dreigingsmodel, en dat elk open punt vóór een ronde een besluit heeft.
+- **Drie lessen.** L-AI-12: wat de tool onthoudt en opnieuw gebruikt, is een weg voor vergiftiging;
+  tussen onthouden en hergebruiken staan een mens en een toets. L-WERK-19: eerst de bekende gaten
+  beslissen, dan nieuwe zoeken. L-WERK-20: een norm heeft een editie; noem het jaar en de naam van
+  het risico, niet alleen het nummer. L-HTTP-04 noemt de nieuwe huisregel.
+- **Documentatie.** Een regel in handleiding 00 (bij de eerste deploy en bij de terugkerende
+  controles) en in handleiding 30, een alinea in het patroon `veiligheidschecklist`, en
+  `docs/dreigingsmodel.md` in de tabel met lessen van `CLAUDE.md`. De kop van
+  `scripts/lint-house-rules.mjs` noemt nu ook de regels die er eerder bij kwamen.
+- **Bewust niet in deze versie.** De agent voor een beveiligingsronde, het draaiboek en de
+  wekelijkse update wachten tot ze in dat eerdere project een ronde hebben gedraaid; de agent wacht
+  bovendien op het aanvalsscript waar hij op bouwt, en dat wacht op een database voor het template.
+  Een passieve scan van de draaiende app in de CI wacht op de lijst met uitzonderingen die zo'n scan
+  nodig heeft. De opzet verwees naar de OWASP Top 10 van 2021; het draaiboek komt op de editie van
+  2025, en op die van 2026 voor taalmodellen.
+- **Bewezen en niet bewezen.** Bewezen zonder database: `pnpm check:all --zonder-database` groen
+  (typecheck, lint met de huisregels, 704 tests, check:secrets, check:licenses, check:migrations,
+  check:drift, check:contrast, template:verify, build, `check:public` met 55 controles). De
+  huisregel `csv-export` heeft drie tests, en ging in de echte lint af op een proefbestand. De
+  gouden tests (voorbeeld, minimaal, default) en de updatetest zijn groen. Een project op v1.11.0
+  met alle modules is bijgewerkt naar v1.12.0: geen migratie, de nieuwe seed en de huisregel zijn
+  er, `docs/veiligheid.md` bleef onaangeraakt, de lint weigert daar een export buiten `csv-safe`
+  om, en typecheck, lint, de huisregels, 956 tests, verify, build en `check:public` (90 controles)
+  zijn groen; een volgende update verandert niets. Niet bewezen: Semgrep met de nieuwe set (die
+  draait alleen in de CI, en kan daar nieuwe bevindingen tonen), en het dreigingsmodel is nog door
+  niemand in een echt project ingevuld.
+
+### Let op bij bijwerken
+
+- **Een bestaande export naar CSV kan de lint rood maken.** Bouw het document met `csvDocument`
+  (of `csvLine` en `csvField`) in het bestand dat het antwoord teruggeeft, en laat een functie
+  elders alleen de rijen teruggeven. Geeft een bestand alleen de bytes van een ander door, zet dan
+  op de regel erboven `/* csv: <reden> */`.
+- **`docs/veiligheid.md` is een seed en wordt niet bijgewerkt.** Zet de twee nieuwe punten er zelf
+  bij, onder Sporen en toezicht:
+  `| Een dreigingsmodel: wat er te beschermen is, wie de aanvaller kan zijn en de scenario's, bijgewerkt na een grote wijziging | A | open | docs/dreigingsmodel.md |`
+  en
+  `| Vóór een beveiligingsronde heeft elk open punt een besluit: dichten met een datum, of aanvaarden met de reden | A | open | Deze lijst, en Bekend en besloten in docs/dreigingsmodel.md |`.
+- **`docs/dreigingsmodel.md` komt er bij het bijwerken bij, leeg.** Vul het in voordat de tool echte
+  gebruikers of echte gegevens krijgt, of bij de eerstvolgende ronde als dat al zo is.
+- **De stap Statische analyse kan nieuwe bevindingen tonen.** Hij is nog advies en houdt niets
+  tegen. Lees ze na voordat de stap een poort wordt: een echte bevinding repareer je, een vals
+  alarm zet je per regel uit met `// nosemgrep: <regel-id>` en de reden erboven.
+
 ## v1.11.0 (21 november 2026)
 
 ### Wat verandert

@@ -1,6 +1,6 @@
 {
   "manifestVersion": 1,
-  "version": "1.11.0",
+  "version": "1.12.0",
   "source": "https://github.com/bosenbrouwer/bb_foundation_webapp.git",
   "rootRenderedOn": "2026-10-02",
   "modules": {
@@ -60,6 +60,7 @@
         { "to": "docs/ROADMAP.md", "class": "seed", "placeholders": true },
         { "to": "docs/SPEC.md", "class": "seed", "placeholders": true },
         { "to": "docs/veiligheid.md", "class": "seed" },
+        { "to": "docs/dreigingsmodel.md", "class": "seed" },
         { "to": "docs/lessen-project.md", "class": "seed" },
         { "to": "docs/terugmeldingen.md", "class": "seed" },
         { "to": "docs/THEME.md", "class": "owned" },
@@ -241,6 +242,7 @@
         { "to": "scripts/house-rules/ai-output.mjs", "class": "owned" },
         { "to": "scripts/house-rules/client-graph.mjs", "class": "owned" },
         { "to": "scripts/house-rules/client-imports.mjs", "class": "owned" },
+        { "to": "scripts/house-rules/csv-export.mjs", "class": "owned" },
         { "to": "scripts/house-rules/env-template.mjs", "class": "owned" },
         { "to": "scripts/house-rules/files.mjs", "class": "owned" },
         { "to": "scripts/house-rules/labels-size.mjs", "class": "owned" },

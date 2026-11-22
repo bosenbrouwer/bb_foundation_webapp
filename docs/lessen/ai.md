@@ -205,3 +205,26 @@ model ging.
 (besluit A4 in `docs/modules/ai.md`) en kent geen gesprek. In een project dat het bouwt: een eigen
 check die de leeslaag, de opruimtaak, de export en het anonimiseren bewijst, en de privacytekst.
 Patroon `ai-gesprek`.
+
+## L-AI-12 Wat de tool onthoudt en opnieuw gebruikt, is een weg voor vergiftiging
+
+**Symptoom.** (voorkomen) Een tool die leert van correcties of van eerdere documenten, gebruikt wat
+hij onthield bij elk volgend document. Eén kwaadwillig document, of één verkeerde correctie, werkt
+dan door in alles wat daarna komt, en niemand ziet waar het vandaan kwam.
+
+**Oorzaak.** Wat de tool onthoudt, is tekst van buiten (L-AI-04) die later als achtergrond naar het
+model gaat. Een leerlus is daarmee dezelfde zwakte als vergiftigde trainingsgegevens of een
+vergiftigd geheugen: in de lijsten van OWASP voor taalmodellen en voor agents heten ze Data and
+Model Poisoning en Memory & Context Poisoning. De nummers verschillen per editie (L-WERK-20).
+
+**Regel.** Tussen onthouden en opnieuw gebruiken staan een mens en een toets. Iemand keurt wat de
+tool mag onthouden, en de code toetst het zoals elk ander antwoord (L-AI-01). Leg vast hoe ver iets
+reikt dat onthouden is: één persoon, één onderdeel, één klant of alle klanten. Hoe verder het reikt,
+hoe zwaarder de keuring. En maak het terug te draaien: wat onthouden is, staat als rij met wie het
+keurde en wanneer, en kan weer weg.
+
+**Afgedwongen door.** In het template valt er niets af te dwingen: de module bewaart geen inhoud
+(besluit A4 in `docs/modules/ai.md`) en onthoudt dus niets tussen twee verzoeken. In een project dat
+een leerlus bouwt: de vraag staat in `docs/dreigingsmodel.md` onder Grenzen van vertrouwen, de keuring
+is een recht in de matrix met een regel in het logboek, en een eigen check bewijst dat iets zonder
+keuring niet meetelt.

@@ -23,6 +23,11 @@
  *   template-ownership    de kop van een bestand klopt met template.lock.json
  *   ai-output             wat de module ai toont, is platte tekst: geen HTML, markdown of linkmaker
  *   ai-imports            de module ai alleen vanuit mappen die het project noemt, nooit voor gasten
+ *   raw-html              tekst is nooit HTML
+ *   raw-sql               geen SQL uit tekst
+ *   csv-export            een CSV gaat via csv-safe, anders voert Excel een cel uit als formule
+ *   public-routes         wat zonder sessie bereikbaar is, staat op één lijst
+ *   organisation-scope    een query filtert op de organisatie (nog advies)
  *
  * Eigen regels van het project staan in scripts/house-rules/project-rules.mjs, dat bij een update
  * van het template blijft staan. Een regel is een functie (rel, text, report) of (root, report).
@@ -48,6 +53,7 @@ import { checkAiOutput } from "./house-rules/ai-output.mjs";
 import { checkAiImports } from "./house-rules/ai-imports.mjs";
 import { checkRawHtml } from "./house-rules/raw-html.mjs";
 import { checkRawSql } from "./house-rules/raw-sql.mjs";
+import { checkCsvExport } from "./house-rules/csv-export.mjs";
 import { checkPublicRoutes } from "./house-rules/public-routes.mjs";
 import { checkOrganisationScope } from "./house-rules/organisation-scope.mjs";
 import { PROJECT_PER_FILE_RULES, PROJECT_WHOLE_REPO_RULES } from "./house-rules/project-rules.mjs";
@@ -69,6 +75,7 @@ const PER_FILE_RULES = [
   checkAiImports,
   checkRawHtml,
   checkRawSql,
+  checkCsvExport,
   ...PROJECT_PER_FILE_RULES,
 ];
 
