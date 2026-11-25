@@ -348,3 +348,24 @@ de datum waarop je keek.
 
 **Afgedwongen door.** Alleen afspraak: de invulregels en de kolom Kaders in `docs/dreigingsmodel.md`
 vragen om de editie en de naam.
+
+## L-WERK-21 Een test van het template leest alleen wat een update bijwerkt
+
+**Symptoom.** Een project dat in oktober uit het template kwam, werd bijgewerkt naar de nieuwste
+versie. Typecheck, lint en build werden groen, maar twee tests van de generatoren bleven rood, en dat
+waren bestanden van het template die het project niet mag aanpassen.
+
+**Oorzaak.** De tests lazen de voorbeeldconfiguraties in `examples/`. Die map staat niet in het
+manifest: een project heeft hem alleen omdat "Use this template" de hele repo kopieert, en een update
+werkt hem nooit bij. In het template kreeg het voorbeeld er een module bij, in het project niet. De
+updatetest zag het niet, want die werkt een project van de huidige versie bij naar een kleine
+wijziging daarvan, nooit van een versie van weken terug.
+
+**Regel.** Een test van het template die in een project meedraait, leest alleen bestanden die een
+update ook bijwerkt. Gaat een bewering over iets dat alleen in de repo van het template klopt, dan
+draait ze alleen daar, achter dezelfde poort als de zelftest (de standaardconfiguratie). Proef een
+grote sprong vóór een training één keer van de oudste versie die deelnemers hebben.
+
+**Afgedwongen door.** De poort `onTemplateRoot` in `template/generators/generators.test.ts` en
+`template/lib/config.test.ts`, en `onDefaultConfig` in `template/self.test.ts`. Voor een nieuwe test
+alleen afspraak.

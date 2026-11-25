@@ -15,6 +15,38 @@ versie na het bijwerken.
 
 - Nog niets.
 
+## v1.12.1 (24 november 2026)
+
+### Wat verandert
+
+- **De tests over de voorbeeldconfiguraties draaien alleen nog in de repo van het template.**
+  `template/generators/generators.test.ts` en `template/lib/config.test.ts` lazen `examples/` uit het
+  project. Die map staat niet in het manifest en een update werkt hem niet bij, dus in een project
+  dat vóór 16 oktober uit het template kwam, bleven na het bijwerken twee tests van de generatoren
+  rood, zonder dat het project iets fout deed. Ze slaan nu over buiten de standaardconfiguratie, net
+  als de beweringen in `template/self.test.ts` die alleen over de wortel van het template gaan;
+  `config.test.ts` leest het standaardvoorbeeld voortaan uit `template/default.project.config.json`,
+  dat een update wel bijwerkt. Ook de bewering in `self.test.ts` dat die twee gelijk zijn, staat nu
+  achter die poort.
+- Les L-WERK-21: een test van het template leest alleen wat een update bijwerkt.
+- **Bewezen zonder database:** een project van 14 oktober (versie 0.1.0), met de wachtwoordlogin en
+  alle modules en met de Microsoft-login, elk met een eigen tabel en een eigen server action, is met
+  zijn eigen oude tooling bijgewerkt naar 1.12.0. Daarna waren typecheck, lint, build en
+  `pnpm check:public` groen zodra de eigen code was aangepast (het logboek met `auditLength`, de eigen
+  tabel met `appRowAccess()` en een migratie met terugweg), op deze twee tests na.
+- **Niet bewezen:** de migraties `template_core_2` en `template_core_2_custom` op een echte
+  Neon-database. De deploy draait `pnpm db:deploy` vóór de build, dus bij een project dat ze nog
+  niet heeft, lopen ze bij de eerste uitrol na het bijwerken.
+
+### Let op bij bijwerken
+
+- **Een project dat lang niet is bijgewerkt:** de slottekst van `pnpm template:update` noemt onder
+  "Wat je nu doet" `pnpm db:status` en `pnpm db:roundtrip`; die hebben een dev-branch nodig. Heb je
+  die nog niet, bewaar die stappen dan tot je er een hebt, en zet de update niet op `main` voordat de
+  migraties op een branch van de database zijn gedraaid (handleiding 09).
+- `examples/` in een project is een kopie van de dag waarop het ontstond. Weggooien mag; geen test
+  leunt er nog op.
+
 ## v1.12.0 (21 november 2026)
 
 ### Wat verandert

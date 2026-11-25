@@ -219,7 +219,7 @@ describe("de configuratie en het schema", () => {
     expect(read("project.config.json")).toEqual(read("examples/default.project.config.json"));
   });
 
-  it("de standaardconfiguratie van de tooling is hetzelfde standaardvoorbeeld", () => {
+  it.skipIf(!onDefaultConfig)("de standaardconfiguratie van de tooling is hetzelfde standaardvoorbeeld", () => {
     expect(read(DEFAULT_CONFIG_FILE)).toEqual(read("examples/default.project.config.json"));
   });
 

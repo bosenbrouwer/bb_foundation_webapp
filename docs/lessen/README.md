@@ -27,7 +27,7 @@ heeft daar nooit schade gedaan; hij staat hier zodat dat zo blijft.
 | [toolchain-windows](toolchain-windows.md) | De toolchain en Windows: pnpm, env-files, PowerShell, pins, strict, de geheimenscan, Tailwind met een tweede app | L-WIN-01 tot L-WIN-09 |
 | [http-bestanden](http-bestanden.md) | Uploads, downloads, contenttype, CSV, UTF-8 | L-HTTP-01 tot L-HTTP-05 |
 | [ai](ai.md) | AI in de tool: het antwoord als invoer, de witte lijst en de smokkeltest, tekst van buiten, het nagemaakte model, kosten, meten, een gesprek bewaren, wat de tool onthoudt | L-AI-01 tot L-AI-12 |
-| [werkwijze](werkwijze.md) | Werkwijze: versie, batterij, huisregels, koppelingen, fail closed, checks die iets bewijzen, de supply chain, stappen met eigen opvang, foutmeldingen met oorzaak, bewakers, de checklist, de laptop, eerst de bekende gaten, de editie van een norm | L-WERK-01 tot L-WERK-20 |
+| [werkwijze](werkwijze.md) | Werkwijze: versie, batterij, huisregels, koppelingen, fail closed, checks die iets bewijzen, de supply chain, stappen met eigen opvang, foutmeldingen met oorzaak, bewakers, de checklist, de laptop, eerst de bekende gaten, de editie van een norm, tests die lezen wat een update bijwerkt | L-WERK-01 tot L-WERK-21 |
 
 ## Een les toevoegen
 

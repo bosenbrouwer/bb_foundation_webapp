@@ -2,7 +2,8 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { normaliseConfig } from "../lib/config";
+import { configsEqual, readDefaultConfig } from "../lib/apply";
+import { normaliseConfig, readConfig } from "../lib/config";
 import type { ProjectConfig } from "../lib/config-schema";
 import { readHeader } from "../lib/header";
 import { appliedModules, loadManifest } from "../lib/manifest";
@@ -13,6 +14,16 @@ import { generateTheme } from "./theme";
 const root = process.cwd();
 const manifest = loadManifest(root);
 
+/**
+ * De voorbeelden in `examples/` horen bij de repo van het template en staan niet in het manifest: een
+ * project heeft ze alleen als kopie van de dag waarop het ontstond, en een update werkt ze niet bij.
+ * Een bewering over een voorbeeld draait daarom alleen in de repo van het template, op de
+ * standaardconfiguratie, net als in self.test.ts. In een project zou ze na een update rood worden
+ * zonder dat het project iets fout doet. Wat in een project moet kloppen, bewijst pnpm template:verify.
+ */
+const own = readConfig(root, manifest).config;
+const onTemplateRoot = own !== undefined && configsEqual(own, readDefaultConfig(root, manifest));
+
 function example(name: string): ProjectConfig {
   const raw: unknown = JSON.parse(readFileSync(join(root, "examples", `${name}.project.config.json`), "utf8"));
   const report = normaliseConfig(raw, manifest);
@@ -20,7 +31,7 @@ function example(name: string): ProjectConfig {
   return report.config;
 }
 
-describe("het thema uit de drie voorbeeldconfiguraties", () => {
+describe.skipIf(!onTemplateRoot)("het thema uit de drie voorbeeldconfiguraties", () => {
   it.each(["default", "voorbeeld", "minimaal"])("%s haalt elk contrastpaar in elke modus", (name) => {
     const theme = generateTheme(example(name));
     expect(failingPairs(theme.light)).toEqual([]);
@@ -50,10 +61,10 @@ describe("het thema uit de drie voorbeeldconfiguraties", () => {
   });
 });
 
-describe("de overige generatoren", () => {
-  const config = example("voorbeeld");
-  const files = generateAll(config, manifest);
-  const content = (path: string): string => files.find((file) => file.path === path)?.content ?? "";
+describe.skipIf(!onTemplateRoot)("de overige generatoren", () => {
+  let generated: ReturnType<typeof generateAll> | undefined;
+  const files = (): ReturnType<typeof generateAll> => (generated ??= generateAll(example("voorbeeld"), manifest));
+  const content = (path: string): string => files().find((file) => file.path === path)?.content ?? "";
 
   it("schrijven PROJECT met de velden van de configuratie en niets uit hosting of intake", () => {
     const project = content("lib/project/config.generated.ts");
@@ -109,10 +120,10 @@ describe("de overige generatoren", () => {
   });
 
   it("geven elk bestand de kop van zijn generator", () => {
-    for (const file of files) expect(readHeader(file.content), file.path).toEqual({ kind: "generated", generator: file.generator });
+    for (const file of files()) expect(readHeader(file.content), file.path).toEqual({ kind: "generated", generator: file.generator });
   });
 
   it("kennen de volgorde van toepassen", () => {
-    expect(appliedModules(manifest, config.modules)).toEqual(["core", "jobs", "messaging", "auth-password", "files", "ai"]);
+    expect(appliedModules(manifest, example("voorbeeld").modules)).toEqual(["core", "jobs", "messaging", "auth-password", "files", "ai"]);
   });
 });
