@@ -77,7 +77,7 @@
     "drizzle-kit": "0.31.10",
     "eslint": "9.39.5",
     "eslint-config-next": "16.4.6",
-    "secretlint": "13.0.7",
+    "secretlint": "14.0.1",
     "tailwindcss": "4.3.3",
     "tsx": "^4.23.7",
     "typescript": "6.0.3",
