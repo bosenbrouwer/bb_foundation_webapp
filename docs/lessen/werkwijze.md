@@ -369,3 +369,22 @@ grote sprong vóór een training één keer van de oudste versie die deelnemers 
 **Afgedwongen door.** De poort `onTemplateRoot` in `template/generators/generators.test.ts` en
 `template/lib/config.test.ts`, en `onDefaultConfig` in `template/self.test.ts`. Voor een nieuwe test
 alleen afspraak.
+
+## L-WERK-22 Een controle op advies die rood is, ziet niemand
+
+**Symptoom.** De statische analyse stond drie versies lang rood, van v1.12.0 tot v1.14.0, met zeven
+bevindingen. Het viel pas op in de pull request naar `main`, waar de check als rood in de lijst
+stond. In de lijst van runs was elke run groen.
+
+**Oorzaak.** De job stond op `continue-on-error`, als advies tot iemand de eerste uitkomst had
+nagekeken. Een job die zo faalt, laat de run groen, en wie na een push naar de run kijkt, ziet
+groen. In v1.12.0 kwam er een set regels bij (de OWASP Top 10), en die bracht de bevindingen mee.
+Niemand las ze, want niets dwong dat.
+
+**Regel.** Een controle is een poort of hij is er niet. Moet een nieuwe scanner of een nieuwe set
+regels eerst op advies, kijk dan de eerste run in dezelfde ronde na en zet hem daarna op poort. Lukt
+dat niet in die ronde, zet dan een datum in de ROADMAP. Na een push kijk je per job naar de uitkomst,
+niet alleen naar die van de run.
+
+**Afgedwongen door.** De job Statische analyse in `.github/workflows/ci.yml` is sinds v1.14.1 een
+poort (besluit D35). Voor een nieuwe controle alleen afspraak.

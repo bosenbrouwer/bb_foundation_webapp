@@ -65,6 +65,8 @@ const PNPM = pnpmLauncher();
 function run(command, commandArgs) {
   const started = Date.now();
   const [executable, ...prefix] = command === "pnpm" ? PNPM : [command];
+  /* Geen injectie: elke aanroep in dit bestand geeft een vaste naam (git of pnpm), met een lijst argumenten en zonder shell. */
+  // nosemgrep: javascript.lang.security.detect-child-process.detect-child-process
   const result = spawnSync(executable, [...prefix, ...commandArgs], { cwd: root, stdio: "inherit", shell: false });
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
   if (result.error !== undefined || result.status !== 0) {

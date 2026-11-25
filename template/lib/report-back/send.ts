@@ -23,6 +23,8 @@ export type Runner = (command: string, args: readonly string[]) => RunResult;
 /** Altijd een argumentenlijst en geen shell, zoals de andere opdrachten van de tooling. */
 export function spawnRunner(cwd: string): Runner {
   return (command, args) => {
+    /* Geen injectie: de aanroepers geven een vaste naam (gh), met een lijst argumenten en zonder shell. */
+    // nosemgrep: javascript.lang.security.detect-child-process.detect-child-process
     const result = spawnSync(command, [...args], { cwd, encoding: "utf8", shell: false });
     return { status: result.status, stdout: result.stdout ?? "", stderr: result.stderr ?? "", failed: result.error !== undefined };
   };

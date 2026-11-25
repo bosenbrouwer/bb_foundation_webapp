@@ -68,6 +68,8 @@ function statementAround(code, index) {
 /** Per bestand: elke query op een tabel van een organisatie zonder het filter. */
 export function organisationScopeRule(tables) {
   const names = [...tables].sort((a, b) => b.length - a.length);
+  /* Geen ReDoS: de namen komen uit `(\w+)` in organisationTables, alleen letters, cijfers en een liggend streepje. */
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
   const pattern = names.length === 0 ? null : new RegExp(`\\.(from|update|delete)\\(\\s*(${names.join("|")})\\s*\\)`, "g");
 
   return function checkOrganisationScope(rel, text, report) {
@@ -78,11 +80,15 @@ export function organisationScopeRule(tables) {
       const index = match.index ?? 0;
       const table = match[2];
       const statement = statementAround(code, index);
+      /* Geen ReDoS: table is een van de namen uit het patroon hierboven. */
+      // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
       const filters = new RegExp(`\\b${table}\\.organisationId\\b`);
       if (filters.test(statement.text)) continue;
       /* Het filter kan in een variabele staan: `const scope = and(eq(tabel.organisationId, ...))` en dan `.where(scope)`. */
       const named = [...statement.text.matchAll(/\.where\(\s*(\w+)\s*\)/g)].map((where) => where[1]);
       const earlier = code.slice(0, statement.start);
+      /* Geen ReDoS: name komt uit `(\w+)` in de where hierboven. */
+      // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
       if (named.some((name) => [...earlier.matchAll(new RegExp(`\\bconst ${name} = `, "g"))].some((definition) => filters.test(statementAround(code, definition.index ?? 0).text)))) continue;
       /* De uitzondering: in de opdracht zelf, of op de twee regels erboven. */
       const before = text.slice(0, statement.start).split("\n").slice(-3).join("\n");

@@ -30,7 +30,7 @@ describe("de melding als bestand", () => {
   });
 
   it("zet in het issue het akkoord en de punten, maar niet de aanwijzingen voor wie naleest", () => {
-    const draft = parseDraft(renderDraft(ITEMS, "1.10.0").replace("\n", "\r\n"));
+    const draft = parseDraft(renderDraft(ITEMS, "1.10.0").replaceAll("\n", "\r\n"));
     expect(draft?.body).toContain(CONSENT_TEXT);
     expect(draft?.body).toContain("## Besluit P-D41: Uren per kwartier");
     expect(draft?.body).not.toContain("<!--");

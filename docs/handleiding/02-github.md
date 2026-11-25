@@ -92,11 +92,15 @@ van de organisatie bevat; geheimen staan er nooit in, maar namen en plannen wel.
   de reden in `.gitleaks.toml`; de testwaarden van het template zelf staan er al in. Een echte
   vondst trek je in bij de dienst waar het geheim vandaan komt en haal je uit de historie; doe dat
   met Claude.
-- Eén controle is advies: een melding maakt de run niet rood. **Semgrep** (statische analyse) is
-  advies tot een latere versie van het template er een poort van maakt. Een vals alarm zet je per
-  regel uit met `// nosemgrep: <regel-id>` op de regel erboven, met de reden als commentaar
-  daarboven. `.github/workflows/ci.yml` is van het template: in een project wijzig je hem via
-  `pnpm template:adopt`, of met de versie van het template die het omzet.
+- **Semgrep** (de job Statische analyse) zoekt in de code naar patronen die vaak een lek zijn. Een
+  bevinding maakt de run rood, en de stap noemt per bevinding de regel, het bestand en de regel code.
+  Geef de melding aan Claude. Een echte bevinding repareer je. Een vals alarm zet je per regel uit
+  met `// nosemgrep: <regel-id>` op de regel erboven, met de reden als commentaar daarboven. Staat
+  de bevinding in een bestand van het template (kop `template-owned`), pas het dan niet aan maar
+  meld het terug (handleiding 12). De regels haalt de CI bij elke run op bij Semgrep, dus een nieuwe
+  regel kan een run rood maken zonder dat jij iets veranderde; je behandelt hem als elke andere
+  bevinding. `.github/workflows/ci.yml` is van het template: in een project wijzig je hem alleen
+  via `pnpm template:adopt`.
 - De actions in de CI staan op een vaste commit; Dependabot houdt die bij.
 
 ## Kosten

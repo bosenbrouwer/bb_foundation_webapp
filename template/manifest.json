@@ -1,6 +1,6 @@
 {
   "manifestVersion": 1,
-  "version": "1.14.0",
+  "version": "1.14.1",
   "source": "https://github.com/bosenbrouwer/bb_foundation_webapp.git",
   "rootRenderedOn": "2026-10-02",
   "modules": {

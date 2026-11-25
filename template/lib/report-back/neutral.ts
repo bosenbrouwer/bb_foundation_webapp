@@ -110,6 +110,8 @@ function lineAt(text: string, index: number): number {
 export function neutralityProblems(text: string, names: readonly string[]): NeutralityProblem[] {
   const problems: NeutralityProblem[] = [];
   for (const name of names) {
+    /* Geen ReDoS: de naam is ontsnapt, dus een letterlijke tekst zonder herhaling tussen twee lookarounds. */
+    // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
     const pattern = new RegExp(`(?<![\\p{L}\\p{N}])${escapeRegExp(name)}(?![\\p{L}\\p{N}])`, "giu");
     for (const match of text.matchAll(pattern)) {
       problems.push({ line: lineAt(text, match.index), what: `"${name}" (een naam van het project of van de lijst in docs/terugmeldingen.md)` });

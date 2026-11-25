@@ -152,20 +152,21 @@ jobs:
           "$RUNNER_TEMP/gitleaks" git . --config .gitleaks.toml --redact --no-banner --verbose
 
   # Statische analyse met Semgrep CE: de standaardregels, die voor TypeScript en die voor de OWASP
-  # Top 10. Advies en geen poort tot een run hier beoordeeld en groen is: de echte bevindingen
-  # gerepareerd, een vals alarm per regel uit met // nosemgrep: <regel-id> en de reden op de regel
-  # erboven. Daarna gaat continue-on-error naar false. De set voor de OWASP Top 10 is er sinds
-  # v1.12.0 bij, vóór de poort: een set die na de poort komt, maakt een groene run achteraf rood.
+  # Top 10. Een poort sinds v1.14.1 (besluit D35): een bevinding maakt de run rood. Een echte
+  # bevinding repareer je; een vals alarm zet je per regel uit met // nosemgrep: <regel-id> op de
+  # regel erboven, met de reden als commentaar daarboven. Een nieuwe set regels komt erbij in een
+  # ronde die zijn bevindingen meteen nakijkt (L-WERK-22).
   # De e2e-tests vallen erbuiten: testcode met vaste waarden.
   semgrep:
-    name: Statische analyse (advies)
+    name: Statische analyse
     runs-on: ubuntu-latest
     # De scanner zelf staat vast op de versie die hier groen draaide (18 november 2026), net als de
     # actions op een SHA: een versie die zweeft, kan zonder wijziging in deze repo iets anders doen.
-    # Vernieuw de digest bij een ronde, en lees dan de bevindingen na.
+    # Vernieuw de digest bij een ronde, en lees dan de bevindingen na. De sets regels staan niet
+    # vast: de scanner haalt ze bij elke run op uit het register, en een nieuwe regel kan een run
+    # zonder wijziging rood maken.
     container:
       image: semgrep/semgrep@sha256:67518c174185a2043fdbed16c70631b79209499b3671178e7194379b48295a0d
-    continue-on-error: true
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 

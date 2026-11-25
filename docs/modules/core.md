@@ -8,7 +8,7 @@ Altijd aanwezig. Wat elk project krijgt voordat het één regel eigen code heeft
 - **Toolchain** met vastgepinde versies (Next.js, TypeScript, ESLint, Drizzle, Tailwind), de
   huisregels (`scripts/house-rules/`), de contrastcheck, de migratiechecks, de licentiecheck
   (`pnpm check:licenses`: geen GPL of AGPL in wat naar productie gaat), de CI (ook op een push naar
-  `release/next`, met Gitleaks over de historie als poort en Semgrep als advies), en de security headers met
+  `release/next`, met Gitleaks over de historie en Semgrep als poort), en de security headers met
   een CSP die per verzoek een nonce draagt (`proxy.ts`, `lib/security/csp.ts`). De proxy slaat alleen
   `/api/`, de bestanden van Next en een pad op een bestandsextensie over: een pagina met een punt in
   het adres krijgt de nonce, en de HTML-pagina's van Auth.js onder `/api/auth` krijgen de vaste

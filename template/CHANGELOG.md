@@ -15,6 +15,44 @@ versie na het bijwerken.
 
 - Nog niets.
 
+## v1.14.1 (25 november 2026)
+
+### Wat verandert
+
+- **Semgrep is een poort (besluit D35).** De job heet nu "Statische analyse", zonder "(advies)", en
+  een bevinding maakt de run rood. Hij stond op advies en was rood sinds v1.12.0, toen de regels
+  voor de OWASP Top 10 erbij kwamen. Dat zag niemand, want een rode job op advies laat de run groen
+  (les L-WERK-22). D35 vervangt "Semgrep blijft advies" uit D19.
+- **De bevindingen nagekeken.** Vijf waren vals alarm: een `RegExp` die wordt gebouwd uit een naam
+  die alleen letters, cijfers en een liggend streepje kan bevatten (de huisregels
+  `organisation-scope` en `public-routes`), of uit een naam die al is ontsnapt
+  (`template/lib/report-back/neutral.ts`). Die staan uit met `// nosemgrep` en de reden erboven.
+  Eén was echt: de test van `parseDraft` met Windows-regeleinden zette alleen de eerste regel om.
+  Hij zet nu elke regel om. De code zelf deed het al goed.
+- **Twee bevindingen van een nieuwere Semgrep alvast uitgezet.** Semgrep 1.187.0 meldt
+  `detect-child-process` bij `spawnSync` in `template/ci/golden.mjs` en
+  `template/lib/report-back/send.ts`. De vastgezette scanner van de CI meldt ze nog niet. Het is
+  vals alarm: een vaste naam, een lijst argumenten en geen shell. Ze staan nu al uit, zodat een
+  nieuwe digest de poort niet rood maakt.
+- **De regels zelf staan niet vast.** De CI zet de scanner vast op een digest, maar haalt de sets
+  `p/default`, `p/typescript` en `p/owasp-top-ten` bij elke run op uit het register van Semgrep.
+  Een nieuwe regel daar kan een run rood maken zonder dat er in de repo iets veranderde. Dat is de
+  prijs van de poort; zie "Let op bij bijwerken".
+- **Handleiding 02** zegt wat je doet met een bevinding, ook als die in een bestand van het
+  template staat.
+
+### Let op bij bijwerken
+
+- **Een bevinding in je eigen code maakt de CI nu rood.** Geef de melding uit de stap Semgrep aan
+  Claude. Een echte bevinding repareer je; een vals alarm zet je uit met `// nosemgrep: <regel-id>`
+  op de regel erboven en de reden daarboven (handleiding 02). Staat hij in een bestand van het
+  template, pas dan niets aan en meld het terug.
+- **Staat "Statische analyse (advies)" in je repo als verplichte check** (branch protection of een
+  ruleset), vervang hem dan door "Statische analyse". Anders wacht een pull request op een check
+  die niet meer komt.
+- **Wordt de Statische analyse rood zonder dat je iets veranderde,** dan kwam er een regel bij in
+  het register van Semgrep. Behandel hem als elke andere bevinding.
+
 ## v1.14.0 (25 november 2026)
 
 ### Wat verandert

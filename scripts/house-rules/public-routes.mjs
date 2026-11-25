@@ -26,6 +26,8 @@ const GUARD = /\b(?:requireSession|requireActor|currentActor|requireCron)\s*\(/;
 
 /** De teksten tussen aanhalingstekens in de lijst met deze naam. */
 export function pathsIn(text, name) {
+  /* Geen ReDoS: name is een vaste constante van de aanroeper, TEMPLATE_PUBLIC_PATHS of PROJECT_PUBLIC_PATHS. */
+  // nosemgrep: javascript.lang.security.audit.detect-non-literal-regexp.detect-non-literal-regexp
   const block = new RegExp(`${name}[^=]*=\\s*\\[([^\\]]*)\\]`).exec(text);
   return block === null ? [] : [...block[1].matchAll(/"([^"]+)"/g)].map((match) => match[1]);
 }
