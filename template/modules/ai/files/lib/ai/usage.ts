@@ -50,6 +50,22 @@ export function monthStart(today: string = todayIso()): string {
   return `${today.slice(0, 8)}01`;
 }
 
+/**
+ * Wat de organisatie deze maand uitgaf in één valuta, in centtokens (zie lib/ai/cost.ts). Een verzoek
+ * zonder prijs of met een prijs in een andere valuta telt niet mee; daarom weigert het plafond zo een
+ * verzoek vooraf (lib/ai/budget.ts). Zonder recht: elke aanroep met een plafond leest dit, en het is
+ * één getal zonder inhoud.
+ */
+export async function monthSpend(db: DbOrTransaction, organisationId: string, currency: string, from: string = monthStart()): Promise<number> {
+  const [row] = await db
+    .select({
+      centTokens: sql<string>`coalesce(sum(${aiRequests.inputTokens}::bigint * ${aiRequests.inputCentsPerMtok} + ${aiRequests.outputTokens}::bigint * ${aiRequests.outputCentsPerMtok}), 0)`,
+    })
+    .from(aiRequests)
+    .where(and(eq(aiRequests.organisationId, organisationId), gte(aiRequests.day, from), eq(aiRequests.currency, currency)));
+  return Number(row?.centTokens ?? 0);
+}
+
 export interface MonthTotals {
   readonly requests: number;
   readonly failed: number;

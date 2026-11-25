@@ -1,7 +1,7 @@
 /* template-owned (module auth-entra). Wordt overschreven door pnpm template:update; wijzig dit bestand niet. */
 /**
  * `pnpm entra:status`: klopt de inrichting van de Microsoft-login, voor zover dat zonder extra
- * rechten te zien is. De drie variabelen, de tenant in de issuer (geen `common`), het openbare
+ * rechten te zien is. De drie variabelen, de tenant in de issuer (geen `common`, `organizations` of `consumers`), het openbare
  * OpenID-document van die tenant, en de rollen die de tool verwacht zodat je ze naast de app roles
  * in de portal kunt leggen. De app roles zelf uitlezen vraagt een Graph-recht dat de inlog niet
  * nodig heeft, en dat recht vragen we niet voor een controle.
@@ -28,9 +28,9 @@ runScript(async () => {
   line(issuer !== "", "AUTH_MICROSOFT_ENTRA_ID_ISSUER is gezet");
 
   const tenant = /login\.microsoftonline\.com\/([^/]+)\/v2\.0\/?$/.exec(issuer)?.[1] ?? "";
-  line(tenant !== "" && tenant !== "common" && tenant !== "organizations", `de issuer noemt een echte tenant (${tenant === "" ? "geen" : tenant})`);
+  line(tenant !== "" && tenant !== "common" && tenant !== "organizations" && tenant !== "consumers", `de issuer noemt een echte tenant (${tenant === "" ? "geen" : tenant})`);
 
-  if (tenant !== "" && tenant !== "common" && tenant !== "organizations") {
+  if (tenant !== "" && tenant !== "common" && tenant !== "organizations" && tenant !== "consumers") {
     console.log("\nDe tenant");
     try {
       const response = await fetchWithTimeout(`https://login.microsoftonline.com/${tenant}/v2.0/.well-known/openid-configuration`);

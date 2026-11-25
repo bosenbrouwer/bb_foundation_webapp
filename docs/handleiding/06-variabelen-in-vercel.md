@@ -23,16 +23,36 @@ je lokaal op met `vercel env pull`. En: een gewijzigde variabele werkt pas in ee
 |---|---|---|---|---|---|
 | `DATABASE_URL` | door de Neon-integratie | door de integratie | de pooled string van `dev` | ja | 04 |
 | `DATABASE_URL_UNPOOLED` | door de integratie | door de integratie | de direct string van `dev` | ja | 04 |
+| `DATABASE_URL_APP` | de pooled string met de inlogrol van de app, na de eerste deploy | nee | alleen in `.env.local`, geschreven door `pnpm db:app-login` | ja | 04 en 07 |
+| `DATABASE_URL_OWNER` | de direct string van de eigenaar, alleen als je het wachtwoord gaat draaien | nee | nee | ja | 30 |
 | `AUTH_SECRET` | waarde A | waarde B | waarde B | ja | hieronder |
-| `PRODUCTION_DB_ENDPOINT` | het endpoint-id van productie | dezelfde | nee | nee | 04 |
+| `PRODUCTION_DB_ENDPOINT` | het endpoint-id van productie | dezelfde | dezelfde | nee | 04 |
 | `CRON_SECRET` | een hexwaarde | nee | nee | ja | hieronder |
+| `APP_ENV` | **nooit** | **nooit** | alleen in `.env.local`: `local` | | 07 |
 | `AUTH_DEV_LOGIN` | **nooit** | **nooit** | alleen in `.env.local`: `1` | | 07 |
 | `SEED_TARGET` | nee | nee | alleen in `.env.local`: het endpoint-id van `dev` | | 07 |
 
+`APP_ENV` zegt welke omgeving dit is. Op Vercel hoeft hij niet: daar weet de tool het uit
+`VERCEL_ENV`. Lokaal zet je hem op `local`, en alleen daarmee werken de dev-login en het nagemaakte
+model van de module ai.
+
 Met inloggen via Microsoft (05) komen erbij, in alle drie de omgevingen:
 `AUTH_MICROSOFT_ENTRA_ID_ID`, `AUTH_MICROSOFT_ENTRA_ID_SECRET` (Sensitive),
-`AUTH_MICROSOFT_ENTRA_ID_ISSUER`. De modules hebben hun eigen variabelen: zie 20, 20b, 21 en 22, en
-`pnpm template:apply` drukt de volledige lijst af met per variabele de handleiding.
+`AUTH_MICROSOFT_ENTRA_ID_ISSUER`. Zonder die laatste start een deploy niet (05).
+
+De andere modules hebben hun eigen variabelen. Voor mail en bestanden: zie 20, 20b en 22. Deze vijf
+hebben een eigen regel per omgeving:
+
+| Key | Production | Preview | Lokaal | Sensitive | Uit |
+|---|---|---|---|---|---|
+| `MFA_SECRET_KEY` (wachtwoordlogin) | waarde C | dezelfde waarde C | nee | ja | 05b |
+| `TEAMS_WEBHOOK_URL` (Teams) | de webhook van het echte kanaal | nee: wordt buiten productie niet gelezen | nee | ja | 21 |
+| `TEAMS_WEBHOOK_URL_TEST` (Teams) | nee | de webhook van een testkanaal | zelf in `.env.local`, als je lokaal wilt testen | ja | 21 |
+| `ANTHROPIC_API_KEY` (AI) | de sleutel voor Vercel | dezelfde sleutel | een eigen sleutel, zelf in `.env.local` | ja | 24 |
+| `AI_FAKE` (AI) | **nooit** | **nooit** | alleen in `.env.local`: `1`, om zonder sleutel te werken | | 24 |
+
+`pnpm template:apply` drukt de volledige lijst af voor de modules van jouw project, met per variabele
+de handleiding.
 
 ## Stappen
 
@@ -45,25 +65,37 @@ Met inloggen via Microsoft (05) komen erbij, in alle drie de omgevingen:
    Alleen Production; Vercel stuurt hem mee bij elke cronaanroep. Hex, want Vercel wil hier letters
    en cijfers.
    **Controle:** na 08 geeft `pnpm smoke:prod` voor elke cronroute een 404 zonder token.
-3. Zet de Development-waarden van `DATABASE_URL` en `DATABASE_URL_UNPOOLED` op de strings van `dev`.
+3. Zet de Development-waarden van `DATABASE_URL` en `DATABASE_URL_UNPOOLED` op de strings van `dev`
+   (04, stap 5). De koppeling uit 04, stap 1 zette een waarde voor alle drie de omgevingen; alleen
+   die van Development vervang je.
    Laat de Production- en Preview-regels van de integratie met rust: overschrijf je die, dan loopt de
    integratie stuk zodra Neon een branch verplaatst.
    **Controle:** de Development-regel bevat `-pooler` bij de eerste en niet bij de tweede, en beide
    eindigen op `?sslmode=require`.
-4. Zet `PRODUCTION_DB_ENDPOINT` voor Production en Preview op het endpoint-id van de productiebranch.
-   **Controle:** een preview-deploy slaagt; zonder deze variabele weigert hij met uitleg.
-5. Zet de variabelen van je inlogmethode (05) en van de modules die je gebruikt (20 tot 22).
+4. Zet `PRODUCTION_DB_ENDPOINT` voor alle drie de omgevingen op het endpoint-id van de
+   productiebranch. In Development is hij er voor `pnpm db:app-login`, dat nooit een rol op productie
+   mag zetten en daarom moet weten welk endpoint dat is.
+   **Controle:** een preview-deploy slaagt; zonder deze variabele weigert hij met uitleg, en
+   `vercel env pull` zet hem in `.env.local`.
+5. Zet de variabelen van je inlogmethode (05, of `MFA_SECRET_KEY` uit 05b) en van de modules die je
+   gebruikt: mail (20 of 20b), Teams (21), bestanden (22) en AI (24).
    **Controle:** `pnpm template:apply` drukt de lijst af; elke naam daarin staat in Vercel, behalve
    wat "alleen lokaal" zegt.
 6. **Deployments, Redeploy** van de laatste productiedeploy, zodat de variabelen gelden.
    **Controle:** het inlogscherm laadt en Beheer, Systeem (na inloggen) is groen.
+7. Na de eerste deploy (08): de rol van de app op productie en `DATABASE_URL_APP`, zie 04. Een
+   variabele die alleen op Production staat, draai je terug door hem weg te halen en opnieuw uit te
+   rollen; dat is bij deze twee ook de eerste hulp als iets niet werkt.
 
 ## Waarom zo
 
 Eén plek voor geheimen, met een scheiding per omgeving, is het hele verschil tussen "we weten waar
 het staat" en "iemand heeft het ooit ergens geplakt". `.env.local` is een afgeleide van Vercel en
-geen tweede bron. De dev-login weigert bovendien te laden zodra `VERCEL_ENV` bestaat, dus zelfs een
-vergissing kan hem niet in een deploy aanzetten.
+geen tweede bron. De dev-login werkt bovendien alleen met `APP_ENV=local` en weigert in elke andere
+omgeving te laden. Komt `APP_ENV=local` toch in Vercel terecht, bijvoorbeeld doordat iemand
+`.env.example` in één keer importeert, dan wint de deploy (`VERCEL_ENV` is `preview` of
+`production`) en start de app niet zolang `AUTH_DEV_LOGIN` er ook staat. Een vergissing levert dus
+een mislukte deploy op en nooit een inlog zonder wachtwoord. Haal beide variabelen dan weg.
 
 ## Beveiliging
 
@@ -79,7 +111,7 @@ Geen. Stand van oktober 2026.
 ## Zo zie je dat het goed staat
 
 - `vercel env pull .env.local` schrijft een bestand met de Development-waarden; `pnpm db:status`
-  noemt `dev`.
+  begint met "Verbonden met endpoint" en het endpoint-id van `dev`.
 - Beheer, Systeem is groen; de koppelingen die je niet hebt ingericht staan op "uit" met de namen
   die ontbreken.
 
@@ -94,4 +126,5 @@ Geen. Stand van oktober 2026.
 
 ## Vul in
 
-Geen waarden hier. Noteer alleen de datum waarop je ze zette en wie het deed.
+Geen waarden, nergens. Noteer in `docs/inrichting.md` (zie `00-checklist.md`) alleen de datum waarop
+je ze zette en wie het deed.

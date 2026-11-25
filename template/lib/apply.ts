@@ -28,7 +28,7 @@ import { patchEnvExample } from "../patchers/env-example";
 import { patchGitignore } from "../patchers/gitignore";
 import type { ManagedBlock } from "../patchers/managed-blocks";
 import { patchPackageJson, type PackageJsonDesired } from "../patchers/package-json";
-import { patchVercelJson, type Cron } from "../patchers/vercel-json";
+import { NO_PREVIEW_BRANCHES, patchVercelJson, type Cron } from "../patchers/vercel-json";
 import { normaliseConfig, readConfig } from "./config";
 import type { ProjectConfig } from "./config-schema";
 import { assertNoDrift, DrizzleError, generateModuleMigration, hasDrizzleKit, pendingSchemaSteps } from "./drizzle";
@@ -161,6 +161,29 @@ export function applyTemplate(root: string, sourceRoot: string, options: ApplyOp
   const files: Record<string, LockedFile> = {};
   const adopted = previousLock?.adopted ?? [];
 
+  /*
+   * Modules met een nieuwe schemaversie: eerst bewijzen dat het project zelf geen drift heeft, met de
+   * schemabestanden en de index zoals ze nu staan, dus vóórdat apply de bestanden van het template
+   * overschrijft. Een module die al een schema had en een nieuwe versie krijgt (zoals core met de
+   * regel van de app op elke tabel), brengt die wijziging zelf mee in haar owned bestanden, en die
+   * hoort straks in haar migratie en niet in deze controle. Een module die nieuw is, staat nog niet
+   * in de index. Daarna schrijft de lus de index per module en genereert de staart van apply de
+   * migraties.
+   */
+  const schemaPending = activeModules.filter((name) => {
+    const moduleManifest = manifest.modules[name];
+    return moduleManifest !== undefined && moduleManifest.schemaFiles.length > 0 && pendingSchemaSteps(moduleManifest, previousLock?.modules[name]?.schemaVersion ?? 0).length > 0;
+  });
+  const canGenerate = schemaPending.length > 0 && !options.dryRun && hasDrizzleKit(root);
+  if (canGenerate) {
+    try {
+      assertNoDrift(root);
+    } catch (error) {
+      if (error instanceof DrizzleError) throw new ApplyError(error.message);
+      throw error;
+    }
+  }
+
   const defaultConfig = readDefaultConfig(sourceRoot, manifest);
   /* Op de standaardconfiguratie blijven de seeds de neutrale versie: er is nog niets om voor te renderen. */
   const onDefaultConfig = configsEqual(config, defaultConfig);
@@ -235,8 +258,7 @@ export function applyTemplate(root: string, sourceRoot: string, options: ApplyOp
     }
 
     const shipped = shippedGenerated.get(path);
-    const untouched =
-      ownHashes.get(path) === currentHash || (previous !== undefined ? previous.hash === currentHash : shipped !== undefined && hashText(shipped) === currentHash);
+    const untouched = previous !== undefined ? previous.hash === currentHash : shipped !== undefined && hashText(shipped) === currentHash;
     if (untouched || options.force) {
       if (!untouched) backup(path);
       writeFile(path, content);
@@ -251,7 +273,7 @@ export function applyTemplate(root: string, sourceRoot: string, options: ApplyOp
       module,
       class: cls,
       status: "skipped-modified",
-      note: previous === undefined ? "wijkt af van het template en staat niet in de lock; template:adopt om het van het project te maken, of --force" : "door het project gewijzigd; template:adopt om dit blijvend te maken, of --force om te overschrijven",
+      note: previous === undefined ? 'wijkt af van het template en staat niet in de lock; template:adopt <pad> --reason "waarom" om het van het project te maken, of --force' : 'door het project gewijzigd; template:adopt <pad> --reason "waarom" om dit blijvend te maken, of --force om te overschrijven',
     });
   };
 
@@ -318,30 +340,6 @@ export function applyTemplate(root: string, sourceRoot: string, options: ApplyOp
     files[path] = { module, class: "seed", hash: currentHash, seeded: true, seededIn: previous?.seededIn ?? manifest.version, sourceHash, shippedHash: null };
     outcomes.push({ path, module, class: "seed", status: "seed-kept" });
   };
-
-  /*
-   * Modules met een nieuwe schemaversie: eerst bewijzen dat het project zelf geen drift heeft, met een
-   * schema-index zonder die modules. Daarna schrijft de lus de volledige index en genereert de staart
-   * van apply de migraties. Wat apply hier zelf schrijft, telt straks als "niet aangeraakt".
-   */
-  const ownHashes = new Map<string, string>();
-  const schemaPending = activeModules.filter((name) => {
-    const moduleManifest = manifest.modules[name];
-    return moduleManifest !== undefined && moduleManifest.schemaFiles.length > 0 && pendingSchemaSteps(moduleManifest, previousLock?.modules[name]?.schemaVersion ?? 0).length > 0;
-  });
-  const canGenerate = schemaPending.length > 0 && !options.dryRun && hasDrizzleKit(root);
-  if (canGenerate) {
-    const indexPath = "lib/db/schema/template-index.ts";
-    const settled = generateSchemaIndex(manifest, applied.filter((name) => !schemaPending.includes(name)));
-    writeText(join(root, indexPath), settled);
-    ownHashes.set(indexPath, hashText(settled));
-    try {
-      assertNoDrift(root);
-    } catch (error) {
-      if (error instanceof DrizzleError) throw new ApplyError(error.message);
-      throw error;
-    }
-  }
 
   for (const name of activeModules) {
     const moduleManifest = manifest.modules[name];
@@ -417,11 +415,12 @@ export function applyTemplate(root: string, sourceRoot: string, options: ApplyOp
   /*
    * De build migreert eerst (SPEC D5, les L-VRC-01): zonder `buildCommand` draait Vercel alleen
    * `next build`, en dan migreert noch productie noch een preview. Een standaardwaarde, dus een
-   * project dat zelf een buildCommand heeft, houdt het zijne.
+   * project dat zelf een buildCommand heeft, houdt het zijne. Hetzelfde voor `git`: welke soorten
+   * branches geen eigen preview krijgen (`NO_PREVIEW_BRANCHES`).
    */
   const vercelResult = patchVercelJson(
     vercelText,
-    { defaults: { regions: [config.hosting.region], buildCommand: "pnpm db:deploy && pnpm build" }, crons },
+    { defaults: { regions: [config.hosting.region], buildCommand: "pnpm db:deploy && pnpm build", git: { deploymentEnabled: NO_PREVIEW_BRANCHES } }, crons },
     previousLock?.merged.vercelCrons ?? shippedMerged.vercelCrons,
     [...config.template.keepCrons],
   );
@@ -492,20 +491,23 @@ export function applyTemplate(root: string, sourceRoot: string, options: ApplyOp
     } else if (steps.length > 0) {
       if (!included.includes(name)) included.push(name);
       writeText(join(root, indexPath), generateSchemaIndex(manifest, applied.filter((candidate) => included.includes(candidate))));
+      /* De migratie die deze run al voor deze module maakte of terugvond: een latere versie waar niets meer voor te genereren valt, zit daarin. */
+      let absorbedBy: string | undefined;
       for (const step of steps) {
         let generated;
         try {
-          generated = generateModuleMigration(root, sourceRoot, name, step);
+          generated = generateModuleMigration(root, sourceRoot, name, step, absorbedBy);
         } catch (error) {
           if (error instanceof DrizzleError) throw new ApplyError(`Module ${name}, schemaversie ${step.version}: ${error.message}`);
           throw error;
         }
-        if (generated.length === 0) {
+        if (generated.length === 0 && absorbedBy === undefined) {
           warnings.push(`Module ${name}, schemaversie ${step.version}: drizzle-kit zag geen schemawijziging en maakte geen migratie. Dat klopt alleen als de tabellen er al stonden.`);
         }
         for (const migration of generated) {
           if (!tags.includes(migration.tag)) tags.push(migration.tag);
           migrationOutcomes.push({ module: name, version: step.version, ...migration });
+          if (migration.kind === "generated") absorbedBy ??= migration.tag;
         }
         reached = step.version;
       }

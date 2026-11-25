@@ -3,29 +3,44 @@
  * Een bericht naar een Teams-kanaal via een inkomende webhook (Workflows). Alleen als
  * `messaging.teams` in project.config.json aan staat én de webhook er is; anders blijven
  * Teams-berichten in de outbox staan met de melding wat er ontbreekt.
+ *
+ * **Productie is de sleutel, geen vlag voor testen** (besluit M1 in docs/modules/messaging.md). Het
+ * echte kanaal (`TEAMS_WEBHOOK_URL`) wordt alleen in productie gelezen. Overal elders (lokaal, een
+ * preview, een onbekende omgeving) gaat een bericht alleen naar een uitdrukkelijk testkanaal
+ * (`TEAMS_WEBHOOK_URL_TEST`); ontbreekt dat, dan gaat er niets uit. Een vlag "dit is een test" kun je
+ * vergeten te zetten, en dan staat een proefbericht van een preview in het kanaal van de collega's;
+ * een variabele die alleen in productie telt, kun je niet vergeten.
  */
+import { deployEnvironment } from "@/lib/domain/deploy-environment";
+import { fetchWithTimeout } from "@/lib/integrations/http";
 import { PROJECT } from "@/lib/project/config.generated";
 
 export const TEAMS_WEBHOOK = "TEAMS_WEBHOOK_URL";
+export const TEAMS_WEBHOOK_TEST = "TEAMS_WEBHOOK_URL_TEST";
+
+/** De webhook die in deze omgeving telt: het echte kanaal in productie, anders alleen het testkanaal. */
+export function teamsWebhook(env: Readonly<Record<string, string | undefined>> = process.env): { readonly variable: string; readonly url: string } {
+  const variable = deployEnvironment(env) === "production" ? TEAMS_WEBHOOK : TEAMS_WEBHOOK_TEST;
+  return { variable, url: (env[variable] ?? "").trim() };
+}
 
 export function teamsConfigured(): boolean {
-  return PROJECT.messaging.teams && (process.env[TEAMS_WEBHOOK] ?? "").trim() !== "";
+  return PROJECT.messaging.teams && teamsWebhook().url !== "";
 }
 
 export function teamsMissing(): string[] {
   if (!PROJECT.messaging.teams) return [];
-  return teamsConfigured() ? [] : [TEAMS_WEBHOOK];
+  return teamsConfigured() ? [] : [teamsWebhook().variable];
 }
 
 export async function sendTeams(message: { readonly subject: string; readonly bodyMd: string }): Promise<void> {
-  const url = (process.env[TEAMS_WEBHOOK] ?? "").trim();
-  if (url === "") throw new Error(`${TEAMS_WEBHOOK} ontbreekt, dus er kan niets naar Teams.`);
+  const { variable, url } = teamsWebhook();
+  if (url === "") throw new Error(`${variable} ontbreekt, dus er kan niets naar Teams.`);
 
-  const response = await fetch(url, {
+  const response = await fetchWithTimeout(url, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify(card(message)),
-    signal: AbortSignal.timeout(20_000),
   });
   if (!response.ok) {
     const detail = await response.text().catch(() => "");

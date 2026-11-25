@@ -1,0 +1,36 @@
+# Gitleaks over de hele git-historie (de CI-job "Kwetsbaarheden en geheimen"). De standaardregels,
+# plus de valse bevindingen van dit project, per patroon en met de reden. Een nieuwe valse bevinding
+# komt hier met zijn reden bij; een echte wordt ingetrokken bij de dienst waar hij vandaan komt en
+# uit de historie gehaald, niet hier weggezet. Zie docs/handleiding/02-github.md.
+#
+# Dit bestand is van het project en blijft staan bij een update van het template.
+
+title = "Geheimen in de historie"
+
+[extend]
+useDefault = true
+
+# Twee testwaarden uit de tests van het template zelf. Ze staan in de historie van elk project dat
+# uit het template komt, dus ze staan hier al uit.
+
+[[allowlists]]
+description = "Geen geheim: het testgeheim uit RFC 6238 als base32, een openbare waarde uit de standaard (totp.test.ts)"
+regexes = [
+  '''^GEZDGNBVGY3TQOJQGEZDGNBVGY3TQOJQ$''',
+]
+
+[[allowlists]]
+description = "Geen geheim: een verzonnen JWT in de test van scrubMessage, die hem hoort weg te poetsen (report.test.ts)"
+regexTarget = "line"
+regexes = [
+  '''expect\(scrubMessage\("token eyJ''',
+]
+
+# Een valse bevinding van je eigen project zet je net zo uit, met de reden in de omschrijving.
+# Zonder regexTarget kijkt de regex naar de gevonden waarde zelf; met "line" naar de hele regel.
+#
+# [[allowlists]]
+# description = "Geen geheim: een verzonnen waarde in een test"
+# regexes = [
+#   '''^de-letterlijke-waarde$''',
+# ]

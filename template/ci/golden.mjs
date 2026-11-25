@@ -12,7 +12,8 @@
  * Stappen: kopie van de werkkopie (zonder node_modules en .next), de voorbeeldconfig over
  * project.config.json, git init en commit, pnpm install, template:apply --strict, de batterij
  * zonder database (typecheck, lint, test, check:migrations, check:drift, check:contrast,
- * template:verify, build), een tweede apply en template:generate die niets mogen veranderen.
+ * template:verify, build, en check:public tegen die build), een tweede apply en template:generate die
+ * niets mogen veranderen, en template:report-back (besluit D31) tot vlak voor het versturen.
  */
 
 import { spawnSync } from "node:child_process";
@@ -64,6 +65,8 @@ const PNPM = pnpmLauncher();
 function run(command, commandArgs) {
   const started = Date.now();
   const [executable, ...prefix] = command === "pnpm" ? PNPM : [command];
+  /* Geen injectie: elke aanroep in dit bestand geeft een vaste naam (git of pnpm), met een lijst argumenten en zonder shell. */
+  // nosemgrep: javascript.lang.security.detect-child-process.detect-child-process
   const result = spawnSync(executable, [...prefix, ...commandArgs], { cwd: root, stdio: "inherit", shell: false });
   const seconds = ((Date.now() - started) / 1000).toFixed(1);
   if (result.error !== undefined || result.status !== 0) {
@@ -72,6 +75,65 @@ function run(command, commandArgs) {
     process.exit(result.status ?? 1);
   }
   console.log(`  klaar in ${seconds} s: ${command} ${commandArgs.join(" ")}`);
+}
+
+/** pnpm met de uitvoer als tekst, voor een stap die moet weigeren of een vaste zin moet zeggen. */
+function capture(commandArgs) {
+  const [executable, ...prefix] = PNPM;
+  const result = spawnSync(executable, [...prefix, ...commandArgs], { cwd: root, encoding: "utf8", shell: false });
+  return { status: result.status ?? 1, output: `${result.stdout ?? ""}${result.stderr ?? ""}` };
+}
+
+function expectThat(condition, message, output) {
+  if (condition) return;
+  console.error(`\nGouden test gestopt: ${message}\n${output}`);
+  console.error(`De map staat nog: ${root}`);
+  process.exit(1);
+}
+
+/**
+ * De opdracht van besluit D31 in een echt project, met de echte geheimenscans. Er gaat niets naar
+ * buiten: elke stap hier weigert vóór de eerste aanroep van gh (zonder akkoord, met een naam erin,
+ * met een geheim erin), en de laatste stap legt een melding met de hand vast.
+ */
+function reportBack() {
+  if (example === "default") {
+    /* De standaardconfig is die van de templaterepo zelf: daar is niets terug te melden. */
+    const refused = capture(["template:report-back"]);
+    expectThat(refused.status === 1 && refused.output.includes("repo van het template zelf"), "op de standaardconfig had de opdracht moeten weigeren", refused.output);
+    console.log("  op de standaardconfig weigert de opdracht, zoals in de templaterepo");
+    return;
+  }
+  const fresh = capture(["template:report-back"]);
+  expectThat(fresh.status === 0 && fresh.output.includes("Niets nieuws"), "een vers project had niets terug te melden", fresh.output);
+
+  const lessons = join(root, "docs", "lessen-project.md");
+  writeFileSync(lessons, `${readFileSync(lessons, "utf8")}\n## P-01 Een export brak op een puntkomma\n\n**Regel.** Altijd een BOM.\n`);
+  const collected = capture(["template:report-back"]);
+  const draftPath = join(root, ".terugmelding.md");
+  expectThat(collected.status === 0 && existsSync(draftPath) && readFileSync(draftPath, "utf8").includes("## Les P-01:"), "de les staat niet in de melding", collected.output);
+  expectThat(collected.output.includes("Neutraal"), "een neutrale melding werd niet neutraal genoemd", collected.output);
+
+  const noConsent = capture(["template:report-back", "--send"]);
+  expectThat(noConsent.status === 1 && noConsent.output.includes("akkoord"), "versturen zonder akkoord had moeten weigeren", noConsent.output);
+
+  const name = JSON.parse(readFileSync(join(root, "project.config.json"), "utf8")).project.name;
+  const draft = readFileSync(draftPath, "utf8").replace("- [ ] Akkoord:", "- [x] Akkoord:");
+  writeFileSync(draftPath, `${draft}\nBij ${name} ging het zo.\n`);
+  const withName = capture(["template:report-back", "--send"]);
+  expectThat(withName.status === 1 && withName.output.includes(`"${name}"`), "een melding met de naam van het project had moeten weigeren", withName.output);
+
+  /* In stukken, zodat de scans van deze repo het script zelf niet aanwijzen. */
+  writeFileSync(draftPath, `${draft}\n${["-----BEGIN", "RSA", "PRIVATE", "KEY-----"].join(" ")}\n`);
+  const withSecret = capture(["template:report-back", "--send"]);
+  expectThat(withSecret.status === 1 && /geheim|private key/i.test(withSecret.output), "een melding met een geheim had moeten weigeren", withSecret.output);
+
+  writeFileSync(draftPath, draft);
+  const manual = capture(["template:report-back", "--sent", "1"]);
+  expectThat(manual.status === 0 && !existsSync(draftPath), "een melding met de hand vastleggen lukte niet", manual.output);
+  const after = capture(["template:report-back"]);
+  expectThat(after.status === 0 && after.output.includes("Niets nieuws"), "na het vastleggen kwam de les terug", after.output);
+  console.log("  niets nieuws, de les verzameld, geweigerd zonder akkoord, met een naam en met een geheim, met de hand vastgelegd");
 }
 
 console.log(`Gouden test met examples/${example}.project.config.json in ${root}\n`);
@@ -100,7 +162,7 @@ console.log("\n3. Het template toepassen");
 run("pnpm", ["template:apply", "--strict", "--allow-dirty"]);
 
 console.log("\n4. De batterij zonder database");
-for (const script of ["typecheck", "lint", "test", "check:migrations", "check:drift", "check:contrast", "template:verify", "build"]) {
+for (const script of ["typecheck", "lint", "test", "check:migrations", "check:drift", "check:contrast", "template:verify", "build", "check:public"]) {
   run("pnpm", [script]);
 }
 
@@ -116,6 +178,9 @@ if (status !== "") {
   console.error(`De map staat nog: ${root}`);
   process.exit(1);
 }
+
+console.log("\n6. Terugmelden: niets nieuws in een vers project, en de sloten houden een melding tegen");
+reportBack();
 
 console.log(`\nGouden test geslaagd voor examples/${example}.project.config.json.`);
 if (keep) console.log(`De map staat nog: ${root}`);

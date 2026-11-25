@@ -6,11 +6,15 @@
  * het voorstel bevestigt.
  *
  * Een AI-aanroep is geen schrijfactie naar buiten: hij verandert daar niets. Daarom loopt hij
- * synchroon, niet via de outbox of de wachtrij (docs/modules/ai.md, besluit A1). Wat hem begrenst is
- * de daglimiet per persoon hier en de uitgavenlimiet in de Console.
+ * synchroon, niet via de outbox of de wachtrij (docs/modules/ai.md, besluit A1). Wat hem begrenst:
+ * de noodstop en het maandplafond van de organisatie en de daglimiet per persoon hier (besluit A6),
+ * en als harde grens de uitgavenlimiet in de Console.
  *
  * Elke poging die de API bereikt, staat als regel in `ai_requests`, met de tokens en de prijs van dat
  * moment, nooit met de inhoud.
+ *
+ * Met `AI_FAKE=1` in een uitdrukkelijk lokale omgeving antwoordt een nagemaakt model (`fake.ts`):
+ * zonder sleutel, zonder netwerk, door dezelfde toets, en als model `fake` in `ai_requests`.
  */
 import type Anthropic from "@anthropic-ai/sdk";
 import type { Actor } from "@/lib/auth/actor";
@@ -18,14 +22,20 @@ import { assertCan } from "@/lib/auth/can";
 import type { DbOrTransaction } from "@/lib/db/client";
 import type { AiRequestStatus } from "@/lib/db/schema";
 import { todayIso } from "@/lib/domain/dates";
+import { capVerdict } from "./budget";
 import { apiErrorReason, askClaude, aiKey } from "./client";
+import { aiFake, fakeAnswer, FAKE_MODEL } from "./fake";
 import { buildUserMessage } from "./message";
 import { DEFAULT_MAX_TOKENS, promptFor, type AiPrompt } from "./prompts";
-import { loadPromptSetting, priceFor } from "./settings";
+import { loadLimits, loadPromptSetting, priceFor } from "./settings";
 import { outputSchema, validateProposal, type Proposal } from "./structure";
-import { countToday, logRequest } from "./usage";
+import { countToday, logRequest, monthSpend, monthStart } from "./usage";
 
-export type AiFailure = "unknownPrompt" | "off" | "noKey" | "limit" | "refused" | "invalid" | "failed";
+/**
+ * Waarom er geen voorstel kwam. `stopped` is de noodstop, `monthLimit` het maandplafond, en `noPrice`
+ * een model zonder prijs terwijl er een plafond is: zo een verzoek is niet te tellen.
+ */
+export type AiFailure = "unknownPrompt" | "off" | "stopped" | "noKey" | "limit" | "noPrice" | "monthLimit" | "refused" | "invalid" | "failed";
 
 export type AiOutcome =
   | { readonly ok: true; readonly requestId: string; readonly proposal: Proposal }
@@ -60,23 +70,45 @@ export function interpret(prompt: AiPrompt, message: ApiAnswer): Interpreted {
 
 export async function runPrompt(db: DbOrTransaction, actor: Actor, promptKey: string, values: Readonly<Record<string, string | null | undefined>>): Promise<AiOutcome> {
   assertCan(actor, "ai:use");
+  /* Eerst het slot: met AI_FAKE aan buiten lokaal gooit elk gebruik, ook als de prompt uit staat. */
+  const fake = aiFake();
+  /* Dan de noodstop: die gaat voor alles, ook voor het nagemaakte model. */
+  const limits = await loadLimits(db, actor.organisationId);
+  if (limits.stoppedAt !== null) return { ok: false, reason: "stopped" };
   const prompt = promptFor(promptKey);
   if (prompt === undefined) return { ok: false, reason: "unknownPrompt" };
   const setting = await loadPromptSetting(db, actor.organisationId, promptKey);
   if (setting === undefined || !setting.enabled || setting.model === null) return { ok: false, reason: "off" };
-  const apiKey = aiKey();
-  if (apiKey === undefined) return { ok: false, reason: "noKey" };
 
   const day = todayIso();
   if ((await countToday(db, actor.organisationId, actor.id, promptKey, day)) >= setting.dailyLimit) return { ok: false, reason: "limit" };
 
-  const price = await priceFor(db, actor.organisationId, setting.model);
+  /* Een nagemaakt verzoek kost niets en heet in het verbruik ook zo. */
+  const price = fake ? undefined : await priceFor(db, actor.organisationId, setting.model);
+  /*
+   * Het maandplafond. Alleen met een plafond kost dit een query. De toets staat voor de sleutel,
+   * zodat pnpm check:ai hem zonder sleutel kan bewijzen; de kosten van dit verzoek zelf zijn pas na
+   * afloop bekend, dus een maand kan net boven het plafond eindigen (lib/ai/budget.ts).
+   */
+  if (limits.monthlyCapCents !== null) {
+    const verdict = capVerdict({
+      capCents: limits.monthlyCapCents,
+      capCurrency: limits.currency,
+      priceCurrency: price?.currency ?? null,
+      spentCentTokens: await monthSpend(db, actor.organisationId, limits.currency, monthStart(day)),
+      fake,
+    });
+    if (verdict !== null) return { ok: false, reason: verdict };
+  }
+  const apiKey = fake ? "" : aiKey();
+  if (apiKey === undefined) return { ok: false, reason: "noKey" };
+
   const base = {
     organisationId: actor.organisationId,
     userId: actor.id,
     promptKey,
     promptVersion: prompt.version,
-    model: setting.model,
+    model: fake ? FAKE_MODEL : setting.model,
     day,
     inputCentsPerMtok: price?.inputCentsPerMtok ?? null,
     outputCentsPerMtok: price?.outputCentsPerMtok ?? null,
@@ -84,27 +116,36 @@ export async function runPrompt(db: DbOrTransaction, actor: Actor, promptKey: st
   };
 
   const started = Date.now();
-  let message: Anthropic.Message;
-  try {
-    message = await askClaude(apiKey, {
-      model: setting.model,
-      system: prompt.instruction,
-      message: buildUserMessage(prompt.fields, values),
-      effort: setting.effort,
-      maxTokens: prompt.maxTokens ?? DEFAULT_MAX_TOKENS,
-      schema: outputSchema(prompt.output),
-    });
-  } catch (error) {
-    const requestId = await logRequest(db, { ...base, status: "failed", inputTokens: 0, outputTokens: 0, durationMs: Date.now() - started, error: apiErrorReason(error) });
-    return { ok: false, reason: "failed", requestId };
+  let answer: ApiAnswer;
+  let usage: Pick<Anthropic.Usage, "input_tokens" | "output_tokens"> = { input_tokens: 0, output_tokens: 0 };
+  if (fake) {
+    /* Het bericht wordt wel opgebouwd, zodat een fout daarin ook op het nagemaakte model zichtbaar is. */
+    buildUserMessage(prompt.fields, values);
+    answer = fakeAnswer(prompt);
+  } else {
+    try {
+      const message = await askClaude(apiKey, {
+        model: setting.model,
+        system: prompt.instruction,
+        message: buildUserMessage(prompt.fields, values),
+        effort: setting.effort,
+        maxTokens: prompt.maxTokens ?? DEFAULT_MAX_TOKENS,
+        schema: outputSchema(prompt.output),
+      });
+      answer = message;
+      usage = message.usage;
+    } catch (error) {
+      const requestId = await logRequest(db, { ...base, status: "failed", inputTokens: 0, outputTokens: 0, durationMs: Date.now() - started, error: apiErrorReason(error) });
+      return { ok: false, reason: "failed", requestId };
+    }
   }
 
-  const outcome = interpret(prompt, message);
+  const outcome = interpret(prompt, answer);
   const requestId = await logRequest(db, {
     ...base,
     status: outcome.status,
-    inputTokens: message.usage.input_tokens,
-    outputTokens: message.usage.output_tokens,
+    inputTokens: usage.input_tokens,
+    outputTokens: usage.output_tokens,
     durationMs: Date.now() - started,
     error: outcome.error,
   });

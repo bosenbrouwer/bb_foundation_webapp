@@ -49,7 +49,7 @@ export function templateOwnershipRule(lock) {
 
     if (entry !== undefined && (entry.class === "owned" || entry.class === "generated")) {
       if (header === undefined) {
-        report(`${rel} staat in de lock als ${entry.class} maar mist de kop template-${entry.class}; zet hem terug met pnpm template:apply --force of neem het bestand over met pnpm template:adopt ${rel}`);
+        report(`${rel} staat in de lock als ${entry.class} maar mist de kop template-${entry.class}; zet hem terug met pnpm template:apply --force of neem het bestand over met pnpm template:adopt ${rel} --reason "waarom"`);
       } else if (header.kind !== entry.class) {
         report(`${rel} draagt de kop template-${header.kind} maar staat in de lock als ${entry.class}`);
       }

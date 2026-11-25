@@ -58,7 +58,7 @@ export function verifyProject(root: string): VerifyResult {
 
     if (entry.class === "owned" || entry.class === "generated") {
       if (currentHash !== entry.hash) {
-        problems.push(`${path} is gewijzigd terwijl het van het template is. Zet het terug met pnpm template:apply --force, of maak het van het project met pnpm template:adopt ${path}.`);
+        problems.push(`${path} is gewijzigd terwijl het van het template is. Zet het terug met pnpm template:apply --force, of maak het van het project met pnpm template:adopt ${path} --reason "waarom".`);
       }
       if (entry.class === "generated") {
         const expected = generated.get(path);

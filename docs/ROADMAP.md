@@ -32,3 +32,4 @@ Wat alleen een mens kan doen, met de handleiding erbij. Afgevinkt is hier gedate
 - [ ] Neon-project met dev-branch (handleiding 04)
 - [ ] Inloggen ingericht (handleiding 05 of 05b)
 - [ ] Variabelen in Vercel (handleiding 06)
+- [ ] De beveiligingsplugins van Claude Code geïnstalleerd, per laptop en per kloon (handleiding 30)

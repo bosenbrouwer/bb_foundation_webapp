@@ -19,14 +19,15 @@ die je na elke deploy doet. **Tijd:** een kwartier.
 1. Merge je branch met de configuratie, het projectplan en `template.lock.json` naar `main` via een pull
    request met groene CI.
    **Controle:** Vercel start een productiedeploy; in de build-log staat `pnpm db:deploy` met de
+   regel "Basisgegevens" en de naam van je organisatie eronder (de build zet die zelf neer), en met de
    migraties die hij draaide.
 2. Open het productieadres. Het inlogscherm toont de versie uit `lib/version.ts` en "Nieuw in".
    **Controle:** de versie is die van je werkkopie.
-3. Log in. Met Microsoft: via de knop; met wachtwoord: met het account uit 05b (maak het eerst met
-   `pnpm invite` tegen de productiedatabase, eenmalig, vanaf je laptop met de productiestring in een
-   apart `.env.production.local` dat je daarna weggooit, of via een eenmalige taak).
+3. Log in. Met Microsoft: via de knop. Met wachtwoord: maak eerst je account aan op de
+   productiedatabase, precies zoals 05b, stap 1 het beschrijft (het tijdelijke bestand
+   `.env.eerste-account`, dat je daarna weggooit), en doorloop daar stap 2 en 3.
    **Controle:** de rail toont je naam, je rol en de versie; Beheer staat erin.
-4. **Beheer, Systeem**: versie, omgeving `production`, databaseschema groen, koppelingen met hun
+4. **Beheer, Systeem**: versie, bij Omgeving "productie", databaseschema groen, koppelingen met hun
    stand.
    **Controle:** niets rood. Wat "uit" staat, is wat je nog niet hebt ingericht.
 5. Vanaf je laptop, op de commit die je uitrolde: `pnpm smoke:prod`. Het script logt niet in, kent
@@ -39,8 +40,9 @@ die je na elke deploy doet. **Tijd:** een kwartier.
 
 ## Waarom zo
 
-De build migreert de database waar hij op uitkomt, en daarom is de eerste deploy het moment waarop
-alles bij elkaar komt: variabelen, migraties, inlog. De rooktest is er omdat een deploy kan slagen en
+De build migreert de database waar hij op uitkomt en zet daarna de basisgegevens neer (de organisatie
+uit je configuratie; zonder die rij kan niemand inloggen en is er geen eerste account te maken), en
+daarom is de eerste deploy het moment waarop alles bij elkaar komt: variabelen, migraties, inlog. De rooktest is er omdat een deploy kan slagen en
 toch de verkeerde versie tonen (een cache, een oude build), en omdat je wilt weten dat wat achter de
 sessie hoort ook dicht is.
 
@@ -48,7 +50,8 @@ sessie hoort ook dicht is.
 
 - De rooktest controleert dat de cronroutes dicht zijn en de headers staan; dat is de buitenkant.
   De binnenkant bewijzen de checks en de e2e vóór de deploy, op `dev`.
-- Een eenmalige verbindingsstring van productie op je laptop (voor `pnpm invite`) gooi je daarna weg.
+- De verbindingsstring van productie staat alleen even op je laptop, in `.env.eerste-account` (05b,
+  stap 1). Gooi dat bestand meteen daarna weg.
 
 ## Kosten
 
@@ -70,6 +73,8 @@ oktober 2026.
 | Alles groen, maar een collega komt er niet in | Geen rol toegewezen (11) of niet uitgenodigd (05b) |
 
 ## Vul in
+
+Noteer dit in `docs/inrichting.md`, niet in dit bestand (zie `00-checklist.md`).
 
 | Wat | Waarde |
 |---|---|

@@ -22,6 +22,7 @@ export const shifts = pgTable(
   (t) => [
     check("shifts_quarters", sql`${t.minutes} > 0 and ${t.minutes} % 15 = 0 and ${t.startMinute} % 15 = 0`),
     check("shifts_within_day", sql`${t.startMinute} >= 0 and ${t.startMinute} + ${t.minutes} <= 1440`),
+    appRowAccess(),
   ],
 );
 

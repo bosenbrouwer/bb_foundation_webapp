@@ -5,6 +5,10 @@ Herbruikbare ontwerppatronen uit eerdere projecten met deze stack. Elk bestand z
 gebruikt, hoe het werkt, wat het kost en waar het in het template staat, met een klein codevoorbeeld
 zonder domeinnamen. Lees het patroon dat bij je taak hoort; de triggertabel staat in `CLAUDE.md`.
 
+Niet elk patroon staat in de code van het template. Waar dat zo is, zegt het bestand het onder
+"Waar in het template", met de bouwstenen die het template wel levert. En waar een patroon in een
+eerder project nog niet tegen een database of tegen het echte model is bewezen, staat dat erbij.
+
 | Patroon | Eén zin |
 |---|---|
 | [geld-in-centen](geld-in-centen.md) | Geld is een geheel aantal centen met een valuta, nooit een float |
@@ -27,3 +31,12 @@ zonder domeinnamen. Lees het patroon dat bij je taak hoort; de triggertabel staa
 | [tweede-ui-taal](tweede-ui-taal.md) | Eén sleutelbron, een tweede taal met `satisfies`, en een test die vergeten vertalingen vindt |
 | [sentry-envelope](sentry-envelope.md) | Fouten melden met gescrubde inhoud; klaar voor de gereserveerde module |
 | [rollen-schrijven-naar-entra](rollen-schrijven-naar-entra.md) | Rollen toekennen via Graph, als wachtrijtaak; klaar voor de gereserveerde module |
+| [ai-gesprek](ai-gesprek.md) | Een wegwijzer kiest per beurt een vaardigheid; schrijven via een knop, bewaren met een termijn |
+| [ai-meten](ai-meten.md) | Een testset met een waarheid, één getal, en opnieuw keuren zonder het model |
+| [omgeving-per-adres](omgeving-per-adres.md) | Het adres bepaalt de omgeving: alleen de `host`-kop, geen standaard, twee noodstops |
+| [accounts-van-buiten](accounts-van-buiten.md) | Een uitnodiging per persoon en een vastgepind account; het mailadres bewijst niets |
+| [intrekbare-sessie](intrekbare-sessie.md) | Een tabel `sessions` naast de JWT: één query per verzoek, de rol uit de database |
+| [tweede-app-in-de-repo](tweede-app-in-de-repo.md) | Een eigen wortel in dezelfde repo: niets gedeeld, alles gekopieerd, op zes plekken uitgesloten |
+| [eigenaar-boven-beheerder](eigenaar-boven-beheerder.md) | De sleutels van de organisatie in één lijst, bij een rol boven de beheerder |
+| [niemand-beslist-over-zichzelf](niemand-beslist-over-zichzelf.md) | Wie iets aanvraagt, beslist er niet over; één regel die elk schrijfpad aanroept |
+| [veiligheidschecklist](veiligheidschecklist.md) | Elk punt bouwen, instellen of afspreken; de uitleg bij `docs/veiligheid.md` |

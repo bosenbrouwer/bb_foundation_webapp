@@ -26,7 +26,7 @@ bestand is de samenvatting die in de repo blijft.
 | seed | één keer aangemaakt, daarna van het project | geen kop; staat in `template.lock.json` als seed |
 | merge | gedeeld bestand met beheerde blokken | `package.json`, `vercel.json`, `.env.example`, `.gitignore`, `CLAUDE.md` |
 
-Een owned bestand toch veranderen: `pnpm template:adopt <pad>` maakt het van het project, met de kop
+Een owned bestand toch veranderen: `pnpm template:adopt <pad> --reason "waarom"` maakt het van het project, met de kop
 `template-adopted`. JSON is nooit owned, want een JSON-bestand kan geen kop dragen (`tsconfig.json`
 is JSONC en de uitzondering).
 
@@ -52,7 +52,8 @@ projectboom, en daarom sluit `tsconfig.json` die map uit.
 | `template:apply [--dry-run] [--force] [--strict] [--allow-dirty]` | past het template toe: generatoren, owned en seed bestanden per module, de gedeelde bestanden via de patchers, de lock, en een slottekst met wat de mens nu doet. Een owned bestand dat het project heeft gewijzigd wordt overgeslagen; `--force` overschrijft met een kopie in `.template-backup/`; `--strict` geeft exitcode 1 bij een overgeslagen bestand (voor CI); zonder `--allow-dirty` weigert apply op een werkmap met niet-gecommitte wijzigingen |
 | `template:status [--changes]` | de stand: versie, modules, bestanden ongewijzigd, gewijzigd, ontbreekt, overgenomen, seeds met een nieuwere opzet |
 | `template:verify` | voor CI: de lock klopt, geen owned bestand gewijzigd, de gegenereerde bestanden actueel, de gedeelde bestanden een vast punt van hun patcher, elke kop juist |
-| `template:adopt <pad> [--remove]` | maakt een owned bestand blijvend van het project, of verwijdert het bewust |
+| `template:adopt <pad> --reason "..." [--remove]` | maakt een owned bestand blijvend van het project, of verwijdert het bewust; de reden komt in `docs/terugmeldingen.md` |
+| `template:report-back [--send \| --sent <n>]` | verzamelt besluiten, projectlessen, overgenomen bestanden en de rubriek Voor het template in `.terugmelding.md`, controleert op namen, adressen en geheimen, en zet hem na het akkoord als issue bij het template (handleiding 12, besluit D31) |
 | `template:generate` | schrijft alleen de gegenereerde bestanden opnieuw |
 | `template:validate [pad]`, `template:schema` | controleert een configuratie; schrijft het JSON Schema (alleen in de templaterepo) |
 | `template:update [--to X.Y.Z] [--from <map>]` | haalt de nieuwste versietag van `template.source` op (of de map), laat de tooling uit die versie apply draaien op dit project, en toont wat er tussen oud en nieuw veranderde. Neemt de opties van apply over |
@@ -70,7 +71,16 @@ aan, nooit genest `pnpm`: een `&` in een Windows-gebruikerspad breekt dat, ook d
 
 ## Regels voor wie aan het template werkt
 
-1. Geen projectinhoud, geen namen van eerdere projecten, van de organisatie of van klanten, geen em-dash. `node template/ci/check-template.mjs` grept erop (de woorden staan in `template/ci/forbidden-words.txt`; dit bestand en dat bestand zijn uitgezonderd, en verder is er geen uitzondering: de wizard en het lesmateriaal van een training staan sinds v1.3.0 in een eigen repo, en die test zelf dat wat de wizard oplevert neutraal blijft en door `template:validate` komt) en `template-ci.yml` draait het bij elke push.
+1. Geen projectinhoud, geen namen van eerdere projecten, van de organisatie of van klanten, geen
+   em-dash. `node template/ci/check-template.mjs` grept erop, en `template-ci.yml` draait het bij
+   elke push naar `main` en `release/next` en bij elke pull request. De woorden staan in
+   `template/ci/forbidden-words.txt`. Wat de check overslaat, staat bovenin het script en is dit:
+   drie bestanden (dit bestand, `forbidden-words.txt` en `check-template.mjs` zelf), de mappen
+   `node_modules`, `.next`, `.git`, `.vercel`, `.template-backup`, `coverage`, `playwright-report`,
+   `test-results` en `fonts`, en elk bestand zonder tekstextensie dat niet met een punt begint
+   (afbeeldingen, fonts). De wizard en het lesmateriaal van een training staan sinds v1.3.0 in een
+   eigen repo, en die test zelf dat wat de wizard oplevert neutraal blijft en door
+   `template:validate` komt.
 2. Documentatie Nederlands, code Engels, UI-teksten in `lib/i18n/template/` in beide talen.
 3. Elke owned bestand draagt de kop. Elke wijziging aan een owned bestand komt in
    `template/CHANGELOG.md` onder de volgende versie, met "Let op bij bijwerken" als er iets kan
@@ -83,8 +93,45 @@ aan, nooit genest `pnpm`: een `&` in een Windows-gebruikerspad breekt dat, ook d
    met Engelse interface, andere rollen en de wachtwoordlogin.
 4. Nooit een kolom hernoemen tussen schemaversies van een module; uitbreiden en inkrimpen in
    stappen. Een nieuwe enumwaarde en het gebruik ervan in twee schemaversies.
-5. Een ronde is klaar als de batterij groen is: typecheck, lint, huisregels, vitest, build,
-   contrast, en vanaf ronde 2 de migraties heen en terug en de e2e-basisset.
+4b. Een module krijgt een nieuwe schemaversie zo: het schemabestand aanpassen, `schemaVersion` in het
+   manifest verhogen, en `template/modules/<module>/migrations/<versie>/down.sql` erbij met alleen
+   wat die versie toevoegde. De terugweg van een eerdere versie wijzig je niet. `template:apply`
+   maakt in een bestaand project een eigen migratie met die terugweg; in een vers project zit het
+   hele schema in de eerste migratie en gaat de terugweg van elke latere versie daar voorop
+   (`template/lib/drizzle.ts`). Bewijs allebei: de gouden test met `voorbeeld` voor het verse
+   project, en een `template:update --from` van een project op de vorige versie voor het bestaande.
+5. Een ronde is klaar als de batterij groen is: typecheck, lint plus huisregels, vitest,
+   check:secrets, check:licenses, check:migrations, check:drift, check:contrast, template:verify,
+   build, de migraties heen en terug op de dev-branch, alle `check:<domein>`, en de e2e tegen
+   `next start`. `pnpm check:all` draait alles in die volgorde (`scripts/lib/battery.ts`) en zegt wat
+   het oversloeg; de samenvatting komt in de rubriek Bewijs. Voor het template zelf komen daar
+   `node template/ci/check-template.mjs` en de gouden test bij (`template/ci/golden.mjs`).
+6. Een versie begint met de open terugmeldingen (hieronder).
+
+## Terugmeldingen verwerken
+
+Projecten en deelnemers melden met `pnpm template:report-back` terug wat ze leerden (besluit D31,
+handleiding 12). Een melding is een issue in deze repo met een titel die begint met
+`[Terugmelding]`. Labels zet de melder niet, want GitHub laat ze vallen van wie alleen leesrecht
+heeft.
+
+1. **Aan het begin van elke versie** de open meldingen ophalen:
+   `gh issue list --search "[Terugmelding] in:title" --state open`.
+2. **Per punt een oordeel**, in de chat aan de eigenaar van het template: had al (met waar het
+   staat), nieuw (voor deze versie), of niet overnemen (met de reden). Dubbele punten uit
+   verschillende meldingen gaan samen. Een punt haalt de lat als het tijd kostte, de oorzaak bekend
+   is en het opnieuw kan gebeuren; een wens mag ook, maar weegt lichter. De eigenaar kiest wat in de
+   versie komt.
+3. **Labels** bij het toetsen: `terugmelding`, een laag (`laag: neon`, `laag: nextjs`,
+   `laag: authjs` en zo verder, naar de bestanden in `docs/lessen/`) en een soort (`soort: les`,
+   `soort: besluit`, `soort: fout`, `soort: wens`).
+4. **Overnemen in eigen woorden.** Nooit code of tekst letterlijk uit een melding: een les komt in
+   `docs/lessen/` met een eigen nummer en de vorm van die map, een besluit krijgt een D-nummer van
+   het template. `node template/ci/check-template.mjs` toetst daarna de neutraliteit.
+5. **De kring sluiten.** In `template/CHANGELOG.md` staat achter wat eruit voortkwam "(uit
+   terugmelding #12)". Bij de release krijgt het issue een antwoord met de versie en per punt het
+   oordeel, en gaat het dicht. Antwoorden en sluiten doet de eigenaar van het template, of wie
+   daarvoor is aangewezen.
 
 ## Stand
 
@@ -102,9 +149,12 @@ aan, nooit genest `pnpm`: een `&` in een Windows-gebruikerspad breekt dat, ook d
 | 9 | auth-password | code klaar, 3 oktober 2026; check:auth-password en e2e 09 uitgesteld |
 | 10 | files | code klaar, 3 oktober 2026; check:files, blob:status en e2e 08 uitgesteld |
 | 11 | Update en release | code klaar, 3 oktober 2026; updatetest offline |
-| 12 | Documenten voor Claude | klaar, 3 oktober 2026: THEME, WERKWIJZE, docs/modules, twintig patronen, 79 lessen in negen lagen, check:template; de startprompt op een vers project is nog niet beproefd (ronde 14) |
-| 13 | Handleidingen en wizard | code klaar, 3 oktober 2026: handleidingen 00 tot 90, PROJECTPLAN-seed, wizard als één HTML-bestand met de rooktest `template/ci/wizard-smoke.mjs` groen (42 controles in Chromium); de klikproef door een collega staat open |
-| 14 | Proef op de som, tag v1.0.0 | heeft een database nodig, zie hieronder |
+| 12 | Documenten voor Claude | klaar, 3 oktober 2026: THEME, WERKWIJZE, docs/modules, de patronen en de lessen, check:template. Stand na v1.8.0: 29 patronen, en 121 lessen in tien lagen (de laag `ai` is nieuw). De startprompt op een vers project is nog niet beproefd (ronde 14) |
+| 13 | Handleidingen en wizard | code klaar, 3 oktober 2026: handleidingen 00 tot 90 en de PROJECTPLAN-seed. De wizard en zijn rooktest staan sinds v1.3.0 in een eigen repo; `template/ci/wizard-smoke.mjs` bestaat hier niet meer. De klikproef door een collega staat open |
+| 14 | Proef op de som, v1.0.0 | v1.0.0 staat in `template/CHANGELOG.md` (13 oktober 2026); de proef met een database staat nog open, zie hieronder |
+
+Deze tabel beschrijft de bouw tot en met v1.0.0. Wat er sindsdien per versie veranderde, staat in
+`template/CHANGELOG.md`; de versie van nu staat in `template/manifest.json`.
 
 ## Uitgestelde bewijzen
 
@@ -123,3 +173,11 @@ niet was. Allemaal inhalen zodra `.env.local` van de templatemap een dev-branch 
 | 9 | tokens, vergrendeling, uitnodigen en aannemen, tweestapsverificatie met een echte code; de hele weg door de browser | `pnpm check:auth-password` (met `AUTH_SECRET` in `.env.local`), e2e `09-password.spec.ts` in een project met de wachtwoordlogin |
 | 10 | de administratie en de sloten van bestanden, de route zonder sessie, en één echte blob | `pnpm check:files`, e2e `08-files.spec.ts`, `pnpm blob:status` met een ingerichte container |
 | 14 | de proef op de som met database: in de gouden kopieën van `default` (Entra) en `voorbeeld` (wachtwoord, alle modules) `pnpm db:roundtrip`, `pnpm db:bootstrap`, `pnpm db:seed`, alle `check:*` en de volledige e2e; daarna een update met een gewijzigde seed en een gewijzigd owned bestand tegen een echte tag | `node template/ci/golden.mjs --keep voorbeeld`, dan in die map met een `.env.local` naar een dev-branch; de offline helft (gouden test, updatetest) draait al in `template-ci.yml` |
+| v1.6.0 | de rol van de app en het slot op elke tabel: de inlogrol op de dev-branch, de rechten, de regel, evenveel rijen als de eigenaar, en de app en de e2e als die rol | `pnpm db:app-login`, `pnpm check:grants`, daarna `pnpm dev` en `pnpm e2e:all` met `DATABASE_URL_APP` in `.env.local` |
+| v1.7.0 en v1.8.0 | de CSP in een echte browser: één header, de nonce op elk script in de HTML van de server, een pagina met een punt in het adres, en de vaste CSP op `/api/auth` | e2e `05b-csp.spec.ts` |
+| v1.2.0 en v1.8.0 | de sloten van de module ai, en in rubriek 7 de smokkeltest tegen de database | `pnpm check:ai` in een project met de module ai, met minstens één geval in `scripts/check-ai.project.ts` |
+| v1.8.0 | de cronroutes op `runSteps`: het antwoord `{ results, failed }` van de kern, de wachtrij en de outbox. De mislukte stap en de 500 bewijst `lib/cron/steps.test.ts` zonder database | e2e `04-cron.spec.ts`, en in een project met jobs en messaging `06-jobs.spec.ts` en `07-messages.spec.ts` |
+| v1.9.0 | de noodstop en het maandplafond van de module ai: de sloten en de toets dwars door `runPrompt`; de migratie `template_ai_2` heen en terug in een bestaand project, de samengevoegde terugweg in een vers project, en de rechten van de rol van de app op `ai_limits` | `pnpm check:ai` (rubriek 8), `pnpm db:roundtrip` en `pnpm check:grants` in een project met de module ai, één keer vers en één keer bijgewerkt vanaf v1.8.0 |
+| v1.8.0 | de preview uit `seed`: de route voor een nieuw project (handleiding 04, stap 2 en 07, stap 4c), de seed-branch achteraf met alleen het schema en de overgenomen migratielijst, en een account met wachtwoord op `seed` (handleiding 09) | met de hand, in een Neon-project met een Vercel-koppeling; geen van de drie is gedraaid |
+| v1.10.0 | het logboek met alleen feiten dwars door elke mutatie van kern en modules (een code die geen code is, gooit en houdt de transactie tegen); de weigering zonder rol met een echte inlog; de e2e met de proxy als poort ervoor | e2e `e2e:all` en alle `check:<domein>` in de gouden kopie van `voorbeeld`; een inlog zonder app role in een tenant |
+| v1.10.0 | in een echt Vercel-project: de regel in de firewall op `/sign-in` (eerst Log), de plek van Attack Mode, de regio van de functies, en hoe een cron zonder geheim (404) in het overzicht van de crons staat; en de luisteraar op de pool bij een verbinding die wegvalt | met de hand, na de eerste deploy; de pool alleen te zien in de log van een draaiende omgeving |

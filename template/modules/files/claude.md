@@ -13,5 +13,8 @@
   weghaalt, want een bestand kan onder een bewaarplicht vallen.
 - **Vier megabyte is de grens** van een server action op Vercel. Groter hoort rechtstreeks naar de
   opslag met een kortlevend token, en dat is een eigen ontwerp van het project dat het nodig heeft.
+  De host weigert boven 4,5 MB met een fout die de code nooit ziet: gebruik daarom altijd
+  `FileInput` (`components/files/file-input.tsx`), dat de grens van het doel al in de browser
+  toetst, vóór het versturen. De controle op de server blijft de grens die telt.
 - **Bewijs:** `pnpm check:files` (administratie en sloten), `pnpm blob:status` (een pixel erin en eruit,
   met het echte token), e2e `08-files.spec.ts` (de route is dicht zonder sessie).

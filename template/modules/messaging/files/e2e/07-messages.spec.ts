@@ -26,9 +26,11 @@ test("de cronroute van de outbox is dicht zonder het geheim en telt met het gehe
 
   const right = await request.get("/api/cron/outbox", { headers: { authorization: "Bearer e2e-cron-secret" } });
   expect(right.status()).toBe(200);
-  const body = (await right.json()) as Record<string, unknown>;
-  expect(typeof body.sent).toBe("number");
-  expect(typeof body.pruned).toBe("number");
+  /* Drie stappen met elk hun uitkomst, en geen enkele mislukt (lib/cron/steps.ts). */
+  const body = (await right.json()) as { results: { send: { sent: number } | null; prune: number | null }; failed: string[] };
+  expect(typeof body.results.send?.sent).toBe("number");
+  expect(typeof body.results.prune).toBe("number");
+  expect(body.failed).toEqual([]);
 });
 
 test("wie er niet in komt, kan vanaf het inlogscherm een melding sturen", async ({ page }) => {

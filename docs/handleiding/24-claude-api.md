@@ -28,7 +28,9 @@ opzoeken van de prijzen.
 
 Eén workspace per tool, niet per omgeving: productie en preview scheiden zich al via Vercel en Neon
 (handleiding 09). Twee sleutels in die ene workspace, zodat je de lokale sleutel kunt intrekken zonder
-dat de tool stilvalt.
+dat de tool stilvalt. Deel de workspace en de sleutels niet met een andere tool of met proefcode: dan
+is het plafond van de een ook dat van de ander, en trek je de een niet in zonder de ander stil te
+leggen.
 
 ## Stappen
 
@@ -52,7 +54,9 @@ dat de tool stilvalt.
    "ontbreekt".
 6. Maak een tweede sleutel `<slug>-lokaal-<jouw initialen>` en zet hem in `.env.local` als
    `ANTHROPIC_API_KEY=...`. Een Sensitive waarde komt niet mee met `vercel env pull`, dus dit doe je
-   zelf. Nooit in de chat, nooit in `.env.example`.
+   zelf. Nooit in de chat, nooit in `.env.example`. Wil je lokaal aan de schermen werken zonder
+   sleutel, sla deze stap dan over en lees "Lokaal werken zonder sleutel" hieronder; voor stap 8 heb
+   je de sleutel wel nodig.
    **Controle:** `git status` toont `.env.local` niet.
 7. Zoek in de Console de model-id's op (in de documentatie onder Models) en probeer je prompt eerst in
    de **Playground** met twee of drie modellen. Kies het kleinste model dat het goed doet.
@@ -62,13 +66,32 @@ dat de tool stilvalt.
    **Controle:** "Structuur: klopt" en het verzoek staat in de Console bij **Usage**, onder de
    workspace `<slug>`.
 9. Zoek op de prijspagina van Anthropic per model de prijs per miljoen tokens op, voor input en voor
-   output. Vul ze in onder **Beheer, AI, Prijzen**, in dollars. Noteer de datum in de tabel hieronder:
-   prijzen veranderen.
+   output. Vul ze in onder **Beheer, AI, Prijzen**, in dollars. Noteer de datum in
+   `docs/inrichting.md` (zie Vul in): prijzen veranderen.
    **Controle:** de prijs staat in de tabel Prijzen.
 10. **Beheer, AI, Prompts**: per prompt het model, het denkniveau (begin met laag) en hoeveel
     verzoeken één persoon per dag mag doen. Zet hem pas aan als kopje 10 van het projectplan klopt.
     **Controle:** de prompt staat op aan; na één verzoek in de tool staat het onder Verbruik met de
     tokens en de kosten.
+
+## Lokaal werken zonder sleutel
+
+Zet in `.env.local` de regel `AI_FAKE=1`, naast `APP_ENV=local` (07, stap 2). Dan antwoordt een
+nagemaakt model in plaats van Claude: zonder sleutel, zonder netwerk en zonder kosten. Zo kun je een
+scherm met een AI-knop bouwen en doorklikken. De prompt moet wel aan staan met een model onder
+Beheer, AI; welk model daar staat, maakt voor het nagemaakte model niet uit.
+
+**Controle:** elke tekst in het voorstel begint met "Nagemaakt", en onder Beheer, AI, Verbruik staat
+het verzoek met het model `fake`. Bij Kosten staat "onbekend": een nagemaakt verzoek heeft geen prijs.
+
+Drie dingen om te weten:
+
+- Het werkt alleen lokaal. Staat `AI_FAKE` aan in een deploy, dan geeft een AI-knop een foutpagina
+  in plaats van een nepvoorstel. Zet hem dus nooit in Vercel.
+- De e2e zet het nagemaakte model zelf aan en zet de sleutel leeg, zodat een test nooit een echte
+  aanroep doet, ook niet als er een sleutel in `.env.local` staat.
+- Een nagemaakt model bewijst niet dat je prompt werkt. Dat doe je in de Playground (stap 7) en met
+  `pnpm ai:test` (stap 8), met de echte sleutel.
 
 ## Waarom zo
 
@@ -79,6 +102,10 @@ je zelf in, omdat de API geen prijs teruggeeft; de tool slaat bij elk verzoek de
 op, zodat een latere prijswijziging het verleden niet verandert. De rekening die telt, staat in de
 Console; Beheer, AI is de uitleg erbij.
 
+De tool gebruikt de officiële SDK van Anthropic, op een vaste versie in `package.json`. Wil je die
+versie verhogen: een versie die jonger is dan een week, installeert pnpm niet (`minimumReleaseAge`
+in `pnpm-workspace.yaml`, tegen pakketten die net zijn gekaapt). Pin een versie die ouder is.
+
 ## Beveiliging
 
 - De sleutel staat alleen in Vercel (Sensitive) en in `.env.local`, en bereikt de browser nooit:
@@ -86,6 +113,14 @@ Console; Beheer, AI is de uitleg erbij.
 - Alleen de velden die een prompt noemt gaan mee, als gegevens en niet als opdracht. Wat er naar
   Claude ging en wat terugkwam, bewaart de tool niet; het verbruik toont wie, wanneer, welk model en
   hoeveel tokens.
+- **Tekst van klanten gaat nooit naar Claude.** De reden is juridisch en niet technisch: voor wat een
+  klant aanlevert, is de organisatie verwerker, en Anthropic staat niet in de
+  verwerkersvoorwaarden. Zet dus geen prompt aan die een bericht, een bestand of een omschrijving van
+  een klant meestuurt. De tool helpt: `pnpm lint` weigert code die de AI-module gebruikt vanuit een
+  scherm voor gasten of klanten (de huisregel `ai-imports`).
+- Een prompt die gegevens van collega's meestuurt, zet de eigenaar van het project bewust aan;
+  standaard staat elke prompt uit. De privacyverklaring noemt elke toepassing bij naam: wat meegaat,
+  wat nooit meegaat, hoe lang het blijft en wie het leest.
 - Ga ervan uit dat Claude de gegevens buiten de EU verwerkt, onder de commerciële voorwaarden van
   Anthropic. Namen, contactgegevens en gezondheidsgegevens stuur je daarom bijna nooit mee; leg vast
   wat wel, in kopje 10 van het projectplan.
@@ -95,9 +130,29 @@ Console; Beheer, AI is de uitleg erbij.
 ## Kosten
 
 Plan: tegoed vooraf, betalen per token. Plafond: het tegoed zonder automatisch bijkopen, de
-uitgavenlimiet op de workspace, en in de tool de daglimiet per persoon per prompt. Uit je checklist:
-het deel voor AI. Wat een verzoek kost, zie je onder Beheer, AI; wat een model per miljoen tokens
-kost, staat op de prijspagina. Stand van oktober 2026.
+uitgavenlimiet op de workspace, en in de tool het maandplafond van de organisatie en de daglimiet
+per persoon per prompt. Uit je checklist: het deel voor AI. Wat een verzoek kost, zie je onder
+Beheer, AI; wat een model per miljoen tokens kost, staat op de prijspagina. Stand van oktober 2026.
+
+### Het maandplafond en de noodstop
+
+Onder **Beheer, AI**, in de rubriek **Grenzen**, staan twee grenzen voor de hele organisatie.
+
+1. Bij **Maandplafond**, **Update**: vul een bedrag in dollars in dat lager is dan de
+   uitgavenlimiet van de workspace, en bewaar. Leeg is geen plafond.
+   **Controle:** bovenaan staat onder "Kosten deze maand" nu je bedrag met een percentage.
+2. Vul voor elk model dat een prompt gebruikt de prijs in, als dat nog niet gedaan is. Met een
+   plafond wordt een prompt met een model zonder prijs geweigerd: zo een verzoek is niet te tellen.
+   **Controle:** de pagina toont geen regel die zegt welke modellen nog geen prijs hebben.
+3. Bij **Noodstop**, **Alles uitzetten**: lees wat er staat en probeer hem één keer, op een rustig
+   moment.
+   **Controle:** bovenaan staat sinds wanneer hij aan staat en wie hem zette, en de knop voor een
+   voorstel zegt dat de functie uit staat. Haal hem er daarna af met **Weer aanzetten**.
+
+Wat je ervan mag verwachten: vanaf 80% van het plafond waarschuwen Beheer, AI en Beheer, Systeem. Op
+100% weigert de tool tot de eerste van de volgende maand, of tot je het plafond verhoogt. Het plafond
+is niet de harde grens: de kosten van een verzoek zijn pas na afloop bekend, dus een maand kan er net
+boven eindigen. De harde grens blijft de uitgavenlimiet in de Console.
 
 ## Zo zie je dat het goed staat
 
@@ -113,11 +168,19 @@ kost, staat op de prijspagina. Stand van oktober 2026.
 | "Dit model bestaat niet of is niet beschikbaar" | Een tikfout in het model-id, of het model is uitgefaseerd; kies een ander onder Beheer, AI |
 | "Het is nu te druk" of de uitgavenlimiet is bereikt | De limiet van de workspace is op, of de API heeft het druk; de knop werkt later weer |
 | "Je hebt het maximum voor vandaag bereikt" | De daglimiet per persoon uit Beheer, AI; dat is de bedoeling |
+| "Het budget voor deze maand is op" | Het maandplafond onder Beheer, AI, Grenzen is bereikt. Verhoog het, of wacht tot de eerste van de volgende maand |
+| "Deze functie staat nu uit" terwijl de prompt aan staat | De noodstop staat aan; bovenaan Beheer, AI staat sinds wanneer en door wie |
+| "Deze functie is nog niet ingericht" terwijl de sleutel er is | Er is een maandplafond en het model van deze prompt heeft nog geen prijs; vul de prijs in |
 | Een voorstel "paste niet" | Claude antwoordde buiten de grenzen van de structuur; kijk naar de instructie en de voorbeelden van de prompt |
 | De knop staat uit | Geen sleutel, geen model, of de prompt staat uit onder Beheer, AI |
 | Kosten "onbekend" | Voor dat model staat nog geen prijs onder Beheer, AI, Prijzen |
+| Elke tekst in een voorstel begint met "Nagemaakt" | `AI_FAKE=1` staat in `.env.local`: het nagemaakte model antwoordt. Haal de regel weg voor een echt voorstel |
+| Een AI-knop geeft een foutpagina, en in de log staat "AI_FAKE staat aan, maar de omgeving is niet lokaal" | De variabele staat in Vercel, of `APP_ENV=local` ontbreekt in `.env.local`. In een deploy mag hij nooit staan: haal hem weg en deploy opnieuw |
+| `pnpm install` weigert een nieuwe versie van de SDK van Anthropic | De versie is jonger dan een week (`minimumReleaseAge` in `pnpm-workspace.yaml`). Pin een versie die ouder is |
 
 ## Vul in
+
+Noteer dit in `docs/inrichting.md`, niet in dit bestand (zie `00-checklist.md`).
 
 | Wat | Waarde |
 |---|---|

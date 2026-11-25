@@ -5,50 +5,113 @@ import { PageHeader } from "@/components/page-header";
 import { Chip } from "@/components/ui/chip";
 import { PopoverDisclosure } from "@/components/ui/popover-panel";
 import { DataTable, EmptyRow, Td, Th, Thead, Tr } from "@/components/ui/table";
+import { capState, CENT_TOKENS_PER_CENT, nextMonthStart } from "@/lib/ai/budget";
 import { aiKey, AI_KEY_ENV } from "@/lib/ai/client";
 import { centTokens, formatCost, priceInput } from "@/lib/ai/cost";
 import { MODEL_SUGGESTIONS } from "@/lib/ai/models";
 import { AI_PROMPTS, promptFor } from "@/lib/ai/prompts";
-import { loadPrices, loadPromptSettings } from "@/lib/ai/settings";
+import { loadLimits, loadPrices, loadPromptSettings } from "@/lib/ai/settings";
 import { monthTotals, recentRequests } from "@/lib/ai/usage";
 import { can } from "@/lib/auth/can";
 import { requireSession } from "@/lib/auth/session";
 import { getDb } from "@/lib/db/client";
-import { formatInstant } from "@/lib/domain/dates";
+import { formatDate, formatInstant, todayIso } from "@/lib/domain/dates";
 import { labels } from "@/lib/i18n/labels";
 import { PROJECT } from "@/lib/project/config.generated";
-import { PriceForm, PromptSettingForm } from "./forms";
+import { CapForm, PriceForm, PromptSettingForm, StopForm } from "./forms";
 
 export const metadata = { title: labels.ai.title };
 
 const PRICING_URL = "https://platform.claude.com/docs/en/about-claude/pricing";
 
 /**
- * Beheer, AI: de prompts met hun instelling (Update opent een zwevend paneel), de prijzen per model,
- * en het verbruik per verzoek met wat het kostte. Niets hiervan staat in de code.
+ * Beheer, AI: de grenzen van de organisatie (de noodstop en het maandplafond), de prompts met hun
+ * instelling (Update opent een zwevend paneel), de prijzen per model, en het verbruik per verzoek met
+ * wat het kostte. Niets hiervan staat in de code.
  */
 export default async function AiPage() {
   const actor = await requireSession();
   if (!can(actor, "admin:ai")) notFound();
 
   const db = getDb();
-  const [settings, prices, totals, requests] = await Promise.all([loadPromptSettings(db, actor.organisationId), loadPrices(db, actor.organisationId), monthTotals(db, actor), recentRequests(db, actor)]);
+  const [settings, prices, totals, requests, limits] = await Promise.all([
+    loadPromptSettings(db, actor.organisationId),
+    loadPrices(db, actor.organisationId),
+    monthTotals(db, actor),
+    recentRequests(db, actor),
+    loadLimits(db, actor.organisationId),
+  ]);
   const keyMissing = aiKey() === undefined;
   const models = [...new Set([...MODEL_SUGGESTIONS, ...settings.flatMap((setting) => (setting.model === null ? [] : [setting.model])), ...prices.map((price) => price.model)])];
   const monthCost = totals.costs.length === 0 ? labels.ai.costUnknown : totals.costs.map((cost) => formatCost(cost.centTokens, cost.currency, PROJECT.locale)).join(" + ");
+
+  /* De grenzen: de stand van de maand in de valuta van het plafond, en welke modellen het plafond zou weigeren. */
+  const stopped = limits.stoppedAt !== null;
+  const cap = capState(totals.costs.find((cost) => cost.currency === limits.currency)?.centTokens ?? 0, limits.monthlyCapCents);
+  const capText = limits.monthlyCapCents === null ? null : formatCost(limits.monthlyCapCents * CENT_TOKENS_PER_CENT, limits.currency, PROJECT.locale);
+  const unpriced =
+    limits.monthlyCapCents === null
+      ? []
+      : [...new Set(settings.flatMap((setting) => (setting.enabled && setting.model !== null && !prices.some((price) => price.model === setting.model && price.currency === limits.currency) ? [setting.model] : [])))];
+  const notice = "border-warning/40 bg-warning/10 text-foreground mb-4 rounded-md border px-3 py-2 text-[12px]";
 
   return (
     <>
       <PageHeader eyebrow={labels.admin.eyebrow} title={labels.ai.title} />
 
       <PageBody>
-        {keyMissing && <p className="border-warning/40 bg-warning/10 text-foreground mb-4 rounded-md border px-3 py-2 text-[12px]">{labels.ai.noKey(AI_KEY_ENV)}</p>}
+        {limits.stoppedAt !== null && (
+          <p role="status" className={notice}>
+            {labels.ai.stoppedBanner(formatInstant(limits.stoppedAt), limits.stoppedByName ?? labels.ai.someone)}
+          </p>
+        )}
+        {keyMissing && <p className={notice}>{labels.ai.noKey(AI_KEY_ENV)}</p>}
+        {cap.level === "reached" && <p className={notice}>{labels.ai.capReachedBanner(formatDate(nextMonthStart(todayIso())))}</p>}
+        {cap.level === "warning" && <p className={notice}>{labels.ai.capWarningBanner(cap.percent ?? 0)}</p>}
+        {unpriced.length > 0 && <p className={notice}>{labels.ai.capUnpricedBanner(unpriced.join(", "))}</p>}
 
         <StatRow>
           <Stat label={labels.ai.statRequests} value={totals.requests} />
-          <Stat label={labels.ai.statCost} value={monthCost} />
+          <Stat
+            label={labels.ai.statCost}
+            value={monthCost}
+            note={capText === null ? undefined : labels.ai.capNote(capText, cap.percent ?? 0)}
+            tone={cap.level === "reached" ? "bad" : cap.level === "warning" ? "warn" : "neutral"}
+          />
           <Stat label={labels.ai.statFailed} value={totals.failed} tone={totals.failed > 0 ? "warn" : "neutral"} />
         </StatRow>
+
+        <Section title={labels.ai.limitsTitle} intro={labels.ai.limitsIntro}>
+          <DataTable minWidth={620}>
+            <Thead>
+              <Th>{labels.ai.colLimitKind}</Th>
+              <Th>{labels.ai.colLimitState}</Th>
+              <Th />
+            </Thead>
+            <tbody>
+              <Tr>
+                <Td>{labels.ai.stopName}</Td>
+                <Td>
+                  <Chip tone={stopped ? "danger" : "success"}>{stopped ? labels.ai.stopOn : labels.ai.stopOff}</Chip>
+                </Td>
+                <Td>
+                  <PopoverDisclosure label={stopped ? labels.ai.stopRelease : labels.ai.stopPress} title={labels.ai.stopName} width={420}>
+                    <StopForm stopped={stopped} />
+                  </PopoverDisclosure>
+                </Td>
+              </Tr>
+              <Tr>
+                <Td>{labels.ai.capName}</Td>
+                <Td>{capText === null ? <span className="text-muted-foreground">{labels.ai.capNone}</span> : labels.ai.capLine(capText, cap.percent ?? 0)}</Td>
+                <Td>
+                  <PopoverDisclosure label={labels.ui.edit} srLabel={labels.ai.capName} title={labels.ai.capName} width={420}>
+                    <CapForm cap={limits.monthlyCapCents === null ? "" : priceInput(limits.monthlyCapCents)} />
+                  </PopoverDisclosure>
+                </Td>
+              </Tr>
+            </tbody>
+          </DataTable>
+        </Section>
 
         <Section title={labels.ai.promptsTitle} intro={labels.ai.promptsIntro}>
           <DataTable minWidth={820}>

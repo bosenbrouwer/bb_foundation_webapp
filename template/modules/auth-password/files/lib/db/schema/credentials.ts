@@ -14,6 +14,7 @@
 import { boolean, index, integer, pgEnum, pgTable, text, timestamp, unique, uuid } from "drizzle-orm/pg-core";
 import { primaryKeyColumn, timestamps } from "./columns";
 import { organisations } from "./organisations";
+import { appRowAccess } from "./rls";
 import { users } from "./users";
 
 export const credentials = pgTable("credentials", {
@@ -24,14 +25,14 @@ export const credentials = pgTable("credentials", {
     .notNull()
     .references(() => organisations.id),
   passwordHash: text("password_hash").notNull(),
-  /** Versleuteld met de sleutel uit AUTH_SECRET; leeg zolang er geen tweestapsverificatie is. */
+  /** Versleuteld met `MFA_SECRET_KEY` (zonder die: `AUTH_SECRET`), zie `secret-box.ts`; leeg zolang er geen tweestapsverificatie is. */
   mfaSecret: text("mfa_secret"),
   mfaEnabled: boolean("mfa_enabled").notNull().default(false),
   failedAttempts: integer("failed_attempts").notNull().default(0),
   lockedUntil: timestamp("locked_until", { withTimezone: true }),
   passwordChangedAt: timestamp("password_changed_at", { withTimezone: true }).notNull().defaultNow(),
   ...timestamps,
-});
+}, () => [appRowAccess()]);
 
 export type Credentials = typeof credentials.$inferSelect;
 
@@ -53,7 +54,7 @@ export const authTokens = pgTable(
     usedAt: timestamp("used_at", { withTimezone: true }),
     ...timestamps,
   },
-  (t) => [unique("auth_tokens_token_hash").on(t.tokenHash), index("auth_tokens_user_idx").on(t.userId, t.kind)],
+  (t) => [unique("auth_tokens_token_hash").on(t.tokenHash), index("auth_tokens_user_idx").on(t.userId, t.kind), appRowAccess()],
 );
 
 export type AuthTokenKind = (typeof authTokenKind.enumValues)[number];

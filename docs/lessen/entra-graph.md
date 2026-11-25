@@ -18,9 +18,12 @@ zonder slash aan het eind, verplicht. Graph-code leidt de tenant uit diezelfde i
 van een tweede variabele die kan afwijken, en weigert `common` en `organizations` (geen tenant, dus
 geen client credentials). Single tenant registreren, implicit grant en hybrid flows uit.
 
-**Afgedwongen door.** `lib/auth/providers/entra.ts` (weigert te starten zonder issuer),
-`tenantFromIssuer` in het Graph-transport van module messaging, en `pnpm entra:status`. De
-registratie-instellingen zijn afspraak, zie `docs/handleiding/05-entra.md`.
+**Afgedwongen door.** `entraIssuerProblem` in `lib/auth/providers/entra-issuer.ts`, met test
+(besluit D18): `entraProvider()` in `entra.ts` gooit bij het maken van de provider. Een ontbrekende
+issuer telt alleen in een deploy (preview of productie); `common`, `organizations` en `consumers`
+zijn overal fout. Verder `tenantFromIssuer` in het Graph-transport van module messaging, en
+`pnpm entra:status` (de drie variabelen, de tenant in de issuer en het openbare OpenID-document van
+die tenant). De registratie-instellingen zijn afspraak, zie `docs/handleiding/05-entra.md`.
 
 ## L-ENTRA-02 Toegang geef en neem je in de enterprise application
 
@@ -37,8 +40,10 @@ toewijzing weghalen; moet het direct, dan zet je hem in de tool op inactief (de 
 request uit L-AUTH-03) of wissel je `AUTH_SECRET`. De gebruikersrij laten staan, want daar hangt
 historie aan.
 
-**Afgedwongen door.** Een instelling in Entra, dus afspraak; `docs/handleiding/11-toegang-beheren.md`
-beschrijft de klikroute. `pnpm entra:status` toont of de toewijzing verplicht is.
+**Afgedwongen door.** Een instelling in Entra, dus afspraak; `docs/handleiding/05-entra.md` (stap 5)
+en `docs/handleiding/11-toegang-beheren.md` beschrijven de klikroute. Geen script controleert de
+schakelaar: `pnpm entra:status` leest de tenant niet uit, want dat vraagt een Graph-recht dat de
+inlog niet nodig heeft.
 
 ## L-ENTRA-03 Bij app roles telt alleen de value
 
@@ -53,8 +58,10 @@ Bij een lege registratie via de manifest, daarna alleen via de knoppen (Entra we
 toegewezen rol te wijzigen). Geen optional claim voor rollen: toegewezen app roles staan vanzelf in
 het token. Een leesscript dat de rollen in Entra naast de code legt.
 
-**Afgedwongen door.** `pnpm entra:status` (leest alleen; vergelijkt `APP_ROLES` met de tenant) en
-`parseRoles` in `lib/auth/roles.ts`, dat onbekende waarden weggooit.
+**Afgedwongen door.** `parseRoles` in `lib/auth/roles.ts`, dat onbekende waarden weggooit.
+`pnpm entra:status` drukt de rollen uit `APP_ROLES` af, zodat je ze met de hand naast de app roles
+in de portal legt; het script leest de app roles in de tenant zelf niet uit. Het leesscript uit de
+regel bestaat dus nog niet: de vergelijking is afspraak.
 
 ## L-ENTRA-04 Redirect-URI's moeten teken voor teken kloppen
 

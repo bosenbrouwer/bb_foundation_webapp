@@ -106,8 +106,8 @@ zelf niet laadt op het moment dat er iets stuk is.
 hulpmiddel dat gooit, maakt van één storing twee.
 
 **Regel.** Fail closed: zonder `CRON_SECRET` weigert elke cron, zonder `PRODUCTION_DB_ENDPOINT`
-faalt een preview-deploy, zonder `AUTH_SECRET` start Auth.js niet, dev-login plus `VERCEL_ENV` laat
-de app niet starten, zonder e-mail geen login. Fail soft: schemastand, thema, statusscherm en
+faalt een deploy buiten productie, zonder `AUTH_SECRET` start Auth.js niet, de dev-login zonder
+`APP_ENV=local` laat de app niet starten, zonder e-mail geen login. Fail soft: schemastand, thema, statusscherm en
 foutrapportage vangen hun eigen fout en zeggen "onbekend" (niet weten is niet achter). Een half
 ingerichte koppeling staat uit, niet half aan.
 
@@ -150,3 +150,241 @@ bewijst dat er iets aankomt en dat de schoonmaak werkt.
 **Afgedwongen door.** `lib/monitoring/report.ts` (`scrubMessage`, `reportError`) met zijn test en
 `instrumentation.ts`. Het doorsturen is de gereserveerde module monitoring-sentry (patroon
 `sentry-envelope`).
+
+## L-WERK-09 Een check die ">= 0" eist, bewijst niets
+
+**Symptoom.** De check op de rechten van de rol van de app was groen, terwijl die rol op productie
+nul rijen zag en het inloggen omviel (L-NEON-09).
+
+**Oorzaak.** De bewering "lezen lukt" is ook waar bij nul rijen. Een check die niet zegt wat hij
+verwacht te zien, ziet alles als goed.
+
+**Regel.** Eis "meer dan nul" en "gelijk aan wat de eigenaar ziet". Bewijs ook de negatieve kant:
+een rol met leesrecht en zonder regel ziet niets. Een check zonder een getal dat fout kan zijn, is
+een wens.
+
+**Afgedwongen door.** `scripts/check-grants.ts`, sectie 3 en 4.
+
+## L-WERK-10 Wat als eigenaar draait, test de rechten van productie niet
+
+**Symptoom.** Lokaal en in de e2e werkte alles; productie faalde op een recht dat de rol van de app
+miste.
+
+**Oorzaak.** Alles behalve productie verbond als eigenaar, en de eigenaar gaat langs elk recht en
+elk slot. Een gat valt dan pas in productie op.
+
+**Regel.** Lokaal en in de e2e als de rol van de app: `pnpm db:app-login` maakt een inlogrol op de
+dev-branch en zet `DATABASE_URL_APP` in `.env.local`. Scripts, checks en de fixtures van de e2e
+blijven als eigenaar werken, want die doen DDL en zetten testdata klaar. Na elke `vercel env pull`
+opnieuw, want die overschrijft `.env.local`.
+
+**Afgedwongen door.** `scripts/db-app-login.ts`; `pnpm doctor` zegt LATER zolang de variabele
+ontbreekt; handleiding 07.
+
+## L-WERK-11 "Het werkt" bewijst niet welke rol er verbindt
+
+**Symptoom.** Na het zetten van `DATABASE_URL_APP` op productie leek alles in orde. Dat zegt niets:
+een terugval op de eigenaar werkt ook.
+
+**Oorzaak.** De app kiest stil de gewone verbinding als de eigen variabele ontbreekt of leeg is, en
+niets op het scherm verraadt welke rol er verbindt.
+
+**Regel.** In de SQL Editor kijken: `select usename, count(*) from pg_stat_activity where usename is
+not null group by usename;` moet de inlogrol van de app noemen. Die controle staat in de
+handleidingstap, niet alleen in het hoofd van wie het zette.
+
+**Afgedwongen door.** Alleen afspraak: handleiding 04, de controle onder "De rol van de app op
+productie".
+
+## L-WERK-12 Een nieuwe pakketversie pas na een week
+
+**Symptoom.** (voorkomen) Een gekaapt npm-pakket draait met jouw sleutels op de laptop en in de CI
+voordat iemand het heeft gemerkt.
+
+**Oorzaak.** De npm-wormen van 2025 en 2026 (Shai-Hulud en zijn opvolgers) kaapten honderden
+pakketten via gestolen maintainer-accounts en verspreidden zich via `postinstall` en GitHub Actions.
+De gekaapte versies waren meestal binnen een dag teruggetrokken; wie de nieuwste versie meteen
+installeert, haalt ze precies in die dag binnen.
+
+**Regel.** `minimumReleaseAge: 10080` in `pnpm-workspace.yaml` (een week, ook voor wat indirect
+binnenkomt), dezelfde week als de `cooldown` van Dependabot, en `allowBuilds` als de enige lijst
+van pakketten die een install-script mogen draaien. Een security-update die je eerder nodig hebt,
+zet je tijdelijk in `minimumReleaseAgeExclude`, met de reden erbij, en haal je daarna weer weg.
+
+**Afgedwongen door.** `pnpm-workspace.yaml` (`minimumReleaseAge`, `allowBuilds`),
+`.github/dependabot.yml` (`cooldown`), `pnpm install --frozen-lockfile` in de CI.
+
+## L-WERK-13 Een test met één vaste datum bewijst niets over de andere dagen van de week
+
+**Symptoom.** Een nachtelijke ronde gooide op elke dag behalve maandag: ze bood een week aan die geen
+maandag was, en een check in de database weigerde die. De check die deze ronde bewaakte, was al die
+tijd groen.
+
+**Oorzaak.** De check gebruikte als "vandaag" een vaste datum, en die was een maandag.
+
+**Regel.** Wat van de dag afhangt, toets je op meer dan één weekdag. Een vaste datum is één geval,
+geen bewijs over de andere zes.
+
+**Afgedwongen door.** Alleen afspraak. Zie ook L-WERK-09: een check die niet fout kan gaan, bewijst
+niets.
+
+## L-WERK-14 Rondes die niets van elkaar nodig hebben, krijgen elk hun eigen opvang
+
+**Symptoom.** Een nachtelijke route draaide acht rondes achter elkaar. De tweede gooide, en de zes
+erna draaiden niet: geen herinneringen, geen drempelmeldingen. Dat duurde dagen, en niemand miste
+een melding die niet kwam.
+
+**Oorzaak.** De rondes stonden achter elkaar zonder opvang per ronde, dus de eerste fout stopte de
+rest. De opruimtaak van het template deed hetzelfde: de eerste stap die gooide, stopte de volgende.
+
+**Regel.** Elke ronde is een eigen stap. Een fout wordt gevangen en gemeld met de naam van de stap,
+en de volgende stap draait. Het antwoord noemt de mislukte stappen en heeft dan status 500, zodat de
+cron bij de host als mislukt staat: opvangen is niet verzwijgen. Alleen voor stappen die niets van
+elkaar nodig hebben. Waar een belofte uit de privacyverklaring aan hangt (een bewaartermijn), krijgt
+een eigen stap: die mag niet stranden op een fout bij het opruimen van iets anders.
+
+**Afgedwongen door.** `runSteps` en `stepsResponse` in `lib/cron/steps.ts` met `steps.test.ts`.
+`runPrune` in `lib/tasks/prune.ts` loopt erop: `/api/cron/prune` antwoordt 500 als er een stap
+mislukte, en `pnpm task:prune` eindigt dan met exitcode 1. Patroon `cronroute`.
+
+## L-WERK-15 Een foutmelding zonder oorzaak kost een onderzoek; stuur de naam van de check mee, nooit de rij
+
+**Symptoom.** De foutenmonitor meldde een fout in een server action. De melding zei wat er misging
+en niet waarom: de oorzaak was een check in de database, en die zat in `error.cause`, die niet
+meeging. Dat kostte een onderzoek, en het bleef een vermoeden.
+
+**Oorzaak.** Alleen de buitenste fout werd gemeld. Bij een databasefout staat de reden in de keten
+van oorzaken (L-DRZ-16).
+
+**Regel.** Loop de keten van oorzaken af, hoogstens vijf diep, en stuur labels mee: de code, en bij
+een databasefout de naam van de check of index, de tabel en de kolom. Nooit `message` of `detail`
+van de oorzaak: Postgres zet daar de inhoud van de rij in. Een waarde gaat alleen mee als hij
+eruitziet als een code (`^[A-Z0-9_]{2,40}$`) of als een naam uit het schema (`^[a-z0-9_]{1,63}$`).
+De prijs: de grens ligt in die twee patronen, en die moeten streng blijven.
+
+**Afgedwongen door.** `causeTags` in `lib/monitoring/report.ts` (`cause_code`, `cause_constraint`,
+`cause_table`, `cause_column`) met de test in `report.test.ts`; de regel in de console draagt de
+labels. Zie L-WERK-08 voor het schoonmaken van de melding zelf.
+
+## L-WERK-16 Een melding die elke nacht komt, wordt genegeerd
+
+**Symptoom.** Een bewaker meldde elke nacht iets over werk dat alleen overdag draait.
+
+**Oorzaak.** De bewaker telde de klok rond. Een melding die elke nacht komt, leert iedereen haar te
+negeren.
+
+**Regel.** Een bewaker telt wat alleen overdag draait, alleen overdag. Stel bij elke nieuwe bewaker
+de vraag wanneer het werk hoort stil te staan, en of hij dan zwijgt.
+
+**Afgedwongen door.** Alleen afspraak: de review van elke nieuwe bewaker.
+
+## L-WERK-17 Een doorlichting vindt fouten in wat er is; een checklist vindt wat er niet is
+
+**Symptoom.** Een project dat twee keer was doorgelicht, haalde een checklist toch niet op zeven
+punten: geen back-up buiten de leverancier met een geprobeerde terugzet, geen beperking op land of
+adres, geen plafond op de sleutel van het model, geen noodstop, geen logboek van wie wat bekeek,
+geen uitloggen per persoon, en één database voor alles.
+
+**Oorzaak.** Een doorlichting zoekt fouten in wat er is. Wat er niet is, heeft geen code om te lezen
+en geen route om aan te vallen.
+
+**Regel.** Naast de doorlichting een checklist, met bij elk punt of je het bouwt (B), instelt bij een
+leverancier (I) of afspreekt (A), en in welke ronde. Een punt dat niemand bouwt en niemand instelt,
+bestaat alleen op papier. De lijst heeft een eigenaar: zonder is het na een maand een lijst vinkjes
+die niemand gelooft.
+
+**Afgedwongen door.** Het template zet de lijst klaar als `docs/veiligheid.md` (een seed, besluit
+D23), met het patroon `veiligheidschecklist` als uitleg. Dat hij wordt nagelopen is afspraak: geen
+controle kijkt of de stand klopt.
+
+## L-WERK-18 Op een laptop staat alleen de dev-branch
+
+**Symptoom.** Bij een doorlichting van een eerder project stonden op een laptop een directe
+verbinding met productie, het geheim van de tenant en vier andere sleutels. Niets daarvan liet een
+spoor na in een logboek.
+
+**Oorzaak.** `vercel env pull` haalt wat er voor Development staat, en wie één keer iets op
+productie moest nakijken, plakte de string erbij en vergat hem weer.
+
+**Regel.** Op een laptop staan alleen de verbinding met de eigen dev-branch en lokale vlaggen. Voor
+één vraag aan productie zet je de verbinding op dat moment in een tijdelijk bestand, en haal je hem
+daarna meteen weg. Een geheim dat er toch stond, roteer je (L-NEON-15).
+
+**Afgedwongen door.** `pnpm db:seed` en de scripts weigeren het productie-endpoint
+(`scripts/lib/seed-guard.ts`, `scripts/lib/production-guard.ts`). Wat er verder in `.env.local`
+staat, ziet geen controle: alleen afspraak, en een regel in `docs/handleiding/00-checklist.md`.
+
+## L-WERK-19 Eerst de bekende gaten beslissen, dan nieuwe zoeken
+
+**Symptoom.** (voorkomen) Een beveiligingsronde levert een rapport met nieuwe bevindingen op, terwijl
+de punten uit de vorige ronde en uit de eigen lijst nog open staan. Het rapport ligt er, de lijst is
+langer, en het voelt alsof er aan veiligheid is gewerkt.
+
+**Oorzaak.** Zoeken voelt als werk aan veiligheid, beslissen niet. Maar een ronde die nieuwe gaten
+vindt naast bekende die open staan, geeft schijnveiligheid: het risico is even groot, en wat er echt
+toe doet, zakt weg tussen de rest.
+
+**Regel.** Vóór een ronde heeft elk open punt een besluit: dichten met een datum, of aanvaarden met
+de reden en door wie. Een ronde begint met de vorige: wat open stond, wordt opnieuw getoetst, en wat
+besloten is, wordt niet opnieuw als nieuw gemeld.
+
+**Afgedwongen door.** Alleen afspraak: een regel in `docs/veiligheid.md` onder Sporen en toezicht, en
+de rubrieken Hertesten en Bekend en besloten in `docs/dreigingsmodel.md`.
+
+## L-WERK-20 Een norm heeft een editie: kijk welke geldt voordat je ernaar verwijst
+
+**Symptoom.** De opzet voor een beveiligingsronde in een eerder project verwees naar de lijst van
+OWASP voor webapplicaties in de editie van 2021, terwijl die van 2025 al gold: het vervalsen van
+verzoeken aan de serverkant was opgegaan in A01, en er waren twee categorieën bij. De lijst voor
+taalmodellen kreeg een nieuwe editie met een andere volgorde, zodat hetzelfde nummer een ander risico
+werd.
+
+**Oorzaak.** Een nummer als A03 of LLM05 zegt niets zonder het jaar. Wie een rapport van vorig jaar
+naast dat van dit jaar legt, vergelijkt dan twee verschillende risico's onder één nummer.
+
+**Regel.** Noem bij elke verwijzing de editie (`A01:2025`), en schrijf de naam van het risico erbij,
+niet alleen het nummer. Kijk aan het begin van een ronde bij de bron welke editie geldt, en noteer
+de datum waarop je keek.
+
+**Afgedwongen door.** Alleen afspraak: de invulregels en de kolom Kaders in `docs/dreigingsmodel.md`
+vragen om de editie en de naam.
+
+## L-WERK-21 Een test van het template leest alleen wat een update bijwerkt
+
+**Symptoom.** Een project dat in oktober uit het template kwam, werd bijgewerkt naar de nieuwste
+versie. Typecheck, lint en build werden groen, maar twee tests van de generatoren bleven rood, en dat
+waren bestanden van het template die het project niet mag aanpassen.
+
+**Oorzaak.** De tests lazen de voorbeeldconfiguraties in `examples/`. Die map staat niet in het
+manifest: een project heeft hem alleen omdat "Use this template" de hele repo kopieert, en een update
+werkt hem nooit bij. In het template kreeg het voorbeeld er een module bij, in het project niet. De
+updatetest zag het niet, want die werkt een project van de huidige versie bij naar een kleine
+wijziging daarvan, nooit van een versie van weken terug.
+
+**Regel.** Een test van het template die in een project meedraait, leest alleen bestanden die een
+update ook bijwerkt. Gaat een bewering over iets dat alleen in de repo van het template klopt, dan
+draait ze alleen daar, achter dezelfde poort als de zelftest (de standaardconfiguratie). Proef een
+grote sprong vóór een training één keer van de oudste versie die deelnemers hebben.
+
+**Afgedwongen door.** De poort `onTemplateRoot` in `template/generators/generators.test.ts` en
+`template/lib/config.test.ts`, en `onDefaultConfig` in `template/self.test.ts`. Voor een nieuwe test
+alleen afspraak.
+
+## L-WERK-22 Een controle op advies die rood is, ziet niemand
+
+**Symptoom.** De statische analyse stond drie versies lang rood, van v1.12.0 tot v1.14.0, met zeven
+bevindingen. Het viel pas op in de pull request naar `main`, waar de check als rood in de lijst
+stond. In de lijst van runs was elke run groen.
+
+**Oorzaak.** De job stond op `continue-on-error`, als advies tot iemand de eerste uitkomst had
+nagekeken. Een job die zo faalt, laat de run groen, en wie na een push naar de run kijkt, ziet
+groen. In v1.12.0 kwam er een set regels bij (de OWASP Top 10), en die bracht de bevindingen mee.
+Niemand las ze, want niets dwong dat.
+
+**Regel.** Een controle is een poort of hij is er niet. Moet een nieuwe scanner of een nieuwe set
+regels eerst op advies, kijk dan de eerste run in dezelfde ronde na en zet hem daarna op poort. Lukt
+dat niet in die ronde, zet dan een datum in de ROADMAP. Na een push kijk je per job naar de uitkomst,
+niet alleen naar die van de run.
+
+**Afgedwongen door.** De job Statische analyse in `.github/workflows/ci.yml` is sinds v1.14.1 een
+poort (besluit D35). Voor een nieuwe controle alleen afspraak.

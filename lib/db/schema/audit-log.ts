@@ -5,10 +5,12 @@
  * **Append-only, en dat wordt afgedwongen door een trigger.** Niet door een afspraak, niet door een
  * code review, en niet alleen door `REVOKE`. Zie de tweede migratie.
  *
- * Waarom een trigger en niet alleen rechten intrekken: op Neon verbindt de applicatie als de eigenaar
- * van de tabel, en een eigenaar mag zichzelf rechten teruggeven. `REVOKE UPDATE, DELETE` is daar dus
- * een aantekening en geen slot. Een `before`-trigger die gooit werkt ongeacht de rol, en is te testen
- * vanaf dezelfde verbinding als waarmee de applicatie draait (`pnpm check:core`).
+ * Waarom een trigger en niet alleen rechten intrekken: de trigger houdt ook de eigenaar van de tabel
+ * tegen. Op productie verbindt de applicatie als de rol van de app (`app_rw`), en die mag de log
+ * alleen aanvullen. Maar de scripts, een preview en een lokale app zonder `DATABASE_URL_APP` werken
+ * als eigenaar, en een eigenaar mag zichzelf rechten teruggeven: `REVOKE UPDATE, DELETE` is daar een
+ * aantekening en geen slot. Een `before`-trigger die gooit werkt ongeacht de rol, en is te testen
+ * vanaf dezelfde verbinding (`pnpm check:core`).
  *
  * `bigserial` en geen uuid, anders dan elke andere tabel hier. Een logtabel wordt sequentieel
  * geschreven en op volgorde gelezen, en dan is een oplopend getal zowel kleiner als sneller. Er
@@ -17,6 +19,7 @@
 
 import { bigserial, index, inet, jsonb, pgTable, text, timestamp, uuid } from "drizzle-orm/pg-core";
 import { organisations } from "./organisations";
+import { appRowAccess } from "./rls";
 
 export const auditLog = pgTable(
   "audit_log",
@@ -59,6 +62,7 @@ export const auditLog = pgTable(
     /** "Wat is er met deze rij gebeurd", de meest gestelde vraag. */
     index("audit_log_entity_idx").on(t.entityTable, t.entityId, t.changedAt),
     index("audit_log_actor_idx").on(t.actorUserId, t.changedAt),
+    appRowAccess(),
   ],
 );
 

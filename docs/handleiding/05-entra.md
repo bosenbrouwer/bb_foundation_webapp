@@ -42,7 +42,9 @@ rollen toekennen (11). Heeft de organisatie geen tenant, sla dit over en volg 05
    Allowed member types **Users/Groups**, **Value** exact de `value` (kleine letters, geen spaties),
    Enabled aan.
    **Controle:** de lijst app roles heeft precies de waarden uit de configuratie. `pnpm entra:status`
-   vergelijkt ze (na 07).
+   (na 07) drukt de rollen af die de tool verwacht; leg die lijst zelf naast de app roles in de
+   portal. Het script leest de app roles niet uit de tenant: dat vraagt een recht dat de inlog niet
+   nodig heeft.
 5. **Enterprise applications**, zoek je project, **Properties**: **Assignment required** op **Yes**.
    **Controle:** zonder deze schakelaar kan iedereen in de tenant inloggen zonder rol; met de
    schakelaar weigert Microsoft de login voordat de tool iets ziet.
@@ -68,6 +70,10 @@ want adressen veranderen. "Assignment required" is de schakelaar die het verschi
   sessie van acht uur loopt nog af; moet het meteen, wissel dan `AUTH_SECRET` in Vercel (dan is
   iedereen uitgelogd).
 - Geen wildcards in redirect-URI's; per adres een regel.
+- `AUTH_MICROSOFT_ENTRA_ID_ISSUER` is wat de inlog beperkt tot de eigen tenant. Zonder die variabele
+  zou ieder Microsoft-account het mogen proberen. Daarom start een deploy (preview of productie)
+  niet zonder, en nergens met `common`, `organizations` of `consumers` erin: een vergeten variabele
+  geeft een mislukte build en geen inlog die openstaat.
 
 ## Kosten
 
@@ -76,7 +82,11 @@ Geen. Een app-registratie is onderdeel van Microsoft 365. Stand van oktober 2026
 ## Zo zie je dat het goed staat
 
 - Inloggen op het productieadres brengt je naar Microsoft en terug, en de rail toont je naam.
-- `pnpm entra:status` zegt dat de app roles in de tenant gelijk zijn aan `APP_ROLES`.
+- `pnpm entra:status` eindigt met "De inrichting klopt, voor zover hier te zien." Het script
+  controleert de drie variabelen, of de client-id een GUID is, of de issuer een echte tenant noemt, en
+  of het openbare OpenID-document van die tenant dezelfde issuer noemt. De app roles en "Assignment
+  required" ziet het niet: de rollen die het afdrukt, vergelijk je zelf met de portal (stap 4), en de
+  schakelaar controleer je in stap 5.
 - Een collega zonder toewijzing krijgt van Microsoft een melding dat de app niet voor hem is.
 
 ## Als het misgaat
@@ -88,8 +98,14 @@ Geen. Een app-registratie is onderdeel van Microsoft 365. Stand van oktober 2026
 | Inloggen lukt, maar "geen toegang" of een lege rol | Geen app role toegewezen, of de value in Entra wijkt af van de configuratie |
 | Inloggen lukt voor iedereen in de tenant | Assignment required staat op No |
 | Opeens kan niemand meer inloggen | Het client secret is verlopen; maak een nieuw en zet het in Vercel |
+| De build bij Vercel faalt met "AUTH_MICROSOFT_ENTRA_ID_ISSUER ontbreekt, en dan valt de login terug op /common/" | Met opzet: de variabele staat niet in die omgeving (Production of Preview). Zet hem op `https://login.microsoftonline.com/<tenant-id>/v2.0` (06) en deploy opnieuw |
+| De build of de app faalt met "AUTH_MICROSOFT_ENTRA_ID_ISSUER wijst naar /common/ in plaats van naar de eigen tenant" (of `/organizations/`, `/consumers/`) | Met opzet, ook lokaal: in de issuer staat geen tenant-id. Zet de Directory (tenant) ID van de Overview erin |
+| De build of de app faalt met "AUTH_MICROSOFT_ENTRA_ID_ISSUER noemt de tenant niet bij zijn id (een GUID)" | Met opzet: er staat een domeinnaam in (`bedrijf.onmicrosoft.com`), en met een domeinnaam toetst de inlogbibliotheek de tenant uit het token niet. Zet de Directory (tenant) ID van de Overview erin, de GUID |
+| Iemand ziet na het inloggen bij Microsoft "Inloggen is niet gelukt" | Die persoon heeft geen rol uit `project.config.json` (besluit D26). In de serverlog staat "Login geweigerd: de inlog draagt geen rol". Wijs de rol toe (11) en laat opnieuw inloggen |
 
 ## Vul in
+
+Noteer dit in `docs/inrichting.md`, niet in dit bestand (zie `00-checklist.md`).
 
 | Wat | Waarde |
 |---|---|

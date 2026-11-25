@@ -39,7 +39,7 @@ export interface ReportContext {
   /** Het routebestand, zoals `/app/admin/[id]` (uit `onRequestError`), of een eigen naam voor een script. */
   readonly route?: string;
   readonly method?: string;
-  /** `render`, `route`, `action` of `proxy` bij Next; vrij bij eigen aanroepen. */
+  /** `render`, `route`, `action` of `proxy` bij Next; `cron` bij een stap uit `runSteps`; vrij bij eigen aanroepen. */
   readonly kind?: string;
 }
 
@@ -69,15 +69,68 @@ export function describeError(error: unknown): ErrorReport {
   }
 }
 
+/** Een foutcode: de SQLSTATE van Postgres (`23514`) of een code van Node (`ECONNRESET`). */
+const CAUSE_CODE = /^[A-Z0-9_]{2,40}$/;
+/** Een naam uit het eigen schema: een check, een index, een tabel of een kolom. */
+const SCHEMA_NAME = /^[a-z0-9_]{1,63}$/;
+/** Zo diep kijken we in de keten van oorzaken. Genoeg voor Drizzle om de driver, en eindig bij een kring. */
+const CAUSE_DEPTH = 5;
+
 /**
- * Meldt een serverfout. Nu: één regel naar de console van Vercel, schoongemaakt. De gereserveerde
- * module monitoring-sentry hangt hier het versturen aan, zonder dat de aanroepers veranderen.
+ * Waarom een fout gebeurde, als labels. Zie besluit D16 en les L-WERK-15.
+ *
+ * **Waarom dit bestaat.** De melding van Drizzle zegt wat er misging ("Failed query: update ...") en
+ * niet waarom: de reden zit in `error.cause`, de fout van Postgres. In een eerder project kostte een
+ * melding zonder oorzaak een onderzoek, en het bleef een vermoeden. Met de naam van de check erbij
+ * is het antwoord één blik.
+ *
+ * **Wat er nooit meegaat:** `message` en `detail` van de oorzaak. Postgres zet daar de inhoud van de
+ * rij in ("Failing row contains ..."). Een waarde gaat alleen mee als hij eruitziet als een code of
+ * als een naam uit het schema; die twee patronen zijn de grens, en ze horen streng te blijven.
+ *
+ * Puur, dus toetsbaar. De gereserveerde module monitoring-sentry stuurt dezelfde labels mee.
+ */
+export function causeTags(error: unknown): Record<string, string> {
+  let current: unknown = error;
+
+  for (let depth = 0; depth < CAUSE_DEPTH; depth += 1) {
+    if (typeof current !== "object" || current === null) return {};
+
+    const one = current as { code?: unknown; constraint?: unknown; table?: unknown; column?: unknown; cause?: unknown };
+    if (typeof one.code === "string" && CAUSE_CODE.test(one.code)) {
+      const tags: Record<string, string> = { cause_code: one.code };
+      const names = [
+        ["cause_constraint", one.constraint],
+        ["cause_table", one.table],
+        ["cause_column", one.column],
+      ] as const;
+      for (const [tag, value] of names) {
+        if (typeof value === "string" && SCHEMA_NAME.test(value)) tags[tag] = value;
+      }
+      return tags;
+    }
+    current = one.cause;
+  }
+
+  return {};
+}
+
+/** De labels als één stuk tekst voor de logregel: ` [cause_code=23514 cause_constraint=...]`, of leeg. */
+function causeText(error: unknown): string {
+  const tags = Object.entries(causeTags(error));
+  return tags.length === 0 ? "" : ` [${tags.map(([tag, value]) => `${tag}=${value}`).join(" ")}]`;
+}
+
+/**
+ * Meldt een serverfout. Nu: één regel naar de console van Vercel, schoongemaakt, met de oorzaak als
+ * labels erachter (`causeTags`). De gereserveerde module monitoring-sentry hangt hier het versturen
+ * aan, zonder dat de aanroepers veranderen.
  */
 export async function reportError(error: unknown, context: ReportContext = {}): Promise<void> {
   try {
     const report = describeError(error);
     const where = [context.kind, context.method, context.route].filter((part) => part !== undefined && part !== "").join(" ");
-    console.error(`[report] ${where === "" ? "?" : where}: ${report.name}: ${report.message}${report.digest === undefined ? "" : ` (digest ${report.digest})`}`);
+    console.error(`[report] ${where === "" ? "?" : where}: ${report.name}: ${report.message}${report.digest === undefined ? "" : ` (digest ${report.digest})`}${causeText(error)}`);
     if (report.stack !== undefined) console.error(report.stack);
   } catch {
     /* Rapporteren mag nooit zelf een fout worden. */

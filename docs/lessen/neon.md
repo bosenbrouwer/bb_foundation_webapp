@@ -18,8 +18,9 @@ scripts en externe lezers die zelf verbindingen openhouden. Beide eindigen op `?
 anders heb je de verkeerde string.
 
 **Afgedwongen door.** Code: `drizzle.config.ts` en `scripts/lib/connection.ts` lezen
-`DATABASE_URL_UNPOOLED`, `lib/db/client.ts` leest `DATABASE_URL`. Welke string waar vandaan komt
-staat in `docs/handleiding/04-neon.md`.
+`DATABASE_URL_UNPOOLED`. `lib/db/client.ts` leest eerst `DATABASE_URL_APP` (de pooled string van de
+rol van de app, L-NEON-07) en valt zonder die variabele terug op `DATABASE_URL`. Welke string waar
+vandaan komt staat in `docs/handleiding/04-neon.md`.
 
 ## L-NEON-02 Geen lokale Postgres maar een eigen dev-branch
 
@@ -119,8 +120,10 @@ als eigenaar niet tegen, daar zijn backup en point-in-time restore voor. Eindsta
 applicatierol zonder DDL en zonder update of delete op de log.
 
 **Afgedwongen door.** De trigger in `lib/db/migrations/0001_core_guards.sql`; `pnpm check:core`
-bewijst dat update en delete falen. De aparte applicatierol zit niet in het template: een project
-dat hem wil, maakt hem in de Neon-console en zet die string in `DATABASE_URL`.
+bewijst dat update en delete falen. De aparte applicatierol zit sinds v1.6.0 in het template:
+`app_rw` uit de custom migratie van core (geen DDL, geen update of delete op de log), de inlogrol
+per omgeving via `DATABASE_URL_APP`, en `pnpm check:grants` bewijst het. Zie L-NEON-09 en
+L-WERK-10.
 
 ## L-NEON-08 De serverless driver en andere Neon-eigenaardigheden
 
@@ -139,3 +142,145 @@ ad-hoc pool.
 
 **Afgedwongen door.** Code: `lib/db/client.ts` (`closeDb`) en `scripts/lib/connection.ts`
 (`withDirectDb` sluit altijd).
+
+## L-NEON-09 Een aangezette Data API zet het slot op elke tabel, zonder regel
+
+**Symptoom.** Zodra de app als zijn eigen rol verbond (`DATABASE_URL_APP`), viel het inloggen om
+met "er is nog geen organisatie in de database". Als eigenaar werkte alles, op dev ook.
+
+**Oorzaak.** Iemand had ooit de Data API van Neon aangezet op de productiedatabase. Die zet Row
+Level Security op bijna elke tabel, zonder één regel. Een tabeleigenaar gaat altijd langs het slot
+en merkt niets; elke andere rol ziet nul rijen. De check op de rechten zag het ook niet, want die
+eiste ">= 0 rijen" (L-WERK-09).
+
+**Regel.** Het slot op elke tabel, met precies één regel die de rol van de app alle rijen geeft
+(`appRowAccess()`, CLAUDE.md regel 16). Dan ziet elke andere rol niets, ook een Data API die weer
+aangaat. De Data API niet aanzetten; staat hij aan en gebruik je hem niet, dan uit op elke branch,
+en de rollen `authenticator`, `anonymous` en `authenticated` en de schema's `auth` en `pgrst`
+opruimen. De controle: `pg_class.relrowsecurity` naast `pg_policies`, op elke database en branch.
+
+**Afgedwongen door.** `lib/db/schema/rls.test.ts` (elke tabel de regel), `pnpm check:grants`
+(slot, regel, evenveel rijen als de eigenaar en meer dan nul, en een rol zonder regel ziet niets),
+handleiding 04 en 30.
+
+## L-NEON-10 Rotate secrets en Reset password zijn geen paar
+
+**Symptoom.** (voorkomen) Het wachtwoord van `neondb_owner` moest draaien bij een Neon-project dat
+via de Vercel Marketplace was afgenomen.
+
+**Oorzaak.** De integratie beheert `DATABASE_URL` en `DATABASE_URL_UNPOOLED`, en de regels van
+Production en Preview zijn met de hand niet te wijzigen (de regel van Development zet je wel zelf, op
+`dev`: L-NEON-04). "Rotate secrets" in Vercel pakt volgens meerdere meldingen in 2026 de laatst
+aangemaakte branch in plaats van productie (bij één gebruiker stond productie daarna op een
+stagingbranch); "Reset password" in Neon maakt het oude wachtwoord meteen ongeldig, en Vercel neemt
+het nieuwe niet over.
+
+**Regel.** Een eigen variabele voor de eigenaar, `DATABASE_URL_OWNER`, alleen op Production, gelezen
+door `ownerUrl()`; buiten productie telt hij niet. Draaien is dan: de variabele zetten met het
+huidige wachtwoord en uitrollen, Reset password in Neon, de variabele bijwerken, uitrollen. Nooit
+Rotate secrets. En `db:deploy` weigert in productie als de verbinding naar een ander endpoint dan
+`PRODUCTION_DB_ENDPOINT` wijst, want een met de hand geplakte waarde kan fout zijn.
+
+**Afgedwongen door.** `lib/db/owner-url.ts` met test, `assertProductionTarget` in
+`scripts/db-deploy.ts` (`scripts/lib/production-guard.ts` met test), handleiding 30.
+
+## L-NEON-11 Het herstelvenster van Free is hoogstens zes uur
+
+**Symptoom.** (voorkomen) Een fout die later dan zes uur na het ontstaan wordt ontdekt, is op het
+plan Free niet terug te zetten.
+
+**Oorzaak.** Free geeft een herstelvenster van hoogstens zes uur en 100 CU-uur rekentijd per maand
+(stand oktober 2026). Launch heeft geen maandminimum.
+
+**Regel.** Het venster kennen en in de checklist zetten. Een wekelijkse `pg_dump` naar een plek
+buiten Neon werkt ook op Free en kost bij Neon niets extra: dat is het goedkoopste gat om te
+dichten, en bij geld- of personeelsgegevens geen optie maar een eis.
+
+**Afgedwongen door.** Alleen afspraak: handleiding 04 en 30. Het template heeft nog geen
+back-upworkflow: die moet nog gebouwd worden, en tot dan regelt een project de `pg_dump` zelf.
+
+## L-NEON-12 Rollen gelden voor de hele server: neem `CONNECT` af van `PUBLIC`
+
+**Symptoom.** (voorkomen) Staan twee databases ooit op dezelfde server, dan mag de inlogrol van de
+ene niet bij de andere kunnen.
+
+**Oorzaak.** Rollen gelden voor een hele server, niet voor één database. Wat `PUBLIC` op een
+database mag, mag elke rol op die server.
+
+**Regel.** Verbinden alleen met uitdrukkelijk recht. De eerste migratie neemt `CONNECT` af van
+`PUBLIC`, en elke inlogrol krijgt het voor zijn eigen database. De prijs: de dumprol en de rol van
+de app krijgen dat recht in productie met de hand. Geef het bij het dichtzetten ook terug aan
+`neon_superuser` (L-NEON-08).
+
+**Afgedwongen door.** Alleen afspraak: het template heeft één database per project en neemt niets
+af. Het geeft `CONNECT` wel uitdrukkelijk aan de rol van de app (de custom migratie van core), en
+`pnpm check:grants` bewijst dat die rol mag verbinden. Patroon `omgeving-per-adres`. In het eerdere
+project stond dit in een migratie die op 17 november 2026 nog niet was uitgevoerd.
+
+## L-NEON-13 Een preview uit een branch zonder persoonsgegevens: de default branch is de parent
+
+**Symptoom.** Een preview was een kopie van productie, met echte gegevens, en bleef tien tot twaalf
+dagen staan: langer dan de privacyverklaringen beloven.
+
+**Oorzaak.** De database van een preview is een branch van de default branch van het Neon-project,
+en dat was de branch van productie.
+
+**Regel.** Een preview komt uit een branch zonder persoonsgegevens. Maak een branch `seed` met alleen
+het schema en de seed, en maak die de default branch van het Neon-project (Set as default); de
+productiebranch blijft de production branch. Een preview is dan een kind van `seed`. In de
+documentatie van Neon, gelezen op 17 november 2026: "Preview branches are always created from the
+default branch" en "The production branch is independent of the default branch".
+
+Twee routes. Bij een nieuw project is de productiebranch nog leeg: `seed` krijgt die als parent en
+wordt daarna gevuld met `pnpm db:migrate`, `pnpm db:bootstrap` en `pnpm db:seed`. Bij een project
+dat al echte gegevens heeft, is `seed` een branch met alleen het schema (schema only). Daar is de
+lijst van gedraaide migraties (`drizzle.__drizzle_migrations`) leeg, terwijl de tabellen er staan:
+`pnpm db:migrate` begint dan bij de eerste migratie en strandt op "already exists". Neem eerst de
+rijen van die tabel over van de productiebranch (alleen hashes en tijdstippen), en draai dan
+`pnpm db:bootstrap` en `pnpm db:seed`. Die tweede route is in het template nog niet tegen een echte
+database bewezen.
+
+De prijs: een migratie ziet op de preview geen echte data, dus een check die bestaande rijen
+weigert, valt pas bij de uitrol naar productie om. Tel eerst op productie wat een migratie breekt
+(L-DRZ-05). `seed` loopt niet vanzelf mee met een gewijzigde seed. En met de wachtwoordlogin bestaat
+op een preview alleen een account dat op `seed` is aangemaakt.
+
+**Afgedwongen door.** Alleen afspraak: `docs/handleiding/04-neon.md` (stap 2 en 3, en "Een
+seed-branch achteraf"), `docs/handleiding/07-lokaal-werken.md` (stap 4c),
+`docs/handleiding/09-werken-met-een-releasebranch.md` en de regels in
+`docs/handleiding/00-checklist.md`. `pnpm db:seed` schrijft alleen op de branch uit `SEED_TARGET`
+en weigert op het productie-endpoint (`scripts/lib/seed-guard.ts`).
+
+## L-NEON-14 Een pool zonder luisteraar op fouten laat een hele instantie vallen
+
+**Symptoom.** (voorkomen) Een verbinding die in de pool rust en wegvalt, of die de database
+weigert, stopt het hele proces met "Unhandled error". Alle verzoeken op die instantie falen, niet
+alleen het ene.
+
+**Oorzaak.** De pool meldt zo'n fout als gebeurtenis (`error`) en niet bij een query, want er loopt
+er op dat moment geen. Een gebeurtenis `error` zonder luisteraar laat Node stoppen. Een serverloze
+database die in slaap valt of een verbinding na een tijd afsluit, maakt dat geen zeldzaamheid.
+
+**Regel.** Elke pool krijgt bij het maken een luisteraar op `error` die de melding naar de log
+schrijft, zonder de verbindingsstring. De pool ruimt de verbinding zelf op; de volgende query
+krijgt een nieuwe.
+
+**Afgedwongen door.** `createDb` in `lib/db/client.ts` zet de luisteraar, met `errorForLog`. Een
+test die een verbinding laat wegvallen is er niet; dat is pas tegen een echte database te zien.
+
+## L-NEON-15 De database is vanaf internet bereikbaar: het wachtwoord is het hele slot
+
+**Symptoom.** (voorkomen) Wie de verbindingsstring van een rol heeft, komt vanaf elk adres binnen.
+Een gelekte string op een laptop, in een chat of in een oude `.env` is dus meteen toegang.
+
+**Oorzaak.** De database staat open op internet, en de functies van de host hebben geen vast
+adres. Een lijst van toegestane adressen bij de database zou de app zelf buitensluiten.
+
+**Regel.** Behandel elke verbindingsstring als een sleutel tot de hele database. De app verbindt
+als een rol zonder DDL (D13), de eigenaar staat alleen waar migraties draaien, op een laptop staat
+alleen de dev-branch (L-WERK-18), en een string die ergens heeft gestaan waar hij niet hoort, roteer
+je meteen: nieuw wachtwoord voor de rol in Neon, nieuwe waarde in Vercel.
+
+**Afgedwongen door.** De rol van de app met `pnpm check:grants`; Beheer, Systeem kleurt rood als
+productie als eigenaar verbindt (D29). Waar een string verder staat, ziet geen controle: alleen
+afspraak, in `docs/veiligheid.md`.

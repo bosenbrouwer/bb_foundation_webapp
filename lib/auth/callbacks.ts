@@ -10,9 +10,25 @@
 import type { Account, Session, User } from "next-auth";
 import { loginProviderById } from "./providers";
 import { parseRoles } from "./roles";
+import { epochSeconds, SESSION_MAX_AGE_SECONDS, sessionExpired } from "./session-age";
 import { actorFromToken, TOKEN_FIELDS } from "./token";
+import { errorForLog } from "@/lib/monitoring/error-text";
 
 type Token = Record<string, unknown>;
+
+/** De inlog draagt geen enkele rol die het project kent. Geen naam of adres in de log: alleen dat het gebeurde. */
+export class NoRoleError extends Error {
+  constructor() {
+    super("Login geweigerd: de inlog draagt geen rol uit project.config.json.");
+    this.name = "NoRoleError";
+  }
+}
+
+function noRole(): NoRoleError {
+  const error = new NoRoleError();
+  console.warn(`${error.message} Ken de rol toe bij de inlogbron, of in Beheer bij de wachtwoordlogin.`);
+  return error;
+}
 
 /**
  * Elke fout in de jwt-callback komt bij de gebruiker aan als `Configuration`, met de tekst "There is
@@ -27,7 +43,7 @@ async function withReadableFailure<T>(fn: () => Promise<T>): Promise<T> {
   try {
     return await fn();
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = errorForLog(error);
     console.error(
       [
         "Login mislukt bij het synchroniseren van de gebruiker.",
@@ -40,22 +56,38 @@ async function withReadableFailure<T>(fn: () => Promise<T>): Promise<T> {
   }
 }
 
-export async function jwtCallback({ token, user, account }: { token: Token; user?: User; account?: Account | null }): Promise<Token> {
+/**
+ * Buiten het inloggen bewaakt deze callback alleen de absolute grens: Auth.js tekent het token bij
+ * elke sessieaanvraag opnieuw, dus `maxAge` alleen begrenst niets. `null` teruggeven laat Auth.js de
+ * cookie opruimen, en daarna stuurt `requireSession` naar de inlog. Een cookie zonder `loginAt` (van
+ * vóór deze regel) telt als verlopen: iedereen logt na de uitrol één keer opnieuw in.
+ */
+export async function jwtCallback({ token, user, account }: { token: Token; user?: User; account?: Account | null }): Promise<Token | null> {
   const isSignIn = user !== undefined && account !== undefined && account !== null;
-  if (!isSignIn) return token;
+  if (!isSignIn) {
+    return sessionExpired(token[TOKEN_FIELDS.loginAt], epochSeconds(), SESSION_MAX_AGE_SECONDS) ? null : token;
+  }
 
   const provider = loginProviderById(account.provider);
   if (provider === undefined) {
     throw new Error(`Onbekende inlogmethode "${account.provider}". Staat de module in project.config.json en is pnpm template:generate gedraaid?`);
   }
 
+  /*
+   * Een token zonder rol komt er niet in en krijgt geen rij (besluit D26). In een eerder project liep
+   * zo een token het gewone pad in: het enige slot was een schakelaar in een console.
+   */
+  if (provider.rolesFrom === "token" && parseRoles(user.roles).length === 0) throw noRole();
+
   const synced = await withReadableFailure(() => provider.resolve(user, account));
   const roles = provider.rolesFrom === "token" ? parseRoles(user.roles) : parseRoles(synced.roles);
+  if (roles.length === 0) throw noRole();
 
   token[TOKEN_FIELDS.userId] = synced.id;
   token[TOKEN_FIELDS.organisationId] = synced.organisationId;
   token[TOKEN_FIELDS.initials] = synced.initials;
   token[TOKEN_FIELDS.roles] = roles;
+  token[TOKEN_FIELDS.loginAt] = epochSeconds();
   token["name"] = synced.displayName;
   token["email"] = synced.email;
   return token;

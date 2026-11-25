@@ -45,8 +45,10 @@ Alles op **Beheer, Accounts**, met een auditregel per handeling.
    persoon. De laatste beheerder kan zijn beheerdersrol niet verliezen.
 3. **Deactiveren** achter Update: het account kan niet meer inloggen, de gegevens blijven. Jezelf
    deactiveren kan niet. "Weer activeren" zet het terug.
-4. **Tweestapsverificatie resetten** als iemand zijn telefoon kwijt is: bij de volgende login stelt
-   hij het opnieuw in via een koppeling per mail.
+4. **Tweestapsverificatie resetten** als iemand zijn telefoon kwijt is. Wie het verplicht heeft
+   (standaard beheerders), komt bij de volgende login na een juist wachtwoord meteen op de pagina met
+   de QR-code en stelt het daar opnieuw in, zonder mail (05b, stap 3). Wie het niet verplicht heeft,
+   zet het zelf weer aan onder Mijn account.
 5. **Herstelkoppeling sturen** als iemand zijn wachtwoord kwijt is; de persoon kan dat ook zelf via
    "Wachtwoord vergeten?" op het inlogscherm.
 
@@ -79,9 +81,11 @@ Geen.
 | Iemand heeft een rol gekregen maar ziet niets nieuws | Bij Microsoft: pas na opnieuw inloggen; bij wachtwoord: ververs de pagina |
 | Iemand kan nog in terwijl je hem verwijderde | De sessie van acht uur loopt nog; wissel `AUTH_SECRET` als het dringend is |
 | "Dit is de laatste beheerder" | Maak eerst iemand anders beheerder |
-| De rol staat in Entra maar niet in de tool | De `value` van de app role wijkt af van `project.config.json`; `pnpm entra:status` toont het verschil |
+| De rol staat in Entra maar niet in de tool | De `value` van de app role wijkt af van `project.config.json`. `pnpm entra:status` drukt de waarden af die de tool verwacht; leg ze naast de app roles in de portal (het script leest de tenant zelf niet uit) |
 
 ## Vul in
+
+Noteer dit in `docs/inrichting.md`, niet in dit bestand (zie `00-checklist.md`).
 
 | Wat | Waarde |
 |---|---|

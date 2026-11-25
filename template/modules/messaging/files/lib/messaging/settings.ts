@@ -8,7 +8,7 @@
 import { and, eq, sql } from "drizzle-orm";
 import type { Actor } from "@/lib/auth/actor";
 import { assertCan } from "@/lib/auth/can";
-import { appendAuditLog } from "@/lib/db/audit";
+import { appendAuditLog, auditFacts } from "@/lib/db/audit";
 import type { DbOrTransaction } from "@/lib/db/client";
 import { notificationSettings } from "@/lib/db/schema";
 import { kindFor, isKnownKind, MESSAGE_KINDS, parseThreshold, toAudience, type MessageAudience, type ThresholdResult } from "./kinds";
@@ -113,8 +113,8 @@ export async function saveSetting(db: DbOrTransaction, actor: Actor, input: Sett
     entityTable: "notification_settings",
     entityId: actor.organisationId,
     action: before === undefined ? "insert" : "update",
-    ...(before === undefined ? {} : { before }),
-    after,
+    ...(before === undefined ? {} : { before: auditFacts(before) }),
+    after: auditFacts(after),
   });
   return { ok: true };
 }

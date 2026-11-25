@@ -1,0 +1,23 @@
+{
+  "patterns": [
+    {
+      "rule_name": "tls_verification_off",
+      "substrings": ["rejectUnauthorized: false", "NODE_TLS_REJECT_UNAUTHORIZED"],
+      "reminder": "Hiermee gaat de controle van het certificaat uit. Dat mag nergens, ook niet lokaal: los het certificaat op in plaats van de controle."
+    },
+    {
+      "rule_name": "raw_error_message",
+      "regex": "\\b(error|err|e|cause)\\.(message|stack)\\b",
+      "paths": ["**/app/**", "**/components/**"],
+      "exclude_paths": ["**/*.test.ts", "**/*.test.tsx"],
+      "reminder": "Een fout gaat naar een scherm via errorForScreen en naar de log via errorForLog (lib/monitoring/error-text.ts), nooit als ruwe error.message of stacktrace."
+    },
+    {
+      "rule_name": "insecure_random",
+      "regex": "Math\\.random\\(",
+      "paths": ["**/app/**", "**/lib/**", "**/scripts/**"],
+      "exclude_paths": ["**/*.test.ts", "**/e2e/**"],
+      "reminder": "Een token, code, wachtwoord of sleutel komt uit crypto (randomBytes, randomUUID, randomInt), nooit uit Math.random."
+    }
+  ]
+}

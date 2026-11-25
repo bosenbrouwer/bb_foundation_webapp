@@ -1,6 +1,6 @@
 /* template-owned (module core). Wordt overschreven door pnpm template:update; wijzig dit bestand niet. */
 import { describe, expect, it } from "vitest";
-import { patchVercelJson, VERCEL_SCHEMA_URL } from "./vercel-json";
+import { NO_PREVIEW_BRANCHES, patchVercelJson, VERCEL_SCHEMA_URL } from "./vercel-json";
 
 const desired = {
   defaults: { regions: ["fra1"] },
@@ -50,6 +50,23 @@ describe("vercel.json", () => {
     expect((JSON.parse(result.text) as { crons: unknown[] }).crons).toEqual([{ path: "/api/cron/jobs", schedule: "0 * * * *" }, { path: "/api/cron/prune", schedule: "30 3 * * *" }]);
     expect(result.managedCrons).toEqual(["/api/cron/prune"]);
     expect(result.warnings).toEqual(["cron /api/cron/jobs houdt het rooster van het project (0 * * * *); het template stelt */15 5-18 * * 1-5 voor (template.keepCrons)"]);
+  });
+
+  it("zet welke branches geen preview krijgen alleen als het project er zelf niets over zegt", () => {
+    const defaults = { git: { deploymentEnabled: NO_PREVIEW_BRANCHES } };
+    const fresh = patchVercelJson("", { defaults, crons: [] }, [], []);
+    expect((JSON.parse(fresh.text) as { git: unknown }).git).toEqual({ deploymentEnabled: NO_PREVIEW_BRANCHES });
+    const own = JSON.stringify({ git: { deploymentEnabled: { "feature/**": true } } });
+    expect((JSON.parse(patchVercelJson(own, { defaults, crons: [] }, [], []).text) as { git: unknown }).git).toEqual({ deploymentEnabled: { "feature/**": true } });
+  });
+
+  it("zet nooit alles uit: main en release/next staan er niet in, en geen enkel patroon vangt ze", () => {
+    const patterns = Object.keys(NO_PREVIEW_BRANCHES);
+    expect(patterns.every((pattern) => /^[a-z]+\/\*\*$/.test(pattern))).toBe(true);
+    for (const branch of ["main", "release/next"]) {
+      expect(patterns.some((pattern) => branch.startsWith(pattern.slice(0, -2)))).toBe(false);
+    }
+    expect(Object.values(NO_PREVIEW_BRANCHES).every((value) => value === false)).toBe(true);
   });
 
   it("haalt de sleutel crons weg als er geen overblijven", () => {

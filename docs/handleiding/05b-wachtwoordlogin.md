@@ -22,7 +22,7 @@ inloggen via Microsoft heeft de voorkeur, omdat toegang afnemen dan gebeurt waar
 | Wat | Naam | Waar de waarde heen gaat |
 |---|---|---|
 | Het account van de eerste beheerder | jouw naam en adres | de tabel `users`, via `pnpm invite` |
-| In Vercel `MFA_SECRET_KEY`, gelijk in Production en Preview (maak hem zoals `AUTH_SECRET` in 06, stap 1) | Het geheim van tweestapsverificatie staat daarmee versleuteld. Zonder valt het terug op `AUTH_SECRET`, en dat verschilt per omgeving, dus dan werkt tweestap niet op een preview (09) | |
+| In Vercel `MFA_SECRET_KEY`, gelijk in Production en Preview (maak hem zoals `AUTH_SECRET` in 06, stap 1) | Het geheim van tweestapsverificatie staat daarmee versleuteld. Zonder valt het terug op `AUTH_SECRET`, en dat verschilt per omgeving: een geheim dat in de ene omgeving is opgeslagen, is dan in de andere niet te lezen (09) | |
 
 ## Stappen
 
@@ -109,6 +109,8 @@ Geen. Stand van oktober 2026.
 | De enige beheerder is zijn telefoon kwijt | Een tweede beheerder reset zijn tweestapsverificatie; is er geen tweede, dan `pnpm invite` voor een nieuw beheerdersaccount en daarna het oude resetten |
 
 ## Vul in
+
+Noteer dit in `docs/inrichting.md`, niet in dit bestand (zie `00-checklist.md`).
 
 | Wat | Waarde |
 |---|---|

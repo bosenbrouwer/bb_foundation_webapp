@@ -15,6 +15,831 @@ versie na het bijwerken.
 
 - Nog niets.
 
+## v1.14.1 (25 november 2026)
+
+### Wat verandert
+
+- **Semgrep is een poort (besluit D35).** De job heet nu "Statische analyse", zonder "(advies)", en
+  een bevinding maakt de run rood. Hij stond op advies en was rood sinds v1.12.0, toen de regels
+  voor de OWASP Top 10 erbij kwamen. Dat zag niemand, want een rode job op advies laat de run groen
+  (les L-WERK-22). D35 vervangt "Semgrep blijft advies" uit D19.
+- **De bevindingen nagekeken.** Vijf waren vals alarm: een `RegExp` die wordt gebouwd uit een naam
+  die alleen letters, cijfers en een liggend streepje kan bevatten (de huisregels
+  `organisation-scope` en `public-routes`), of uit een naam die al is ontsnapt
+  (`template/lib/report-back/neutral.ts`). Die staan uit met `// nosemgrep` en de reden erboven.
+  Eén was echt: de test van `parseDraft` met Windows-regeleinden zette alleen de eerste regel om.
+  Hij zet nu elke regel om. De code zelf deed het al goed.
+- **Twee bevindingen van een nieuwere Semgrep alvast uitgezet.** Semgrep 1.187.0 meldt
+  `detect-child-process` bij `spawnSync` in `template/ci/golden.mjs` en
+  `template/lib/report-back/send.ts`. De vastgezette scanner van de CI meldt ze nog niet. Het is
+  vals alarm: een vaste naam, een lijst argumenten en geen shell. Ze staan nu al uit, zodat een
+  nieuwe digest de poort niet rood maakt.
+- **De regels zelf staan niet vast.** De CI zet de scanner vast op een digest, maar haalt de sets
+  `p/default`, `p/typescript` en `p/owasp-top-ten` bij elke run op uit het register van Semgrep.
+  Een nieuwe regel daar kan een run rood maken zonder dat er in de repo iets veranderde. Dat is de
+  prijs van de poort; zie "Let op bij bijwerken".
+- **Handleiding 02** zegt wat je doet met een bevinding, ook als die in een bestand van het
+  template staat.
+
+### Let op bij bijwerken
+
+- **Een bevinding in je eigen code maakt de CI nu rood.** Geef de melding uit de stap Semgrep aan
+  Claude. Een echte bevinding repareer je; een vals alarm zet je uit met `// nosemgrep: <regel-id>`
+  op de regel erboven en de reden daarboven (handleiding 02). Staat hij in een bestand van het
+  template, pas dan niets aan en meld het terug.
+- **Staat "Statische analyse (advies)" in je repo als verplichte check** (branch protection of een
+  ruleset), vervang hem dan door "Statische analyse". Anders wacht een pull request op een check
+  die niet meer komt.
+- **Wordt de Statische analyse rood zonder dat je iets veranderde,** dan kwam er een regel bij in
+  het register van Semgrep. Behandel hem als elke andere bevinding.
+
+## v1.14.0 (25 november 2026)
+
+### Wat verandert
+
+- **Een nieuwe huisregel `claude-settings` (besluit D34).** Wat Claude Code in de repo meekrijgt,
+  geldt voor iedereen die hem opent, en een hook, MCP-server of plugin draait op diens laptop met
+  diens rechten. De regel laat in `.claude/settings.json` alleen een korte lijst instellingen toe:
+  - plugins en een marketplace alleen uit de officiële van Anthropic;
+  - geen hook;
+  - geen MCP-server die zonder vraag wordt goedgekeurd;
+  - geen `bypassPermissions`.
+
+  Een `.mcp.json` in de repo meldt hij altijd. Het is een lijst van wat mag, dus ook een nieuwe
+  instelling die een opdracht draait, valt erbuiten. De regel draait bij `pnpm lint` en in de CI.
+- **Claude installeert zelf niets.** De seed `.claude/settings.json` verbiedt `claude plugin` en
+  `claude mcp add`, in Bash en in PowerShell. Installeren doet een mens.
+- **Handleiding 30** heeft een deel "Plugins, hooks en MCP-servers die je installeert": wat het
+  template doet, wat je afspreekt, en het blok voor een beheerde instelling van de organisatie of de
+  laptop. Alleen zo'n instelling houdt tegen wat iemand zelf installeert.
+- **De seeds** `docs/veiligheid.md` en `docs/dreigingsmodel.md` noemen de laptop van een bouwer: twee
+  regels in de lijst, een aanvaller en een grens van vertrouwen in het model.
+- **Gerepareerd:** in v1.13.0 stond in deze CHANGELOG een tweede, lege sectie v1.13.0.
+- Bewezen zonder database: de batterij met de tests van de nieuwe regel, de gouden tests en de
+  updatetest. In een sessie van Claude Code in de repo van het template weigerde Claude Code
+  `claude plugin list`, in Bash en in PowerShell. Niet bewezen: dat de huisregel elke vorm vangt
+  die Claude Code later aan zijn instellingen toevoegt; daarom is het een lijst van wat mag.
+
+### Let op bij bijwerken
+
+- **Kwam je project al op v1.13.0**, dan laat de update `.claude/settings.json` staan. Zet er de
+  weigerregels zelf in:
+  `"permissions": { "deny": ["Bash(claude plugin *)", "Bash(claude mcp add*)", "PowerShell(claude plugin *)", "PowerShell(claude mcp add*)"] }`.
+- **Staat er een hook, een andere plugin of een `.mcp.json` in je repo**, dan wordt `pnpm lint` rood.
+  Zet het in je eigen instellingen (`.claude/settings.local.json`, `claude mcp add --scope local`), of
+  neem `scripts/house-rules/claude-settings.mjs` over met `pnpm template:adopt` en de reden.
+- **`docs/veiligheid.md` en `docs/dreigingsmodel.md`** zijn van het project. Neem de nieuwe regels uit
+  het template met de hand over: in de lijst onder Toegang, in het model bij de aanvallers en bij de
+  grenzen van vertrouwen.
+
+## v1.13.0 (25 november 2026)
+
+### Wat verandert
+
+- **De twee beveiligingsplugins van Anthropic staan aan in elk project (besluit D33).** Een nieuwe
+  seed `.claude/settings.json` zet `security-guidance` en `claude-security` aan. De eerste kijkt
+  mee terwijl Claude schrijft: bij elke bewerking een zoektocht naar riskante patronen, na elke
+  beurt een aparte review. De tweede is een scan op verzoek van de repo of een branch. Een plugin
+  laadt pas als je hem op je laptop installeert; tot dan doet hij niets.
+- **De regels van het template voor die review.** `.claude/claude-security-guidance.md` zet de
+  niet-onderhandelbare regels uit de CLAUDE.md om in wat een reviewer nakijkt: `can()` en
+  `organisation_id` in de query, ids via `uuidOrUndefined`, alleen feiten in het logboek, de lijst
+  van openbare paden, de rem, `fetchWithTimeout` en `errorForScreen`.
+  `.claude/security-patterns.json` voegt drie patronen per bewerking toe die de huisregels nog niet
+  dekken: een certificaatcontrole die uitgaat, een ruwe `error.message` in `app/` of `components/`,
+  en `Math.random` voor iets geheims. Allebei van het template.
+- **Handleiding 30** heeft een deel "Claude Security: meekijken en scannen": installeren, wat het
+  kost, een scan op je branch en vóór de eerste echte gebruiker, en wat je met een vondst doet.
+  De lijst "Beveiliging: wat jij doet" heeft er een regel bij.
+- **`.gitignore`** sluit de persoonlijke instellingen van Claude Code uit, en de map
+  `CLAUDE-SECURITY-*/` met het rapport van een scan.
+- Bewezen zonder database: de batterij, de gouden tests en de updatetest. Niet bewezen: de plugins
+  zelf. Ze draaien buiten het template, in Claude Code, en zijn hier niet geïnstalleerd.
+
+### Let op bij bijwerken
+
+- **Installeren is handwerk, per laptop en per kloon** (handleiding 30). Zonder installatie
+  verandert er niets. Beide plugins vragen Python (3.7 of hoger; de scan `python3` 3.9 of hoger).
+- **De review na elke beurt kost verbruik**: een extra aanroep, standaard op Opus. Kies een ander
+  model met de variabele `SECURITY_REVIEW_MODEL`, of zet hem uit met `ENABLE_STOP_REVIEW=0`.
+- **Had je project al een `.claude/settings.json`**, dan laat de update hem staan. Zet er dan zelf
+  `"enabledPlugins": { "security-guidance@claude-plugins-official": true,
+  "claude-security@claude-plugins-official": true }` in.
+- **Eigen regels voor de review**: neem `.claude/claude-security-guidance.md` over met
+  `pnpm template:adopt` en zet ze erbij. Een persoonlijke aanvulling kan in
+  `.claude/claude-security-guidance.local.md`, die niet in git komt.
+
+## v1.12.1 (24 november 2026)
+
+### Wat verandert
+
+- **De tests over de voorbeeldconfiguraties draaien alleen nog in de repo van het template.**
+  `template/generators/generators.test.ts` en `template/lib/config.test.ts` lazen `examples/` uit het
+  project. Die map staat niet in het manifest en een update werkt hem niet bij, dus in een project
+  dat vóór 16 oktober uit het template kwam, bleven na het bijwerken twee tests van de generatoren
+  rood, zonder dat het project iets fout deed. Ze slaan nu over buiten de standaardconfiguratie, net
+  als de beweringen in `template/self.test.ts` die alleen over de wortel van het template gaan;
+  `config.test.ts` leest het standaardvoorbeeld voortaan uit `template/default.project.config.json`,
+  dat een update wel bijwerkt. Ook de bewering in `self.test.ts` dat die twee gelijk zijn, staat nu
+  achter die poort.
+- Les L-WERK-21: een test van het template leest alleen wat een update bijwerkt.
+- **Bewezen zonder database:** een project van 14 oktober (versie 0.1.0), met de wachtwoordlogin en
+  alle modules en met de Microsoft-login, elk met een eigen tabel en een eigen server action, is met
+  zijn eigen oude tooling bijgewerkt naar 1.12.0. Daarna waren typecheck, lint, build en
+  `pnpm check:public` groen zodra de eigen code was aangepast (het logboek met `auditLength`, de eigen
+  tabel met `appRowAccess()` en een migratie met terugweg), op deze twee tests na.
+- **Niet bewezen:** de migraties `template_core_2` en `template_core_2_custom` op een echte
+  Neon-database. De deploy draait `pnpm db:deploy` vóór de build, dus bij een project dat ze nog
+  niet heeft, lopen ze bij de eerste uitrol na het bijwerken.
+
+### Let op bij bijwerken
+
+- **Een project dat lang niet is bijgewerkt:** de slottekst van `pnpm template:update` noemt onder
+  "Wat je nu doet" `pnpm db:status` en `pnpm db:roundtrip`; die hebben een dev-branch nodig. Heb je
+  die nog niet, bewaar die stappen dan tot je er een hebt, en zet de update niet op `main` voordat de
+  migraties op een branch van de database zijn gedraaid (handleiding 09).
+- `examples/` in een project is een kopie van de dag waarop het ontstond. Weggooien mag; geen test
+  leunt er nog op.
+
+## v1.12.0 (21 november 2026)
+
+### Wat verandert
+
+Beveiliging toetsen in drie delen (besluit D32 van 21 november 2026): de CI houdt de harde poorten,
+een ronde met een agent is periodiek werk met een mens erbij, en bijblijven met nieuwe dreigingen
+gebeurt met één wekelijkse update op het template. De aanleiding is een opzet uit een eerder
+project die daar nog geen ronde heeft gedraaid. Deze versie neemt daarom alleen over wat niet van
+die proef afhangt.
+
+- **Semgrep draait ook de set voor de OWASP Top 10** (`p/owasp-top-ten`, naast `p/default` en
+  `p/typescript`) in `.github/workflows/ci.yml`. De stap is nog advies; de set komt er vóór de poort
+  bij, want een set die na de poort komt, maakt een groene run achteraf rood.
+- **Nieuwe huisregel `csv-export`.** Een antwoord met `Content-Type` `text/csv`, een `contentType`
+  met die waarde of een `Blob` van dat type, in een bestand dat `csvDocument`, `csvLine` of
+  `csvField` uit `lib/domain/csv-safe.ts` niet aanroept, houdt de lint tegen. Dat elke export langs
+  `csv-safe` gaat, was tot nu toe een afspraak (L-HTTP-04). Het type van een upload vergelijken telt
+  niet; een bestand dat alleen bytes doorgeeft, krijgt het commentaar `csv:` met de reden.
+- **Nieuwe seed `docs/dreigingsmodel.md`.** Per project: wat er te beschermen is, wie de aanvaller
+  kan zijn (te beginnen bij wie de invoer van het model schrijft), de grenzen van vertrouwen, de
+  scenario's in volgorde met het kader erbij, wat een volgende ronde opnieuw toetst, en wat bekend
+  en besloten is. `docs/veiligheid.md` krijgt er twee punten bij onder Sporen en toezicht: het
+  dreigingsmodel, en dat elk open punt vóór een ronde een besluit heeft.
+- **Drie lessen.** L-AI-12: wat de tool onthoudt en opnieuw gebruikt, is een weg voor vergiftiging;
+  tussen onthouden en hergebruiken staan een mens en een toets. L-WERK-19: eerst de bekende gaten
+  beslissen, dan nieuwe zoeken. L-WERK-20: een norm heeft een editie; noem het jaar en de naam van
+  het risico, niet alleen het nummer. L-HTTP-04 noemt de nieuwe huisregel.
+- **Documentatie.** Een regel in handleiding 00 (bij de eerste deploy en bij de terugkerende
+  controles) en in handleiding 30, een alinea in het patroon `veiligheidschecklist`, en
+  `docs/dreigingsmodel.md` in de tabel met lessen van `CLAUDE.md`. De kop van
+  `scripts/lint-house-rules.mjs` noemt nu ook de regels die er eerder bij kwamen.
+- **Bewust niet in deze versie.** De agent voor een beveiligingsronde, het draaiboek en de
+  wekelijkse update wachten tot ze in dat eerdere project een ronde hebben gedraaid; de agent wacht
+  bovendien op het aanvalsscript waar hij op bouwt, en dat wacht op een database voor het template.
+  Een passieve scan van de draaiende app in de CI wacht op de lijst met uitzonderingen die zo'n scan
+  nodig heeft. De opzet verwees naar de OWASP Top 10 van 2021; het draaiboek komt op de editie van
+  2025, en op die van 2026 voor taalmodellen.
+- **Bewezen en niet bewezen.** Bewezen zonder database: `pnpm check:all --zonder-database` groen
+  (typecheck, lint met de huisregels, 704 tests, check:secrets, check:licenses, check:migrations,
+  check:drift, check:contrast, template:verify, build, `check:public` met 55 controles). De
+  huisregel `csv-export` heeft drie tests, en ging in de echte lint af op een proefbestand. De
+  gouden tests (voorbeeld, minimaal, default) en de updatetest zijn groen. Een project op v1.11.0
+  met alle modules is bijgewerkt naar v1.12.0: geen migratie, de nieuwe seed en de huisregel zijn
+  er, `docs/veiligheid.md` bleef onaangeraakt, de lint weigert daar een export buiten `csv-safe`
+  om, en typecheck, lint, de huisregels, 956 tests, verify, build en `check:public` (90 controles)
+  zijn groen; een volgende update verandert niets. Niet bewezen: Semgrep met de nieuwe set (die
+  draait alleen in de CI, en kan daar nieuwe bevindingen tonen), en het dreigingsmodel is nog door
+  niemand in een echt project ingevuld.
+
+### Let op bij bijwerken
+
+- **Een bestaande export naar CSV kan de lint rood maken.** Bouw het document met `csvDocument`
+  (of `csvLine` en `csvField`) in het bestand dat het antwoord teruggeeft, en laat een functie
+  elders alleen de rijen teruggeven. Geeft een bestand alleen de bytes van een ander door, zet dan
+  op de regel erboven `/* csv: <reden> */`.
+- **`docs/veiligheid.md` is een seed en wordt niet bijgewerkt.** Zet de twee nieuwe punten er zelf
+  bij, onder Sporen en toezicht:
+  `| Een dreigingsmodel: wat er te beschermen is, wie de aanvaller kan zijn en de scenario's, bijgewerkt na een grote wijziging | A | open | docs/dreigingsmodel.md |`
+  en
+  `| Vóór een beveiligingsronde heeft elk open punt een besluit: dichten met een datum, of aanvaarden met de reden | A | open | Deze lijst, en Bekend en besloten in docs/dreigingsmodel.md |`.
+- **`docs/dreigingsmodel.md` komt er bij het bijwerken bij, leeg.** Vul het in voordat de tool echte
+  gebruikers of echte gegevens krijgt, of bij de eerstvolgende ronde als dat al zo is.
+- **De stap Statische analyse kan nieuwe bevindingen tonen.** Hij is nog advies en houdt niets
+  tegen. Lees ze na voordat de stap een poort wordt: een echte bevinding repareer je, een vals
+  alarm zet je per regel uit met `// nosemgrep: <regel-id>` en de reden erboven.
+
+## v1.11.0 (21 november 2026)
+
+### Wat verandert
+
+Kennis uit projecten komt terug naar het template met één opdracht (besluit D31 van 21 november
+2026). Tot nu toe kwam ze alleen terug als iemand erom vroeg, uit één project, en hield niemand bij
+wat al verwerkt was.
+
+- **`pnpm template:report-back`.** Verzamelt sinds de vorige melding vier soorten kennis, elk van een
+  vaste plek: de besluiten van het project uit `docs/SPEC.md` (de rijen waarvan de kern niet in de
+  seed van het template staat, als `P-D41`), de lessen uit de nieuwe seed `docs/lessen-project.md`
+  (`## P-01`), de overgenomen bestanden met hun reden, en de nieuwe rubriek `### Voor het template`
+  uit `RELEASE-NOTES.md`. Hij schrijft `.terugmelding.md` (niet in git) om na te lezen. Met `--send`
+  zet hij hem met de `gh` van de melder als issue bij het template, met een titel die begint met
+  `[Terugmelding]`; zonder `gh` zegt hij welke pagina je opent en legt `--sent <nummer>` de melding
+  vast. De code staat in `template/lib/report-back/` en `template/cli/report-back.ts`.
+- **Vijf sloten voor het versturen.** Geen naam uit `project.config.json` (behalve wat nog op de
+  neutrale standaard staat) of van de eigen lijst "Nooit in een terugmelding"; geen e-mailadres,
+  GUID, verbindingsstring, IP-adres, adres bij Vercel, endpoint van Neon of tenant van Microsoft;
+  geen geheim volgens secretlint en de huisregel `secret-patterns`, en een scan die niet kan draaien
+  telt als vondst; een aangevinkt akkoord; en een repo van het template die privé is. De opdracht
+  toont nooit een gevonden waarde, alleen de regel en de soort. In de templaterepo zelf weigert hij.
+- **De administratie: de nieuwe seed `docs/terugmeldingen.md`.** De woorden die nooit mee mogen, de
+  overgenomen bestanden met datum en reden, en per verstuurde melding welke punten erin zaten en
+  welke bewust zijn weggelaten (`niet:`), zodat niets twee keer gaat of steeds terugkomt. Wie het
+  bestand schrijft (adopt en de opdracht), zet ook de regel ervan in `template.lock.json` bij, zodat
+  de volgende update de lock niet alsnog verandert.
+- **`pnpm template:adopt` vraagt een reden:** `--reason "waarom"`, hooguit 300 tekens, in
+  `docs/terugmeldingen.md`. Een bestand dat al was overgenomen, opnieuw overnemen (om de kop te
+  herstellen) vraagt er geen. De meldingen van `verify`, `apply` en de huisregel
+  `template-ownership` noemen de optie.
+- **Twee herinneringen.** `pnpm template:status` en het slot van `pnpm template:update` noemen wat
+  nog niet is teruggemeld. De regel komt pas vanaf de volgende update na deze, want het slot van een
+  update draait met de tooling van de oude versie.
+- **Documentatie.** Nieuwe handleiding 12 (terugmelden), met een regel in 00 en 01, en in
+  `docs/WERKWIJZE.md` onder het ritme. In `CLAUDE.md`
+  regel 14 (de reden bij adopt), de rubriek Voor het template bij de release notes, een nieuw punt
+  "Terugmelden" onder Werkwijze en een regel in de tabel met lessen. `docs/lessen/README.md` wijst
+  projectlessen naar `docs/lessen-project.md`. `template/README.md` heeft een paragraaf
+  "Terugmeldingen verwerken": de toets aan het begin van elke versie, de labels, overnemen in eigen
+  woorden, en "(uit terugmelding #n)" in deze CHANGELOG. Besluit D31 in `docs/SPEC.md`.
+- **Tests.** Unittests per onderdeel en een test van de hele opdracht in een nagemaakt project met
+  een nagemaakte `gh`. De gouden test draait de opdracht in een echt project met de echte
+  geheimenscans tot vlak voor het versturen; de updatetest bewijst dat adopt zonder reden weigert.
+- **Bewezen en niet bewezen.** Bewezen zonder database: `pnpm check:all --zonder-database` groen
+  (typecheck, lint met de huisregels, 699 tests, check:secrets, check:licenses, check:migrations,
+  check:drift, check:contrast, template:verify, build, `check:public` met 55 controles). De gouden
+  tests (voorbeeld, minimaal, default) zijn groen, elk met de nieuwe stap: niets nieuws in een vers
+  project, de les verzameld, geweigerd zonder akkoord, met de naam van het project en met een
+  sleutel, en met de hand vastgelegd; op de standaardconfig weigert de opdracht. De updatetest is
+  groen. Een project op v1.10.0 met alle modules is bijgewerkt naar v1.11.0: geen migratie, de twee
+  seeds, het script, de regel in `.gitignore` en het punt in `CLAUDE.md` zijn er, adopt weigert
+  zonder reden, en typecheck, lint, de huisregels, 951 tests, verify, build en `check:public` (90
+  controles) zijn groen; een tweede update verandert niets. Niet bewezen: een echte melding met
+  `gh` naar de repo van het template (die is op 21 november nog openbaar, nagekeken met
+  `gh repo view`, en dan weigert de opdracht met opzet), en hoe GitHub de labels van een account
+  met alleen leesrecht behandelt.
+
+### Let op bij bijwerken
+
+- **`pnpm template:adopt` zonder `--reason` weigert.** Een eigen script of notitie die adopt zonder
+  reden aanroept, krijgt `--reason "waarom"` erbij.
+- **Twee nieuwe bestanden van het project:** `docs/lessen-project.md` en `docs/terugmeldingen.md`.
+  Staan je projectlessen nu in `docs/SPEC.md` of een eigen bestand, zet ze dan in
+  `docs/lessen-project.md` met een `## P-01`-kop, anders ziet de opdracht ze niet.
+- **Eerdere overnames:** een bestand dat je vóór deze versie overnam, staat zonder reden in de
+  eerste melding. Vul de reden daar in, of haal het punt weg.
+- **De eerste melding is groot:** alle besluiten van het project sinds het begin komen erin. Haal weg
+  wat alleen voor het project telt; een weggehaald punt komt niet terug.
+- **`.gitignore`** krijgt de regel `.terugmelding.md` via het beheerde blok.
+- **Versturen kan pas als de repo van het template privé is.** Tot dan weigert `--send`; het
+  verzamelen en nalezen werkt wel.
+
+## v1.10.0 (19 november 2026)
+
+### Wat verandert
+
+Het overzicht van de veiligheid van een eerder project, naast het template gelegd. Wat er nog niet
+was, is erbij gekomen; wat het template al had, is niet opnieuw gebouwd. Vier besluiten van de
+eigenaar van 18 november 2026: de proxy als extra ring, luid waarschuwen bij de eigenaar op
+productie, alleen feiten in het logboek, en het lesmateriaal in blokken.
+
+- **De buitenste ring (besluiten D24 en D25).** Wat zonder sessie bereikbaar is, staat op één lijst
+  in `lib/auth/public-paths.ts`: de inlog, de inlogbibliotheek en de crons, plus de eigen adressen
+  van het project in de nieuwe seed `lib/auth/public-paths.project.ts`. Drie plekken lezen hem.
+  `proxy.ts` stuurt zonder sessiecookie elke pagina buiten de lijst naar de inlog en geeft elke route
+  onder `/api` buiten de lijst een 401, ook een adres dat niet bestaat. De nieuwe huisregel
+  `public-routes` weigert bij de lint een pagina buiten `app/(app)/` of een route die niet op de lijst
+  staat en geen eigen poort heeft. En het nieuwe `pnpm check:public` vraagt elk adres uit de build
+  zonder sessie op: met de poort aan, met een waardeloze cookie, en met de poort uit
+  (`PROXY_GATE=off`, werkt alleen lokaal). Het eist de inlog, een 401, 403, 404 of 405, nooit een
+  200 of een 500, en een kale 404 op elke cron zonder token. Het draait zonder database en zonder
+  geheimen, in de batterij direct na de build, in de CI na de build en in de gouden test. De proxy
+  blijft een ring en geen grens (L-NEXT-19): hij kijkt of er een cookie is, niet of hij klopt.
+- **De matcher van de proxy slaat niets meer over op grond van een kop.** Een prefetch van
+  `next/link` en elke route onder `/api` komen nu langs de poort; de proxy beslist zelf of er een
+  nonce bij hoort (`isPrefetch` en `wantsNonce` in `lib/security/csp.ts`). Stond de uitzondering voor
+  een prefetch in de matcher, dan sloeg wie die kop zelf meestuurde de poort over (L-NEXT-24).
+  `csp-coverage.test.ts` weigert `missing` en `has` in de matcher.
+- **Geen rol, geen toegang (D26).** Een inlog zonder een rol uit `project.config.json` krijgt geen
+  sessie (`NoRoleError` in `lib/auth/callbacks.ts`); bij rollen uit het token valt de weigering vóór
+  het opzoeken, dus er komt ook geen rij. Nieuw: `lib/auth/callbacks.test.ts`.
+- **Alleen feiten in het logboek (D27).** `before` en `after` van `appendAuditLog` nemen geen vrije
+  tekst meer aan, alleen een code, een lengte, een getal, een waar of onwaar, een tijdstip of een
+  lijst codes: `auditCode`, `auditLength`, `auditCodes` en `auditFacts` uit het nieuwe
+  `lib/db/audit-facts.ts`. `appendAuditLog` toetst het bij het schrijven nog eens met
+  `assertAuditFacts`; de melding noemt de plek en de lengte, nooit de waarde. Alle aanroepen van het
+  template zijn omgezet: de feedback logt lengtes, de wachtwoordlogin logt bij een uitnodiging alleen
+  de rollen en niet meer naam en adres, en de modules ai, files en messaging loggen codes.
+- **Een cronroute zonder ingesteld geheim geeft een kale 404 (D28),** net als een verkeerd token,
+  in plaats van een 500 met uitleg. De oorzaak gaat naar de serverlog. Beheer, Systeem toont of
+  `CRON_SECRET` staat, en kleurt rood op productie als hij ontbreekt.
+- **De eigenaar op productie valt op (D29).** Zonder `DATABASE_URL_APP` verbindt de tool als
+  eigenaar. Beheer, Systeem toont nu welke rol verbindt en kleurt rood op productie, wie
+  `admin:system` heeft ziet een balk bovenaan, en `pnpm db:deploy` schrijft een waarschuwing in de
+  buildlog (`connectsAsOwner` in `lib/db/client.ts`). De tool werkt door, met opzet.
+- **De databasepool heeft een luisteraar op fouten** (L-NEON-14). Een verbinding die in rust wegvalt,
+  laat niet meer de hele instantie vallen.
+- **De uitgever van Entra noemt de tenant bij zijn id.** Een domeinnaam in
+  `AUTH_MICROSOFT_ENTRA_ID_ISSUER` laat de provider bij het opstarten gooien, net als `/common/`: met
+  een domeinnaam toetst de inlogbibliotheek de tenant uit het token niet.
+- **Niet in een zoekmachine, behalve de ingang** (L-NEXT-23). Alles behalve het inlogscherm krijgt
+  `X-Robots-Tag: noindex, nofollow` (`NOINDEX_HEADER` in `lib/config/next-base.ts`, met een test).
+- **Vier nieuwe huisregels.** `raw-html` weigert `dangerouslySetInnerHTML`, `innerHTML =`,
+  `insertAdjacentHTML` en `document.write`. `raw-sql` weigert `sql.raw` met een variabele, `.unsafe`,
+  en een query uit een sjabloon met een variabele of uit geplakte tekst; een bewuste uitzondering
+  krijgt `/* sql: <reden> */` erboven, zoals de twee in `scripts/db-app-login.ts`, die de rolnaam nu
+  eerst toetst. `public-routes` staat hierboven. `organisation-scope` zoekt queries op een tabel met
+  `organisationId` zonder dat filter; die is advies en geen poort (D30): hij vindt in het template
+  46 plekken, en die zonder database herschrijven is niet te bewijzen. De lint noemt het aantal,
+  `node scripts/lint-house-rules.mjs --advies` elke plek.
+- **ESLint is strenger.** `window.localStorage`, `globalThis.sessionStorage` en `self.indexedDB`
+  vallen nu onder dezelfde regel als de kale namen (CLAUDE.md regel 4), en een kale `fetch` buiten
+  `lib/integrations/http.ts` is verboden: elke aanroep naar buiten gaat via `fetchWithTimeout`.
+  `scripts/smoke-prod.ts` en de Teams-koppeling van messaging zijn omgezet.
+- **Twee pure hulpfuncties.** `decodeUtf8Strict` (`lib/domain/utf8.ts`) leest een upload strikt als
+  UTF-8 en weigert anders (L-HTTP-05). `limitedText` (`lib/domain/text-limit.ts`) weigert vrije tekst
+  boven het maximum in plaats van hem af te kappen.
+- **De CI.** `check:migrations` faalt in de CI als hij niet met `main` kan vergelijken, in plaats van
+  die regel over te slaan; de job haalt daarom de hele historie op. Semgrep staat op een vaste digest.
+  En `pnpm check:public` draait na de build.
+- **Documentatie.** Besluiten D24 tot en met D30 in `docs/SPEC.md`. Nieuwe lessen L-NEXT-23 en 24,
+  L-NEON-14 en 15, L-AUTH-11, L-VRC-09, L-HTTP-05 en L-WERK-18; L-NEXT-19 zegt nu dat de proxy een
+  ring is. In `CLAUDE.md` regels 1, 5 en 11 aangevuld. Handleiding 00 heeft een blok "Klaar voor echte
+  gebruikers" met zeven punten uit consoles en afspraken, gelijk aan het lesmateriaal; 03 heeft een
+  stap voor één regel in de firewall van Vercel en de plek van Attack Mode, en zei ten onrechte nog
+  dat de proxy niets weigert; 05, 07 en 30 zijn bijgewerkt. `docs/veiligheid.md` (seed) heeft er
+  acht punten bij en maakt de tweede kopie van de database een harde eis.
+- **Bewezen en niet bewezen.** Bewezen zonder database: typecheck, lint met de huisregels, alle
+  unittests, `pnpm check:public` tegen de build (55 controles), en met een expres open pagina en
+  route erbij vonden de huisregel en de ronde ze allebei. De gouden tests (voorbeeld, default,
+  minimaal, nu met `check:public`) en de updatetest zijn groen, en een project op v1.9.0 met alle
+  modules is bijgewerkt naar v1.10.0: geen migratie, en typecheck, lint, tests, verify, build en
+  `check:public` (90 controles) groen. Niet bewezen: de luisteraar op de pool en
+  de weigering zonder rol tegen een echte database en een echte inlog, de regel in de firewall en
+  Attack Mode in een echt Vercel-project, en hoe Vercel een cron met een 404 in zijn overzicht toont.
+
+### Let op bij bijwerken
+
+- **Het logboek, de typecheck:** elke eigen aanroep van `appendAuditLog` met tekst uit een variabele
+  in `before` of `after` geeft na het bijwerken een typefout. Zet een code door `auditCode`, een
+  vrije tekst door `auditLength` (alleen de lengte), een rij door `auditFacts`. Een code die geen
+  code is (een spatie, meer dan 120 tekens) gooit bij het schrijven, en dan gaat de mutatie in
+  dezelfde transactie ook niet door: draai je e2e en je `check:<domein>` voordat je uitrolt.
+- **Openbare adressen van het project:** een eigen pagina of route zonder sessie (een webhook, een
+  publieke pagina, een route voor een ander systeem) krijgt na het bijwerken van de proxy een
+  doorverwijzing naar de inlog of een 401, en de huisregel `public-routes` weigert hem bij de lint.
+  Zet het pad bewust in `lib/auth/public-paths.project.ts` (komt erbij als nieuw bestand), en laat de
+  route zelf zijn poort houden.
+- **Elk verzoek naar `/api` en elke prefetch gaat nu door de proxy.** Dat is een aanroep van de
+  proxy per verzoek erbij; op een druk project zie je dat terug in het verbruik bij Vercel.
+- **Een eigen e2e** die zonder in te loggen een pagina opvraagt en een 200 of een 404 verwacht, krijgt
+  nu de inlog. Log eerst in, zoals `e2e/05b-csp.spec.ts` nu doet.
+- **Zonder rol geen toegang:** bij Microsoft kwam iemand zonder app role tot nu toe binnen met een
+  lege sessie die niets mocht. Na het bijwerken ziet die persoon "Inloggen is niet gelukt". Kijk vóór
+  de uitrol in Entra of iedereen die binnen moet een rol heeft.
+- **De uitgever:** staat er een domeinnaam in `AUTH_MICROSOFT_ENTRA_ID_ISSUER`, dan start de build
+  niet meer. Zet de Directory (tenant) ID erin, in elke omgeving.
+- **De crons:** een monitor die op een 500 van een cronroute let, ziet een ontbrekend geheim nu niet
+  meer aan de route. Kijk in Beheer, Systeem of in de serverlog.
+- **ESLint:** een eigen kale `fetch` of `window.localStorage` geeft na het bijwerken een fout. Zet de
+  aanroep om naar `fetchWithTimeout` uit `lib/integrations/http.ts`; een voorkeur hoort in
+  `user_preferences`.
+- **De huisregel `raw-sql`:** een eigen script met een query uit een sjabloon met een variabele erin
+  geeft een fout. Maak er parameters van, of zet `/* sql: <reden> */` erboven en toets de waarde zelf.
+- **De adviesregel `organisation-scope`** noemt na de lint een aantal. Daar hoef je nu niets mee;
+  een eigen query zonder filter met een goede reden krijgt `/* organisatie: <reden> */`.
+- **`pnpm check:public`** komt in `package.json` en in de CI erbij. Hij heeft een build nodig: lokaal
+  eerst `pnpm build`.
+- **De veiligheidslijst is een seed:** je eigen `docs/veiligheid.md` krijgt de nieuwe punten niet
+  vanzelf. Neem uit die van het template de regels over de tweede factor bij Vercel, Neon en GitHub,
+  de inlog zonder rol, de regel in de firewall, de noodknop, de regio, de tweede kopie van de
+  database, de rol van de app, de laptop en de CI als verplichte controle over.
+- **De checklist:** loop het nieuwe blok "Klaar voor echte gebruikers" in handleiding 00 na, en zet
+  de regel in de firewall uit handleiding 03, stap 8.
+
+## v1.9.0 (18 november 2026)
+
+### Wat verandert
+
+Drie besluiten van 18 november 2026 uitgevoerd: een rem op de rekening van AI die een beheerder zelf
+ziet en bedient, de veiligheidslijst als bestand van het project, en Gitleaks van advies naar poort.
+
+- **Module ai: een maandplafond en een noodstop, voor de hele organisatie.** Onder Beheer, AI staat
+  een nieuwe rubriek Grenzen. De noodstop zet elke prompt in één keer uit, met wie hem zette en
+  wanneer. Het maandplafond is een bedrag per kalendermaand in de valuta van de prijzen; op 100%
+  weigert `runPrompt` tot de eerste van de volgende maand of tot een beheerder het verhoogt, en vanaf
+  80% waarschuwen Beheer, AI en Beheer, Systeem. De stand is de som van `ai_requests`, er is geen
+  aparte teller. Met een plafond wordt een model zonder prijs geweigerd, omdat zo een verzoek niet
+  te tellen is. Nieuw: de tabel `ai_limits` en een index op `ai_requests` (schemaversie 2 van de
+  module), `lib/ai/budget.ts` met de pure toets, `loadLimits`, `saveMonthlyCap` en
+  `setEmergencyStop` in `lib/ai/settings.ts`, `monthSpend` in `lib/ai/usage.ts`, en rubriek 8 in
+  `pnpm check:ai`. `runPrompt` kent drie nieuwe redenen: `stopped`, `monthLimit` en `noPrice`, elk
+  met een tekst in `labels.ai.outcome`. Besluit A6 in `docs/modules/ai.md`. Het plafond is niet de
+  harde grens: de toets loopt vooraf en de kosten zijn pas achteraf bekend. Niet tegen een database
+  bewezen.
+- **`runPrompt` toetst de sleutel als laatste.** De volgorde is nu: het recht, de noodstop, de prompt,
+  de daglimiet, het maandplafond, de sleutel. Zo kan `pnpm check:ai` de grenzen zonder sleutel
+  bewijzen. Wie de daglimiet bereikt in een omgeving zonder sleutel, ziet nu de melding van de
+  daglimiet en niet meer die van de sleutel.
+- **De veiligheidslijst is een bestand van het project.** `docs/veiligheid.md` is een nieuwe seed: 31
+  punten in acht groepen, elk met bouwen, instellen of afspreken, een stand en een aanwijzing naar
+  wat het template levert, en bovenaan een eigenaar en een datum. Het patroon
+  `docs/patronen/veiligheidschecklist.md` is de uitleg erbij; de checklist (handleiding 00) en
+  handleiding 30 verwijzen ernaar. Besluit D23.
+- **Gitleaks is een poort.** De stap over de historie in `.github/workflows/ci.yml` draait zonder
+  `continue-on-error` en heet niet meer advies: een vondst maakt de run rood. Besluit D22. Semgrep
+  blijft advies; handleiding 02 zegt hoe je een vals alarm per regel uitzet.
+- **Apply: een nieuwe schemaversie van een module in een vers project.** In een vers project zit het
+  hele schema van een module in haar eerste migratie, en voor een latere schemaversie valt er niets
+  meer te genereren. De terugweg van die latere versie komt nu vooraan in de terugweg van de eerste
+  migratie, in plaats van te ontbreken, en de waarschuwing dat er niets gegenereerd is blijft weg.
+  Een bestaand project krijgt een eigen migratie met haar eigen terugweg, zoals voorheen
+  (`template/lib/drizzle.ts`, `template/lib/apply.ts`; regel 4b in `template/README.md`). Bewezen
+  zonder database: een project op v1.8.0 met alle modules kreeg bij het bijwerken precies één
+  migratie met de nieuwe tabel, het slot en de index, en de gouden test dekt het verse project.
+
+### Let op bij bijwerken
+
+- **Module ai, de database:** `pnpm template:update` maakt een migratie `template_ai_2` met de tabel
+  `ai_limits` en een index, en zet haar terugweg erbij. Bekijk allebei, draai `pnpm db:roundtrip` op
+  je dev-branch en `pnpm check:ai`, en commit ze met de rest. Zonder die migratie op productie faalt
+  elke aanroep van `runPrompt`: hij leest de nieuwe tabel als eerste.
+- **Module ai, de redenen:** `AiFailure` heeft er drie waarden bij. Een server action die
+  `labels.ai.outcome[reason]` toont, hoeft niets te doen. Een eigen `switch` over de redenen of een
+  eigen tekst per reden vul je aan met `stopped`, `monthLimit` en `noPrice`.
+- **Module ai, de prijzen:** zet je een maandplafond, vul dan eerst de prijs in van elk model dat een
+  prompt gebruikt. Een prompt met een model zonder prijs wordt met een plafond geweigerd; Beheer, AI
+  noemt de modellen.
+- **De CI:** Gitleaks is nu een poort. Een project dat nog een vondst in zijn historie heeft, krijgt
+  een rode run tot het geheim is ingetrokken en uit de historie is, of de valse bevinding met zijn
+  reden in `.gitleaks.toml` staat. De stap noemt per vondst de regel, het bestand en de commit.
+- **De veiligheidslijst:** `docs/veiligheid.md` komt er als nieuw bestand bij. Heeft je project die
+  lijst al onder die naam, dan blijft je eigen bestand staan; leg de twee dan naast elkaar.
+
+## v1.8.0 (17 november 2026)
+
+### Wat verandert
+
+AI en veiligheid, uit lessen van een eerder project tot en met 17 november 2026: vier plekken waar
+dat project een model gebruikt, een doorlichting als aanvaller, en een nachtronde die dagenlang
+stilstond op één fout.
+
+- **Beveiliging: Next.js 16.4.6** (en `eslint-config-next` 16.4.6). Op 16.2.0 tot en met 16.4.4
+  staan twee meldingen (matig) over een cache die lekt tussen waarden van een root-parameter bij
+  `'use cache'`; opgelost vanaf 16.4.5. Het template gebruikt die functie niet, een project kan dat
+  wel. `next build` van 16.4.2 stopte op 17 november 2026 op die melding; `pnpm audit --prod` is
+  met 16.4.6 schoon. De versie is ouder dan de wachttijd van een week.
+- **De deploy zet de organisatie neer.** `pnpm db:deploy` roept na de migraties `ensureBaseData`
+  aan (hetzelfde als `pnpm db:bootstrap`). Geen migratie maakt de organisatierij en geen handleiding
+  liet dat script op productie draaien: op een verse productiedatabase faalden de eerste inlog en
+  `pnpm invite`. Besluit D21. Niet tegen een database bewezen.
+- **Eén fout zet de nacht niet stil.** `runSteps` en `stepsResponse` in `lib/cron/steps.ts`: elke
+  ronde van een cronroute is een stap met zijn eigen opvang; een stap die gooit, wordt gemeld met
+  zijn naam, de volgende loopt door, en het antwoord is een 500 met de mislukte stappen. `runPrune`
+  loopt erop, en ook de crons van de modules jobs (verwerken, opruimen) en messaging (versturen,
+  vastloopcontrole, opruimen). Besluit D15.
+- **Een foutmelding die zegt waarom, zonder de rij.** `causeTags` in `lib/monitoring/report.ts`
+  loopt de keten van `cause` af en zet de code en, bij een databasefout, de naam van de check of
+  index, de tabel en de kolom als labels achter de regel in de log. `message` en `detail` van de
+  oorzaak gaan nooit mee. Besluit D16.
+- **De CSP op elk adres.** De proxy slaat alleen `/api`, de bestanden van Next en een pad dat op de
+  extensie van een bestand eindigt over; een pagina met een punt in het adres krijgt de nonce. De
+  eigen HTML-pagina's van Auth.js onder `/api/auth` krijgen een vaste CSP zonder scripts
+  (`STATIC_CSP`). Test `lib/security/csp-coverage.test.ts`, e2e `05b` uitgebreid. Besluit D17.
+- **Module auth-entra: geen deploy zonder de eigen tenant.** Ontbreekt
+  `AUTH_MICROSOFT_ENTRA_ID_ISSUER` in een preview of in productie, of wijst hij naar `common`,
+  `organizations` of `consumers`, dan gooit de provider bij het opstarten
+  (`lib/auth/providers/entra-issuer.ts`). Besluit D18.
+- **De CI.** Draait ook op een push naar `release/next`. Nieuw in de job met de scans:
+  `pnpm check:licenses` (`scripts/check-licenses.mjs`: geen GPL of AGPL in wat naar productie gaat,
+  LGPL mag, een onbekende licentie waarschuwt) als poort, en Gitleaks over de hele git-historie op
+  een vaste versie met checksum, als advies tot een run beoordeeld is; de valse bevindingen staan
+  met hun reden in `.gitleaks.toml` (van het project). `check:licenses` staat ook in
+  `pnpm check:all`. Besluit D19. De stap met Gitleaks toont per vondst de regel, het bestand en de
+  commit, met de waarde weggelakt. Twee testwaarden die Semgrep bij de eerste run als geheim aanzag
+  (een verzonnen JWT in `report.test.ts` en het testgeheim uit RFC 6238 in `totp.test.ts`), staan
+  per regel uit met de reden. Gitleaks vond dezelfde twee in de historie; ze staan met hun reden
+  in `.gitleaks.toml`, zodat een nieuw project er schoon mee begint. Een derde vondst zit alleen in
+  de historie van het template zelf (een testwachtwoord in een script dat sinds v1.3.0 weg is) en
+  staat als vingerafdruk in `.gitleaksignore`.
+- **Welke branches uitrollen.** `vercel.json` krijgt `git.deploymentEnabled`: de soorten
+  werkbranches (`feature/**`, `fix/**`, `dependabot/**` en tien andere) krijgen geen eigen preview
+  meer; `main` en `release/next` rollen uit. Besluit D20.
+- **Een preview zonder echte gegevens.** Handleiding 04, 07, 09 en de checklist: de parent van een
+  preview is een branch `seed` met alleen de seed, de default branch van het Neon-project; de
+  productiebranch blijft de production branch. Vóór deze versie zei handleiding 09 dat de preview
+  een kopie van productie was.
+- **Kleine helpers voor invoer van buiten:** `uuidOrUndefined` (`lib/domain/ids.ts`), `oneOf`
+  (`lib/domain/one-of.ts`) en `escapeLike` (`lib/domain/like.ts`), elk met test. Een vreemd id, een
+  onbekende keuze of een joker in een zoekveld is een 404 of een lege lijst, geen 500.
+- **Module ai: een antwoord is invoer.** `keyed` (korte sleutels in plaats van id's) en `enumOr`
+  (een onbekende keuze wordt de keuze die niets doet) in `lib/ai/keys.ts`.
+- **Module ai: de witte lijst, bewezen.** `outgoingText` en `smuggled` in `lib/ai/outgoing.ts` voor
+  de smokkeltest per prompt, en rubriek 7 van `pnpm check:ai`, die de gevallen uit
+  `scripts/check-ai.project.ts` (van het project) tegen de database draait. De check haalt de
+  sleutel van het model eerst uit de omgeving.
+- **Module ai: platte tekst.** `PlainText` (`components/ai/plain-text.tsx`), door `ProposalView`
+  gebruikt voor elke tekst van het model, en de huisregel `ai-output`: een bestand dat iets van de
+  module toont, bevat geen `dangerouslySetInnerHTML`, geen markdown-renderer en geen linkmaker.
+- **Module ai: wie de module mag gebruiken.** De huisregel `ai-imports`: `@/lib/ai` alleen vanuit
+  de mappen van de module zelf en de mappen in `PROJECT_AI_IMPORT_ROOTS`
+  (`scripts/house-rules/project-rules.mjs`), en nooit vanuit een map voor gasten of klanten.
+- **Module ai: een nagemaakt model.** Met `AI_FAKE=1` en `APP_ENV=local` antwoordt
+  `lib/ai/fake.ts` in de vaste structuur van de prompt, door dezelfde toets, zonder sleutel en
+  zonder netwerk; buiten lokaal gooit het. `playwright.config.ts` geeft de server van de e2e
+  `SAFE_SERVER_ENV` mee (`scripts/lib/safe-server-env.ts`): de sleutel leeg en het nagemaakte model
+  aan. Besluit A5 in `docs/modules/ai.md`.
+- **Module messaging: Teams buiten productie alleen naar een testkanaal.** `TEAMS_WEBHOOK_URL` wordt
+  alleen in productie gelezen; elders telt alleen `TEAMS_WEBHOOK_URL_TEST`, en zonder die gaat er
+  niets uit. Besluit M1 in `docs/modules/messaging.md`.
+- **Module files: de grens in de browser.** `FileInput` houdt een bestand boven de grens van het
+  doel tegen vóór het versturen (`SizedFileInput`). Besluit F1 in `docs/modules/files.md`.
+- **Lessen:** een nieuwe laag `docs/lessen/ai.md` (L-AI-01 tot 11), en L-WERK-13 tot 17, L-AUTH-08
+  tot 10, L-NEXT-20 tot 22, L-NEON-12 en 13, L-WIN-08 en 09.
+- **Patronen:** `ai-gesprek`, `ai-meten`, `omgeving-per-adres`, `accounts-van-buiten`,
+  `intrekbare-sessie`, `tweede-app-in-de-repo`, `eigenaar-boven-beheerder`,
+  `niemand-beslist-over-zichzelf` en `veiligheidschecklist`. Acht van de negen staan niet in code in
+  het template: ze zeggen hoe een project het bouwt.
+- **CLAUDE.md:** regel 5 (in een log die je niet kunt opschonen staan sleutels en aantallen, nooit
+  inhoud), regel 11 (de helpers voor invoer van buiten), regel 17 (ook een action die het quotum van
+  een gedeelde sleutel kost), de batterij met `check:licenses`, "zeg wat bewezen is en wat niet", en
+  vijf nieuwe rijen in de tabel met lessen en patronen. Het blok van de module ai is herschreven.
+- **Documenten nagelopen op tegenspraak met de code** (veertig bevindingen): onder meer wat
+  `pnpm entra:status` en `pnpm db:status` echt tonen, de sleutel van tweestapsverificatie
+  (`MFA_SECRET_KEY`), `appRowAccess()` in elk voorbeeld van een tabel, de CSP in handleiding 03 en
+  L-NEXT-13, het rooster van een kwartiercron (werkuren), en invullen en afvinken in een eigen
+  `docs/inrichting.md` in plaats van in een bestand van het template. `OVERDRACHT.md` is weg.
+
+### Let op bij bijwerken
+
+- **Next.js 16.4.6:** `pnpm install` na de update, en bouw één keer lokaal.
+- **De deploy draait `scripts/lib/bootstrap.project.ts` nu elke keer**, ook op productie. Dat
+  bestand hoort alleen upserts te bevatten; staat er iets in dat bij herhaling verdubbelt, maak het
+  dan eerst idempotent.
+- **Het antwoord van een cronroute heeft een andere vorm:** `{ "results": { ... }, "failed": [ ... ] }`
+  in plaats van de tellingen op het hoogste niveau. Leest een eigen script of test het antwoord van
+  `/api/cron/prune`, `/api/cron/jobs` of `/api/cron/outbox`, pas het dan aan. `runPrune` geeft nu
+  `{ results, failed }` terug. Een eigen cronroute met meer dan één ronde: zet de rondes in
+  `runSteps`.
+- **Inloggen via Microsoft:** staat `AUTH_MICROSOFT_ENTRA_ID_ISSUER` niet in Vercel voor Production
+  én Preview, dan faalt de eerstvolgende build daar, met een melding die zegt wat te zetten
+  (handleiding 05).
+- **De huisregel `ai-imports`** (alleen met de module ai): elke map buiten de module die `@/lib/ai`
+  importeert, moet in `PROJECT_AI_IMPORT_ROOTS` staan. Die lijst staat in
+  `scripts/house-rules/project-rules.mjs`, een bestand van het project dat een update niet
+  overschrijft: voeg `export const PROJECT_AI_IMPORT_ROOTS = ["app/(app)/<map>/", "lib/<map>/"];`
+  zelf toe. Tot dan weigert `pnpm lint` en zegt hij welke map.
+- **De huisregel `ai-output`:** een scherm dat een voorstel toont met een markdown-renderer of
+  `RichText`, zet je om naar `PlainText`.
+- **Teams:** staat `TEAMS_WEBHOOK_URL` ook in Preview of in `.env.local`, dan gaat daar niets meer
+  uit. Wil je buiten productie testen: maak een testkanaal met een eigen webhook en zet die in
+  `TEAMS_WEBHOOK_URL_TEST` (handleiding 21).
+- **`vercel.json`:** apply zet `git.deploymentEnabled` alleen als er nog geen `git` in staat. Een
+  werkbranch krijgt daarna geen preview meer; zet wat je wilt bekijken op `release/next`.
+- **De preview:** een bestaand project houdt zijn previews als kopie van productie tot je de branch
+  `seed` hebt gemaakt en als default hebt gezet (handleiding 04, "Een seed-branch achteraf"). Lees
+  de waarschuwing daar over de lijst van gedraaide migraties.
+- **De CI:** `.gitleaks.toml` komt er als nieuw bestand bij. De stap met Gitleaks staat op advies:
+  loop de eerste uitkomst na, zet een valse bevinding met de reden in dat bestand, en trek een echte
+  in bij de dienst waar hij vandaan komt.
+- **`pnpm check:ai`** leest nu `scripts/check-ai.project.ts`; apply zet dat bestand neer.
+
+## v1.7.0 (29 oktober 2026)
+
+### Wat verandert
+
+- **De CSP draagt een nonce per verzoek.** `proxy.ts` (zo heet middleware in Next 16) maakt per
+  verzoek een nonce en zet de policy uit `lib/security/csp.ts` op het verzoek en op het antwoord;
+  Next zet de nonce op zijn eigen scripts. `script-src 'self' 'nonce-...' 'strict-dynamic'`, zonder
+  `'unsafe-inline'`: een script dat niet van ons is, draait niet, ook niet als er ergens HTML
+  ontsnapt. `style-src` houdt `'unsafe-inline'` (React zet `style`-attributen), `worker-src 'self'`
+  staat er uitdrukkelijk, `object-src 'none'` en `manifest-src 'self'` zijn nieuw. De vaste CSP uit
+  `lib/config/next-base.ts` is weg; de andere headers blijven daar. Besluit D14.
+- **e2e `05b-csp.spec.ts`:** de header, een andere nonce per verzoek, de nonce op elk `<script>` in
+  de HTML van de server, één CSP-header, geen weigering in de console, en een paneel dat opengaat
+  (gehydrateerd) op het inlogscherm en vier schermen achter de inlog.
+- **CLAUDE.md, handleiding 30, `docs/modules/core.md`** en de lessen L-NEXT-17 en 18 zeggen het.
+- **De supply chain:** `minimumReleaseAge: 10080` in `pnpm-workspace.yaml`, een week wachttijd op
+  elke nieuwe pakketversie, ook indirect; dezelfde week als de cooldown van Dependabot. Les
+  L-WERK-12 zegt waarom (de npm-wormen van 2025 en 2026).
+- **Module auth-password: geen reset poisoning.** `appOrigin()` bouwt de koppeling in een mail niet
+  meer uit `Host` of `X-Forwarded-Host`, behalve op Vercel (dat die header zelf zet) en lokaal.
+  Zonder `AUTH_URL` of `productionUrl` op een andere host weigert hij.
+- **Les L-NEXT-19:** middleware is geen beveiligingsgrens; in anderhalf jaar drie keer omzeild.
+
+### Let op bij bijwerken
+
+- Elke pagina wordt dynamisch gerenderd (de nonce is per verzoek); de route-lijst van de build toont
+  niets meer als statisch. Voor een app achter een inlog verandert dat niets wezenlijks.
+- Klik na de eerste uitrol één keer door elk scherm, met de console open: een script dat de nonce
+  mist, faalt stil. Een eigen `<script>` of `next/script` in het project krijgt de nonce uit
+  `(await headers()).get("x-nonce")`.
+- `pnpm install` weigert voortaan een versie die jonger is dan een week, ook als je hem zelf in
+  `package.json` zet. Heb je een security-update eerder nodig, zet het pakket dan tijdelijk in
+  `minimumReleaseAgeExclude` in `pnpm-workspace.yaml`, met de reden erbij.
+- Draait het project niet op Vercel en is `productionUrl` leeg: zet `AUTH_URL` in de omgeving,
+  anders weigert de module auth-password een uitnodiging of herstelmail te maken.
+- Had het project een eigen `middleware.ts` of `proxy.ts`: voeg de nonce en de header toe aan die
+  van jou, of neem `proxy.ts` over met `pnpm template:adopt proxy.ts`. Twee bestanden kunnen niet
+  naast elkaar bestaan.
+- Een eigen CSP-header in `next.config.ts`: weghalen, anders dwingt de browser allebei af.
+
+## v1.6.0 (29 oktober 2026)
+
+### Wat verandert
+
+De databaseronde en de rand, uit lessen van een eerder project van 29 oktober 2026: wat er misging
+toen de app daar als zijn eigen rol ging verbinden, en wat het aanvalsscript daarna nog vond.
+
+- **De rol van de app.** De migraties van core maken `app_rw`: lezen en schrijven in `public`, de
+  migratiestand lezen, de audit log alleen aanvullen, geen DDL. De app verbindt ermee via
+  `DATABASE_URL_APP` (`lib/db/client.ts`), op productie met de hand gezet (handleiding 04) en lokaal
+  door `pnpm db:app-login`, zodat `next dev` en de e2e net als productie werken. `pnpm check:grants`
+  bewijst de rechten, en met een tijdelijke rol zonder regel dat het slot dicht is. Besluit D13.
+- **Row Level Security op elke tabel, met één regel.** `appRowAccess()` uit `lib/db/schema/rls.ts`
+  staat op elke tabel van core en van elke module; drizzle zet het slot en de regel zelf in de
+  migratie (`entities.roles` in `drizzle.config.ts`), en `rls.test.ts` faalt bij een tabel zonder.
+  Een Data API die iemand aanzet, een rol die erbij komt of een gelekte verbinding zonder de rol van
+  de app ziet daarna niets. CLAUDE.md regel 16.
+- **De eigenaar met een eigen variabele.** `ownerUrl()` (`lib/db/owner-url.ts`) kiest in productie
+  `DATABASE_URL_OWNER`, elders telt die niet; zo is het wachtwoord van de eigenaar te draaien zonder
+  de knoppen van de Neon-integratie (handleiding 30). `pnpm db:deploy` weigert in productie als de
+  verbinding naar een ander endpoint dan `PRODUCTION_DB_ENDPOINT` wijst
+  (`scripts/lib/production-guard.ts`, met test).
+- **Huisregel `session-first`.** In een `"use server"`-bestand begint elke geëxporteerde functie met
+  `await requireActor()` of `requireSession()`, vóór elke blik op de invoer. Een bewust anonieme
+  action krijgt een commentaar met `session-first:` en de reden; de actions van het template
+  hebben die. CLAUDE.md regel 11.
+- **Module messaging: een knop alleen naar het eigen adres.** Een alinea met alleen een koppeling
+  wordt nog een knop als het adres op `productionUrl` uit `project.config.json` of op `AUTH_URL`
+  staat; een ander adres blijft tekst.
+- **Over de tool: een punt dat doorloopt.** Een ingesprongen regel onder een opsommingspunt hoort
+  bij dat punt (`lib/domain/doc-markdown.ts`); vóór deze versie werd hij een losse alinea.
+- **`pnpm doctor`** zegt LATER zolang `DATABASE_URL_APP` ontbreekt, ACTIE als die naar een andere
+  branch wijst, en LATER als `DATABASE_URL_OWNER` lokaal staat.
+- **CLAUDE.md:** regel 5 (geen gezondheid of vrije tekst in de audit log), 11, 16 en 17 (een rem op
+  alles wat van buiten te raken is, per adres of per account, geteld vóór het werk), en "handwerk,
+  één stap per bericht".
+- **Handleiding 04, 06, 07, 30 en de checklist:** de Data API uit, de productiebranch beschermd, het
+  herstelvenster van Free (zes uur), de rol van de app op productie met de controle in
+  `pg_stat_activity`, de drie variabelen en wie ze leest, `PRODUCTION_DB_ENDPOINT` ook in
+  Development, en het draaien van het wachtwoord van de eigenaar zonder Rotate secrets.
+- **Twaalf lessen** in `docs/lessen/`: L-NEON-09 tot 11, L-DRZ-17 en 18, L-WERK-09 tot 11,
+  L-NEXT-17 en 18, L-AUTH-07, L-WIN-07; L-NEON-07 en L-VRC-06 bijgewerkt.
+- **Apply:** de driftcontrole loopt vóór het overschrijven van de bestanden, zodat een module die
+  al een schema had een nieuwe schemaversie kan krijgen (core 1 naar 2).
+
+### Let op bij bijwerken
+
+- `pnpm template:update` genereert in je project twee migraties voor core, `template_core_2` (de
+  rol, het slot en de regel op elke tabel die het schema dan kent) en `template_core_2_custom` (de
+  rechten), met hun terugweg. Lees ze, draai `pnpm db:roundtrip` op je dev-branch en commit ze.
+- Eigen tabellen: `rls.test.ts` wijst elke tabel zonder `appRowAccess()` aan. Zet hem in het blok
+  met indexen, `pnpm db:generate --name=<naam>`, schrijf de terugweg (`DROP POLICY` en `DISABLE ROW
+  LEVEL SECURITY` per tabel).
+- Zet `PRODUCTION_DB_ENDPOINT` ook in Vercel voor Development en in `.env.local`, en draai
+  `pnpm db:app-login` (handleiding 07). Na elke `vercel env pull` opnieuw.
+- Op productie, na de uitrol: de inlogrol en `DATABASE_URL_APP` (handleiding 04, "De rol van de
+  app op productie"). Zonder die variabele werkt de app als eigenaar, zoals voorheen.
+- Een eigen server action die eerst naar de invoer keek, wijst de huisregel `session-first` aan: zet
+  de sessie vooraan, of markeer hem met `session-first:` en de reden.
+- Module messaging: zonder `productionUrl` in `project.config.json` en zonder `AUTH_URL` wordt geen
+  enkele koppeling in een mail meer een knop. Zet `productionUrl` zodra het adres bekend is.
+
+## v1.5.0 (27 oktober 2026)
+
+### Wat verandert
+
+Beveiliging uit een audit van een eerder project: de gaten die projecten nu van het template erven.
+
+- **Een deploy is nooit lokaal.** `APP_ENV=local` won van `VERCEL_ENV`, en `.env.example` zet hem
+  samen met `AUTH_DEV_LOGIN=1`. Wie dat bestand in bulk in Vercel importeerde, zette op een preview een
+  inlog zonder wachtwoord open. Nu wint de deploy (`preview` of `production`) en gooit de dev-login bij
+  het laden; `development` van `vercel env pull` blijft lokaal (`lib/domain/deploy-environment.ts`,
+  met test). Handleiding 06 en de les in `authjs.md` zeggen het.
+- **Module messaging: een naam van buiten op één regel.** Een naam met witregels en een adres ertussen
+  werd in de mail aan de beheerders een eigen alinea, en dus een knop naar elke site.
+  `oneLineUntrusted` in `lib/messaging/mail-html.ts` (met test) zet stuurtekens, regelscheiders en
+  witruimte om in één spatie; het hulpformulier op het inlogscherm gebruikt hem voor de naam. Daar
+  komt de grens per adres nu ook vóór het plafond voor de hele installatie, en dat plafond gaat van 5
+  naar 50 per uur: drie bezoekers hielden het enige hulpkanaal anders dicht.
+- **`sameId` voor ids** (`lib/domain/ids.ts`, met test, plus `isUuid`). Postgres vergelijkt een uuid
+  zonder hoofdletters, `===` niet, dus een "nooit jezelf"-slot was te omzeilen met het eigen id in
+  hoofdletters. De module auth-password had dat slot bij deactiveren; dat gebruikt nu `sameId`.
+  `isUuid` uit `lib/files/store.ts` komt nu hiervandaan en wordt daar opnieuw geëxporteerd.
+- **Drie nieuwe huisregels**: `same-id` (een `===` of `!==` tegen `actor.id`), `client-graph` (volgt
+  de imports van een clientcomponent transitief tot een `"use server"`-grens en weigert database,
+  `next-auth`, `node:` of een niet-publieke `process.env` onderweg) en `secret-patterns` (Azure-SAS,
+  Entra-secret, webhooks van Teams en Power Automate, een ingevulde PAT, `AccountKey=`, private keys:
+  wat secretlint mist). De runner wacht nu op een asynchrone regel. Tests in `rules.test.mjs`.
+- **Security headers**: `Strict-Transport-Security` met `includeSubDomains` (twee jaar),
+  `Cross-Origin-Opener-Policy: same-origin`, en `X-Powered-By` uit (`lib/config/next-base.ts`).
+  `pnpm smoke:prod` controleert alle drie.
+- **Fouten zonder parameters** (`lib/monitoring/error-text.ts`, met test): `errorForLog` en
+  `errorForScreen`. De login, de rondes na het antwoord van jobs en messaging, de foutkolom van jobs en
+  outbox, en de gezondheidscontroles op Beheer, Systeem zetten geen ruwe `error.message` meer in de
+  log of op een scherm. `describeDbError` kan het detail van Postgres weglaten (`detail: false`).
+- **Module files**: de bewaarde naam krijgt de extensie van het gecontroleerde type (`fileNameForType`:
+  een `run.bat` die als CSV binnenkwam, heet `run.csv`), het pad een willekeurig stuk, en de PUT naar
+  de opslag overschrijft nooit (`If-None-Match: *`). Een oud Office-formaat (.xls, .doc) wordt altijd
+  geweigerd, want macro's zijn daarin niet te zien, ook als een doel het type noemt. En een rem van
+  100 uploads per uur per persoon (`FILE_UPLOADS_PER_HOUR`). Twee nieuwe meldingen in beide talen.
+- **Lessen**: `L-DRZ-15` (uuid en hoofdletters), `L-DRZ-16` (de reden zit in `cause`) en een regel in
+  `L-NEXT-16` over een test die "de tabel" pakt.
+- **`docs/THEME.md`, paragraaf 8: van een design system naar dit project.** Wat je uit een design system
+  (Claude Design, Figma, een huisstijlgids) overneemt in `project.config.json`, `public/brand/`,
+  `public/fonts` en `app/project.css`, en wat niet: componenten bouw je niet na. De oude paragraaf 8
+  (voordat je een scherm mergeet) is nu 9.
+- **Het template staat op een nieuw adres**: `https://github.com/bosenbrouwer/bb_foundation_webapp.git`
+  in het manifest en de lock. Het oude adres stuurt door.
+
+Bewust niet: `security.txt` had al een `mailto:` als contact, en PKCE bij OAuth speelt pas als een
+module een eigen OAuth-koppeling krijgt (Auth.js doet het bij de inlog zelf).
+
+### Let op bij bijwerken
+
+- **Zet `template.source` in `project.config.json` op het nieuwe adres**
+  (`https://github.com/bosenbrouwer/bb_foundation_webapp.git`). Het oude adres werkt via een
+  doorverwijzing, maar daar wil je niet op leunen. Het template is afgeschermd: wie bijwerkt, heeft
+  leesrecht op die repo nodig, en de eerste keer vraagt git om in te loggen.
+- **Draai `pnpm lint`.** De drie nieuwe huisregels kunnen in eigen code afgaan: een `===` tegen
+  `actor.id` (gebruik `sameId`), een clientcomponent die via een omweg servercode binnenhaalt (zet de
+  waarde in een module zonder serverimport), of een letterlijk geheim (haal het weg en draai het om;
+  is het aantoonbaar geen geheim, zet dan `secretlint-disable-next-line` op de regel erboven).
+- **Staan `APP_ENV=local` en `AUTH_DEV_LOGIN` in Vercel**, dan start een deploy na het bijwerken niet
+  meer. Dat is de bedoeling: haal ze daar weg.
+- **Module files**: een doel in `lib/files/purposes.ts` dat `application/vnd.ms-excel` of
+  `application/msword` noemt, neemt die niet meer aan. Een bestand dat vanaf nu binnenkomt, heet naar
+  zijn gecontroleerde type; oude rijen blijven zoals ze zijn.
+
+## v1.4.0 (25 oktober 2026)
+
+### Wat verandert
+
+- **Een sessie verloopt acht uur na het inloggen, ook als hij steeds ververst wordt.** Auth.js tekent
+  het token bij elke sessieaanvraag opnieuw, dus `maxAge` alleen schoof mee en een sessie leefde
+  eindeloos door met de rollen van het inlogmoment. Nu staat `loginAt` op het token en geeft de
+  jwt-callback `null` na acht uur (`lib/auth/session-age.ts`, met test).
+- **Een login neemt een bestaand account alleen op e-mailadres over als dat een dev-account uit de
+  seed is.** Een tweede identiteit met dezelfde e-mailclaim kreeg anders de rij, de rollen en de
+  historie van een ander; nu weigert de login met een melding in de serverlog
+  (`lib/auth/email-fallback.ts`, met test).
+- **De dev-login werkt alleen met `APP_ENV=local`.** Het slot op `VERCEL_ENV` faalde open op elke
+  andere host. `lib/domain/deploy-environment.ts` bepaalt de omgeving (eerst `APP_ENV`, dan
+  `VERCEL_ENV`, anders onbekend) en elke guard kiest bij "onbekend" de veilige kant: de dev-login
+  gooit, de deploy-migratie controleert altijd behalve in productie, de seed weigert in een deploy.
+  Beheer, Systeem toont de omgeving, de e2e zet `APP_ENV=local`, en `pnpm doctor` meldt een
+  `APP_ENV` die niet bij de dev-login past.
+- **Module auth-password: de GCM-tag van het TOTP-geheim is altijd 16 bytes**, bij versleutelen en
+  openen; een kortere tag wordt geweigerd. Bestaande geheimen hebben al 16 bytes.
+- **`requestOriginVerdict`** (`lib/domain/request-origin.ts`, met test): de herkomstcontrole die
+  server actions van Next krijgen, voor een route handler die schrijft en op de sessiecookie leunt.
+  Het template heeft er nog geen; het kernblok van `CLAUDE.md` zegt dat zo'n handler ermee begint.
+- **CI**: elke action op een vaste commit-SHA met de versie als commentaar, `permissions: contents:
+  read`, en twee nieuwe jobs: "Kwetsbaarheden en geheimen" (`pnpm audit --prod --audit-level=high`
+  en `pnpm check:secrets` met secretlint) en Semgrep als advies (`continue-on-error` tot de eerste
+  run beoordeeld en groen is). Drie nepverbindingsstrings in de code hebben een uitzondering met de
+  reden erbij.
+- **`.github/dependabot.yml`**: elke maandag één gegroepeerde pull request voor minor en patch, zeven
+  dagen na de release (`cooldown`), majors van pakketten die samen moeten bewegen genegeerd, en de
+  actions samen in één eigen pull request. Een security-update komt meteen.
+- **`pnpm check:all`** bestaat nu: de hele batterij, goedkoopste eerst, rechtstreeks met `node` (nooit
+  genest `pnpm`), met een tabel voor de rubriek Bewijs. Stappen tegen de database draaien als
+  `.env.local` een database noemt, en worden anders zichtbaar overgeslagen (exitcode 2).
+- **Ontwikkeltooling**: vitest 4.1.12 en een override voor vite 8.3.4 of hoger. `pnpm audit` toont
+  daarna alleen nog de bekende matige melding op esbuild onder drizzle-kit.
+- **Handleidingen**: 03, stap 5 noemde een optie die Vercel niet heeft; nu een opdracht onder Ignored
+  Build Step die alleen `main` en `release/next` bouwt, zodat een branch van Dependabot geen build
+  en geen database kost. 04 ruimt oude databasebranches op, 02 zet Dependabot security updates en
+  het opruimen van gemergde branches aan en zegt hoe je een pull request van Dependabot meeneemt, 07
+  en 06 noemen `APP_ENV`, 09 heeft een rij voor een eerste build zonder eigen database, en
+  WERKWIJZE, 00, 30 en de lessen in `authjs.md` en `werkwijze.md` volgen.
+
+### Let op bij bijwerken
+
+- **Iedereen logt na de uitrol één keer opnieuw in**: een bestaande cookie heeft nog geen
+  inlogmoment en telt als verlopen.
+- **Zet `APP_ENV=local` in `.env.local`**, anders start de app lokaal niet zolang
+  `AUTH_DEV_LOGIN=1` staat. `vercel env pull` haalt hem weer weg; `pnpm doctor` meldt het. Op Vercel
+  verandert niets. Draait een project op een andere host, zet daar dan `APP_ENV=production` of
+  `preview`.
+- **`pnpm install`** na het bijwerken: secretlint en vitest zijn nieuw of nieuwer.
+- **Vercel**: zet Ignored Build Step op de opdracht uit handleiding 03, stap 5. **Neon**: zet
+  Automatically delete obsolete branches aan (04, stap 3). **GitHub**: zet Dependabot security
+  updates en Automatically delete head branches aan (02, stap 4).
+- **Controleer bij de eerste ronde** of de eerste build van `release/next` een eigen databasebranch
+  in Neon krijgt. Zo niet, dan houdt de guard hem tegen; open dan de pull request en klik op
+  Redeploy (handleiding 09). Dat gedrag is nog niet op een echt project nagelopen.
+- Staat er al een gebruiker met hetzelfde e-mailadres maar een andere identiteit, dan lukt inloggen
+  voor de tweede niet meer; de serverlog zegt wat je doet als het toch dezelfde persoon is.
+- Dependabot opent op maandag zijn eerste pull requests. Neem ze mee in een ronde, niet los mergen.
+
 ## v1.3.0 (24 oktober 2026)
 
 ### Wat verandert

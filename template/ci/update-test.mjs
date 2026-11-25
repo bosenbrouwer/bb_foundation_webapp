@@ -98,12 +98,15 @@ console.log(`  owned bijgewerkt, eigen wijziging bewaard, lock en tooling op ${n
 console.log("\n5. verify wijst het gewijzigde bestand aan, adopt lost het op");
 const verifyBefore = tooling(project, project, ["verify"]);
 if (verifyBefore.status === 0 || !verifyBefore.output.includes("components/ui/chip.tsx")) fail(`verify had components/ui/chip.tsx moeten noemen:\n${verifyBefore.output}`);
-const adopt = tooling(project, project, ["adopt", "components/ui/chip.tsx"]);
+const withoutReason = tooling(project, project, ["adopt", "components/ui/chip.tsx"]);
+if (withoutReason.status === 0 || !withoutReason.output.includes("--reason")) fail(`adopt zonder reden had moeten weigeren:\n${withoutReason.output}`);
+const adopt = tooling(project, project, ["adopt", "components/ui/chip.tsx", "--reason", "een eigen kleur per status"]);
 if (adopt.status !== 0) fail(`adopt mislukte:\n${adopt.output}`);
 const verifyAfter = tooling(project, project, ["verify"]);
 if (verifyAfter.status !== 0) fail(`verify na adopt is niet schoon:\n${verifyAfter.output}`);
 if (!readFileSync(join(project, "components", "ui", "chip.tsx"), "utf8").startsWith("/* template-adopted (module core)")) fail("het overgenomen bestand draagt de kop template-adopted niet");
-console.log("  verify meldde het, adopt nam het over, verify is schoon");
+if (!readFileSync(join(project, "docs", "terugmeldingen.md"), "utf8").includes("| `components/ui/chip.tsx` | ")) fail("de reden staat niet in docs/terugmeldingen.md");
+console.log("  verify meldde het, adopt weigerde zonder reden, nam het met reden over, verify is schoon, de reden staat in docs/terugmeldingen.md");
 
 console.log("\n6. Een tweede update verandert niets meer");
 git(["add", "-A"]);

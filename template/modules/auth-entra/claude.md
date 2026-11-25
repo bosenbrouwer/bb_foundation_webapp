@@ -8,3 +8,8 @@
   opgeslagen of vergeleken.
 - **Een nieuwe rol** staat eerst in `project.config.json`, dan in de tenant als app role met exact
   dezelfde waarde. De twee lijsten horen gelijk te zijn.
+- **Een deploy start niet zonder de uitgever van de eigen tenant.** Ontbreekt
+  `AUTH_MICROSOFT_ENTRA_ID_ISSUER` in een preview of in productie, of staat er `common`,
+  `organizations` of `consumers` in, dan gooit de provider bij het opstarten
+  (`lib/auth/providers/entra-issuer.ts`). Haal dat slot nooit weg om een build te laten slagen: zet
+  de variabele.

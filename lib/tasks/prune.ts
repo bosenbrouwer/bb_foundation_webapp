@@ -6,9 +6,15 @@
  * **Wat hier nooit bij komt:** de audit log en zachtverwijderde rijen. De eerste is append-only en
  * de tweede is bewust bewaard. Die twee groeien en dat hoort zo.
  *
- * Modules en het project haken hier aan via `PRUNE_STEPS` in `prune.project.ts`: elke stap geeft
- * terug hoeveel rijen er weg zijn, voor het log.
+ * Het project haakt hier aan via `PROJECT_PRUNE_STEPS` in `prune.project.ts`: elke stap geeft terug
+ * hoeveel rijen er weg zijn, voor het log.
+ *
+ * **Elke stap heeft zijn eigen opvang** (`runSteps`, besluit D15): een stap die gooit, wordt gemeld
+ * met zijn naam en houdt de volgende niet tegen. Hangt er aan een stap een belofte uit de
+ * privacyverklaring (een bewaartermijn), dan strandt die dus niet op een fout bij het opruimen van
+ * iets anders. De uitkomst van een mislukte stap is `null`, en `failed` noemt hem.
  */
+import { runSteps, type StepsRun } from "@/lib/cron/steps";
 import type { DbOrTransaction } from "@/lib/db/client";
 import { pruneRateLimits } from "@/lib/domain/rate-limit";
 import { PROJECT_PRUNE_STEPS } from "./prune.project";
@@ -20,8 +26,9 @@ export interface PruneStep {
 
 export const CORE_PRUNE_STEPS: readonly PruneStep[] = [{ name: "rate_limits", run: (db, now) => pruneRateLimits(db, now) }];
 
-export async function runPrune(db: DbOrTransaction, now: Date = new Date()): Promise<Record<string, number>> {
-  const result: Record<string, number> = {};
-  for (const step of [...CORE_PRUNE_STEPS, ...PROJECT_PRUNE_STEPS]) result[step.name] = await step.run(db, now);
-  return result;
+export type PruneRun = StepsRun<Record<string, number | null>>;
+
+export async function runPrune(db: DbOrTransaction, now: Date = new Date(), where = "task prune"): Promise<PruneRun> {
+  const steps = Object.fromEntries([...CORE_PRUNE_STEPS, ...PROJECT_PRUNE_STEPS].map((step) => [step.name, () => step.run(db, now)]));
+  return runSteps(where, steps);
 }

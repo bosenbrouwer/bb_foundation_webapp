@@ -25,6 +25,30 @@ export interface VercelJsonResult extends PatchResult {
 
 export const VERCEL_SCHEMA_URL = "https://openapi.vercel.sh/vercel.json";
 
+/**
+ * De soorten werkbranches die geen eigen preview krijgen (`git.deploymentEnabled`, besluit D20). Elke
+ * branch een preview met een eigen database-branch liep in een eerder project tegen de limiet van
+ * het aantal branches aan, en de previews faalden binnen een seconde. Wat hier niet staat, rolt uit:
+ * `main` en `release/next`. **Er staat bewust geen regel die alles uitzet**, zodat `main` nooit
+ * per ongeluk meegaat; de patronen zijn minimatch, en een branch die op twee regels past, rolt uit
+ * als een van de twee `true` is. De Ignored Build Step in Vercel blijft het tweede slot.
+ */
+export const NO_PREVIEW_BRANCHES: Readonly<Record<string, false>> = {
+  "dependabot/**": false,
+  "feature/**": false,
+  "fix/**": false,
+  "hotfix/**": false,
+  "chore/**": false,
+  "docs/**": false,
+  "refactor/**": false,
+  "test/**": false,
+  "build/**": false,
+  "ci/**": false,
+  "perf/**": false,
+  "style/**": false,
+  "revert/**": false,
+};
+
 export function patchVercelJson(text: string, desired: VercelJsonDesired, previousCrons: readonly string[], keepCrons: readonly string[]): VercelJsonResult {
   const changes: string[] = [];
   const warnings: string[] = [];

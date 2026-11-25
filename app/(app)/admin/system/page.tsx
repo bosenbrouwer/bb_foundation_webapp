@@ -6,8 +6,10 @@ import { Chip, type ChipTone } from "@/components/ui/chip";
 import { DataTable, EmptyRow, Td, Th, Thead, Tr } from "@/components/ui/table";
 import { can } from "@/lib/auth/can";
 import { requireSession } from "@/lib/auth/session";
-import { getDb } from "@/lib/db/client";
+import { cronSecretSet } from "@/lib/cron/guard";
+import { connectsAsOwner, getDb } from "@/lib/db/client";
 import { schemaState } from "@/lib/db/schema-state";
+import { deployEnvironment } from "@/lib/domain/deploy-environment";
 import { withTimeout, type HealthStatus } from "@/lib/integrations/health";
 import { labels } from "@/lib/i18n/labels";
 import { HEALTH_PROVIDERS } from "@/lib/project/registry.generated";
@@ -30,6 +32,9 @@ export default async function SystemPage() {
     Promise.all(HEALTH_PROVIDERS.map(async (provider) => ({ name: provider.name, report: await withTimeout(provider.check) }))),
   ]);
 
+  /* Op productie is een ontbrekende rol of een ontbrekend geheim rood; lokaal hoort het er vaak nog niet te zijn. */
+  const production = deployEnvironment() === "production";
+
   const statusLabel: Record<HealthStatus, string> = {
     ok: labels.system.statusOk,
     warning: labels.system.statusWarning,
@@ -47,7 +52,23 @@ export default async function SystemPage() {
             <dt className="text-muted-foreground">{labels.system.version}</dt>
             <dd className="num">{APP_VERSION}</dd>
             <dt className="text-muted-foreground">{labels.system.environment}</dt>
-            <dd>{process.env.VERCEL_ENV ?? labels.system.environmentLocal}</dd>
+            <dd>{labels.system.environmentNames[deployEnvironment()]}</dd>
+            <dt className="text-muted-foreground">{labels.system.databaseRole}</dt>
+            <dd>
+              {connectsAsOwner() ? (
+                <Chip tone={production ? "danger" : "warning"}>{labels.system.databaseRoleOwner("DATABASE_URL_APP")}</Chip>
+              ) : (
+                <Chip tone="success">{labels.system.databaseRoleApp}</Chip>
+              )}
+            </dd>
+            <dt className="text-muted-foreground">{labels.system.cron}</dt>
+            <dd>
+              {cronSecretSet() ? (
+                <Chip tone="success">{labels.system.cronOk}</Chip>
+              ) : (
+                <Chip tone={production ? "danger" : "neutral"}>{labels.system.cronMissing("CRON_SECRET")}</Chip>
+              )}
+            </dd>
             <dt className="text-muted-foreground">{labels.system.schema}</dt>
             <dd className="flex flex-wrap items-center gap-2">
               {schema.applied === null ? (

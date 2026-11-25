@@ -7,6 +7,14 @@
  * via de scripts op `DATABASE_URL_UNPOOLED`, want DDL over een transaction-mode pooler gaat op
  * onvoorspelbare punten mis. Dat is geen tweede codepad naar de data, het is een ander kanaal voor DDL.
  *
+ * **Met de rol van de app, als die er is.** `DATABASE_URL_APP` is de pooled verbinding van een
+ * inlogrol die lid is van `app_rw`: lezen en schrijven, geen DDL, de audit log alleen aanvullen, en
+ * door het slot op elke tabel heen (lib/db/schema/rls.ts). Een eigen variabele en niet `DATABASE_URL`
+ * omzetten, want die beheert de Neon-integratie in Vercel en hem met de hand overschrijven breekt de
+ * integratie. Staat hij er niet, dan blijft het `DATABASE_URL`, de eigenaar. Op productie zet je hem
+ * met de hand (docs/handleiding/04-neon.md), lokaal schrijft `pnpm db:app-login` hem in `.env.local`,
+ * zodat `next dev` en de e2e net als productie werken. `pnpm check:grants` bewijst de rechten.
+ *
  * Waarom een functie en niet een geëxporteerde `db`-constante: een constante wordt bij het importeren
  * van deze module opgebouwd, en dan heeft alles wat hier indirect naar verwijst een DATABASE_URL nodig
  * op het moment van importeren. Een `next build` importeert elke pagina om de routes te bepalen, dus
@@ -16,6 +24,7 @@
 
 import { Pool } from "@neondatabase/serverless";
 import { drizzle } from "drizzle-orm/neon-serverless";
+import { errorForLog } from "@/lib/monitoring/error-text";
 import * as schema from "./schema";
 
 function required(name: string): string {
@@ -27,6 +36,22 @@ function required(name: string): string {
 }
 
 /**
+ * Verbindt de app als eigenaar van de database, omdat `DATABASE_URL_APP` ontbreekt? De eigenaar gaat
+ * langs het slot op elke tabel en mag het schema wijzigen. Op productie is dat een waarschuwing op
+ * elk scherm van een beheerder en een rode regel op Beheer, Systeem (besluit D29): de tool blijft
+ * werken, want op de eerste dag van een project bestaat de rol van de app nog niet.
+ */
+export function connectsAsOwner(env: Readonly<Record<string, string | undefined>> = process.env): boolean {
+  return (env["DATABASE_URL_APP"] ?? "").trim() === "";
+}
+
+/** De verbinding van de app: de rol van de app als die gezet is, anders de gewone. */
+function appUrl(): string {
+  const app = process.env["DATABASE_URL_APP"];
+  return app !== undefined && app.trim() !== "" ? app : required("DATABASE_URL");
+}
+
+/**
  * Een Pool en niet de HTTP-driver, want een mutatie met een auditregel erbij moet in één transactie,
  * of helemaal niet.
  */
@@ -34,7 +59,16 @@ let cached: ReturnType<typeof createDb> | undefined;
 let cachedPool: Pool | undefined;
 
 function createDb() {
-  const pool = new Pool({ connectionString: required("DATABASE_URL") });
+  const pool = new Pool({ connectionString: appUrl() });
+  /*
+   * Een verbinding die wegvalt of geweigerd wordt terwijl hij in de pool rust, meldt zich als
+   * gebeurtenis op de pool. Zonder luisteraar stopt Node daarop met "Unhandled error", en dan valt een
+   * hele instantie om in plaats van één verzoek (les L-NEON-14). De pool ruimt de verbinding zelf op;
+   * hier hoeft alleen de melding de log in, zonder de verbindingsstring.
+   */
+  pool.on("error", (error: unknown) => {
+    console.error(`De databasepool verloor een verbinding: ${errorForLog(error)}`);
+  });
   cachedPool = pool;
   return drizzle({ client: pool, schema });
 }

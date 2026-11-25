@@ -100,10 +100,15 @@ als optimalisatie per warme instantie, zoals tokens. Werk na het antwoord met `a
 `next/server`, met de wachtrijrij in dezelfde transactie en een cron als vangnet; de module met
 `after()` apart houden zodat scripts de wachtrijcode zonder `next/server` laden. Async werk in
 `onRequestError` afwachten. Het adres van de aanroeper is de eerste waarde van `x-forwarded-for`;
-zonder header één gedeelde sleutel.
+zonder header één gedeelde sleutel. Dat is alleen veilig omdat Vercel die header zelf zet en
+overschrijft; achter een eigen proxy of CDN is die eerste waarde wat de client stuurde, en dan
+draait een aanvaller de sleutel per verzoek. Op een andere host neem je de header die het platform
+garandeert. De teller telt vóór het werk en ongeacht de uitkomst, en per account zodra iemand is
+ingelogd (CLAUDE.md regel 17).
 
 **Afgedwongen door.** `lib/domain/rate-limit.ts` (tabel `rate_limits`, `pnpm task:prune` ruimt op),
-`lib/jobs/kick.ts` in module jobs (alleen daar staat `after()`), `instrumentation.ts`.
+`lib/jobs/kick.ts` in module jobs en `lib/messaging/kick.ts` in module messaging (alleen in die twee
+bestanden staat `after()`), `instrumentation.ts`.
 
 ## L-VRC-07 De server draait in UTC
 
@@ -136,5 +141,25 @@ schema's op het kwartier in werkuren en houdt `template.keepCrons` ze buiten de 
 Build Step: geen preview zonder PR, geen build als alleen documentatie wijzigt. Fluid compute aan,
 analytics en observability uit als je ze niet gebruikt.
 
-**Afgedwongen door.** `engines` in `package.json` en de schema's in `vercel.json`. De
-consoleinstellingen zijn afspraak, zie `docs/handleiding/03-vercel.md` en `23-crons-en-taken.md`.
+**Afgedwongen door.** `engines` in `package.json` en de schema's in `vercel.json`. Welke branches
+uitrollen staat sinds besluit D20 ook in `vercel.json` (`git.deploymentEnabled`); de Ignored Build
+Step is het tweede slot. De consoleinstellingen zijn afspraak, zie `docs/handleiding/03-vercel.md`
+(stap 5 voor de Ignored Build Step, Kosten voor Fluid compute, Web Analytics en Observability) en
+`23-crons-en-taken.md` (het kwartierrooster in werkuren).
+
+## L-VRC-09 Zonder regio in de repo staan de functies buiten Europa
+
+**Symptoom.** (voorkomen) Een nieuw project draait zijn functies in een regio buiten Europa, terwijl
+de database in Frankfurt staat. Elke query reist dan over de oceaan, en gegevens verlaten de EU
+zonder dat iemand dat koos.
+
+**Oorzaak.** De host kiest een standaardregio buiten Europa, tenzij de configuratie in de repo het
+anders zegt. De voordeur van de app draait daarnaast in alle regio's, wat je ook kiest; dat is
+alleen het doorgeven van het verzoek.
+
+**Regel.** Leg de regio vast in `vercel.json` (`regions: ["fra1"]`), kies de database, de opslag
+en een foutmonitor ook bewust in de EU, en kijk na de eerste uitrol of het klopt: in Vercel bij
+Settings, Functions, en in Neon op de Overview van het project.
+
+**Afgedwongen door.** De patcher van `vercel.json` zet `regions` als hij ontbreekt. De controle na
+de eerste uitrol is handwerk, en staat in `docs/handleiding/00-checklist.md`.

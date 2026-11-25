@@ -16,6 +16,7 @@
 
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
+import { fetchWithTimeout } from "../lib/integrations/http";
 import { PROJECT } from "../lib/project/config.generated";
 import { APP_VERSION } from "../lib/version";
 import { runScript } from "./lib/run";
@@ -55,12 +56,11 @@ interface Fetched {
 /* Geen redirects volgen: dat een pagina doorstuurt is precies wat we willen zien. */
 async function get(base: string, path: string, headers: Record<string, string> = {}): Promise<Fetched> {
   const started = Date.now();
-  const response = await fetch(`${base}${path}`, {
-    redirect: "manual",
-    cache: "no-store",
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-    headers: { "user-agent": `${PROJECT.slug}-smoke/${APP_VERSION}`, ...headers },
-  });
+  const response = await fetchWithTimeout(
+    `${base}${path}`,
+    { redirect: "manual", cache: "no-store", headers: { "user-agent": `${PROJECT.slug}-smoke/${APP_VERSION}`, ...headers } },
+    TIMEOUT_MS,
+  );
   const body = await response.text();
   return { status: response.status, location: response.headers.get("location"), contentType: response.headers.get("content-type") ?? "", headers: response.headers, body, ms: Date.now() - started };
 }
@@ -121,6 +121,9 @@ runScript(async () => {
   check("een Content-Security-Policy", (signIn.headers.get("content-security-policy") ?? "").includes("default-src"));
   check("X-Frame-Options DENY", signIn.headers.get("x-frame-options") === "DENY");
   check("X-Content-Type-Options nosniff", signIn.headers.get("x-content-type-options") === "nosniff");
+  check("HSTS met includeSubDomains", (signIn.headers.get("strict-transport-security") ?? "").includes("includeSubDomains"));
+  check("Cross-Origin-Opener-Policy same-origin", signIn.headers.get("cross-origin-opener-policy") === "same-origin");
+  check("geen X-Powered-By", signIn.headers.get("x-powered-by") === null);
 
   console.log(`\n${passed} goed, ${failed} fout.`);
   if (failed > 0) process.exitCode = 1;

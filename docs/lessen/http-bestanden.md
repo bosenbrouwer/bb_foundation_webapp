@@ -19,8 +19,10 @@ iets ziet.
 met een bruikbare tekst weigert. Lege bestanden weigeren. Groter: rechtstreeks van browser naar
 opslag met een SAS voor precies één blob, een apart besluit.
 
-**Afgedwongen door.** `lib/config/next-base.ts` (`bodySizeLimit`) en `MAX_UPLOAD_BYTES` in
-`lib/files/blob.ts` van module files; `lib/files/purposes.ts` zet per doel een eigen, lagere grens.
+**Afgedwongen door.** `lib/config/next-base.ts` (`bodySizeLimit`) en, in module files, `maxBytes`
+per doel in `lib/files/purposes.ts` (standaard vier megabyte): `uploadBlob` in `lib/files/blob.ts`
+toetst hem op de server, en `SizedFileInput` al in de browser, vóór het versturen (besluit F1 in
+`docs/modules/files.md`).
 
 ## L-HTTP-02 Het contenttype is een bewering
 
@@ -72,4 +74,21 @@ getallen, en bij het opnieuw inlezen van een eigen export die apostrof weghalen.
 scheidingsteken raden uit de eerste regel.
 
 **Afgedwongen door.** `lib/domain/csv-safe.ts` (`csvDocument`, `csvField`, `stripNeutralisation`,
-`guessSeparator`) met zijn test; elke export van een project gaat daar doorheen.
+`guessSeparator`) met zijn test. Dat elke export daar doorheen gaat, dwingt de huisregel
+`csv-export` af: een antwoord, een opslag of een `Blob` als `text/csv` in een bestand dat
+`csvDocument`, `csvLine` of `csvField` niet aanroept, houdt de lint tegen. Een bestand dat alleen de
+bytes van een ander doorgeeft, krijgt het commentaar `csv:` met de reden.
+
+## L-HTTP-05 Een bestand dat geen UTF-8 is, wordt stil kapot gelezen
+
+**Symptoom.** Een CSV uit Excel, opgeslagen in een oudere codering, kwam binnen met een kapotte
+naam: een ü werd een vraagteken in een ruit. Er was geen melding, en het origineel was niet bewaard.
+
+**Oorzaak.** De standaard manier om bytes als tekst te lezen (`file.text()`, `TextDecoder` zonder
+`fatal`) vervangt elke byte die geen UTF-8 is door een vervangteken, zonder fout.
+
+**Regel.** Lees een geüpload tekstbestand strikt als UTF-8 en weiger het anders, met de uitleg hoe
+je het als UTF-8 opslaat. Raad de codering niet.
+
+**Afgedwongen door.** `decodeUtf8Strict` in `lib/domain/utf8.ts`, met tests. Een huisregel die
+`file.text()` weigert is er niet: gebruik de functie bij elke upload van tekst.

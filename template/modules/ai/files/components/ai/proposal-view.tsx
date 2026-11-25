@@ -3,11 +3,15 @@ import { Chip } from "@/components/ui/chip";
 import type { AiOutputField } from "@/lib/ai/prompts";
 import type { Proposal, ProposalValue } from "@/lib/ai/structure";
 import { labels } from "@/lib/i18n/labels";
+import { PlainText } from "./plain-text";
 
 /**
  * Een voorstel van Claude, altijd in dezelfde vorm: per onderdeel uit de catalogus het label en de
  * waarde, met vaste componenten per soort. AI vult de inhoud; dit bepaalt hoe het eruitziet. Een
  * project toont een voorstel altijd hiermee, en zet er zelf de knoppen Aanpassen en Bevestigen bij.
+ *
+ * Elke tekst van het model gaat door `PlainText`: nooit HTML, nooit markdown, nooit een link uit
+ * het antwoord (huisregel `ai-output`).
  */
 export function ProposalView({ fields, proposal }: { fields: readonly AiOutputField[]; proposal: Proposal }) {
   return (
@@ -35,7 +39,9 @@ function Value({ field, value }: { field: AiOutputField; value: ProposalValue | 
       return (
         <ul className="m-0 list-disc pl-5">
           {value.map((entry, index) => (
-            <li key={index}>{typeof entry === "string" ? entry : ""}</li>
+            <li key={index}>
+              <PlainText text={typeof entry === "string" ? entry : ""} />
+            </li>
           ))}
         </ul>
       );
@@ -56,7 +62,7 @@ function Value({ field, value }: { field: AiOutputField; value: ProposalValue | 
             <tr key={index}>
               {items.map((item) => (
                 <td key={item.key} className="border-border border-b py-1 pr-3 align-top">
-                  {typeof entry === "object" && entry !== null ? (entry as Readonly<Record<string, string>>)[item.key] : ""}
+                  <PlainText text={typeof entry === "object" && entry !== null ? ((entry as Readonly<Record<string, string>>)[item.key] ?? "") : ""} />
                 </td>
               ))}
             </tr>
@@ -65,5 +71,9 @@ function Value({ field, value }: { field: AiOutputField; value: ProposalValue | 
       </table>
     );
   }
-  return <p className="m-0 whitespace-pre-wrap">{String(value)}</p>;
+  return (
+    <p className="m-0">
+      <PlainText text={String(value)} />
+    </p>
+  );
 }

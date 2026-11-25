@@ -2,15 +2,28 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { authModuleFor, deriveLocale, normaliseConfig, parseConfig } from "./config";
+import { configsEqual, DEFAULT_CONFIG_FILE, readDefaultConfig } from "./apply";
+import { authModuleFor, deriveLocale, normaliseConfig, parseConfig, readConfig } from "./config";
 import { isPlainObject } from "./dsl";
 import { loadManifest } from "./manifest";
 
 const root = process.cwd();
 const manifest = loadManifest(root);
 
+/**
+ * De voorbeelden in `examples/` horen bij de repo van het template en staan niet in het manifest: een
+ * project heeft ze alleen als kopie van de dag waarop het ontstond, en een update werkt ze niet bij.
+ * Het standaardvoorbeeld leest deze test daarom uit de tooling zelf, die volgens self.test.ts gelijk
+ * is. Een bewering over de andere twee voorbeelden draait alleen in de repo van het template, op de
+ * standaardconfiguratie, net als in self.test.ts. In een project zou ze na een update rood worden
+ * zonder dat het project iets fout doet. Wat in een project moet kloppen, bewijst pnpm template:verify.
+ */
+const own = readConfig(root, manifest).config;
+const onTemplateRoot = own !== undefined && configsEqual(own, readDefaultConfig(root, manifest));
+
 function example(name: string): Record<string, unknown> {
-  const parsed: unknown = JSON.parse(readFileSync(join(root, "examples", `${name}.project.config.json`), "utf8"));
+  const path = name === "default" ? DEFAULT_CONFIG_FILE : join("examples", `${name}.project.config.json`);
+  const parsed: unknown = JSON.parse(readFileSync(join(root, path), "utf8"));
   if (!isPlainObject(parsed)) throw new Error("voorbeeld is geen object");
   return parsed;
 }
@@ -33,7 +46,7 @@ function errorsOf(config: unknown): string[] {
 }
 
 describe("de voorbeeldconfiguraties", () => {
-  it.each(["default", "voorbeeld", "minimaal"])("%s is geldig", (name) => {
+  it.each(["default", "voorbeeld", "minimaal"].filter((name) => onTemplateRoot || name === "default"))("%s is geldig", (name) => {
     const report = normaliseConfig(example(name), manifest);
     expect(report.errors).toEqual([]);
     expect(report.config).toBeDefined();
@@ -43,7 +56,7 @@ describe("de voorbeeldconfiguraties", () => {
     expect(normaliseConfig(example("default"), manifest).warnings).toEqual([]);
   });
 
-  it("normaliseren is een vast punt", () => {
+  it.skipIf(!onTemplateRoot)("normaliseren is een vast punt", () => {
     const once = normaliseConfig(example("voorbeeld"), manifest).config;
     expect(once).toBeDefined();
     const twice = normaliseConfig(once, manifest).config;
@@ -52,9 +65,8 @@ describe("de voorbeeldconfiguraties", () => {
 });
 
 describe("afgeleide velden", () => {
-  const minimal = normaliseConfig(example("minimaal"), manifest).config;
-
-  it("leidt de korte naam, het systeemadres, de modules en de dev-accounts af", () => {
+  it.skipIf(!onTemplateRoot)("leidt de korte naam, het systeemadres, de modules en de dev-accounts af", () => {
+    const minimal = normaliseConfig(example("minimaal"), manifest).config;
     expect(minimal?.project.shortName).toBe("Inventory");
     expect(minimal?.project.systemEmail).toBe("system@inventory.invalid");
     expect(minimal?.modules).toEqual(["auth-entra"]);

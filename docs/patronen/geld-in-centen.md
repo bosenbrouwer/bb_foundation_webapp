@@ -16,7 +16,7 @@ export const prices = pgTable("prices", {
   organisationId: uuid("organisation_id").notNull().references(() => organisations.id),
   amountCents: bigint("amount_cents", { mode: "bigint" }).notNull(),
   currency: char("currency", { length: 3 }).notNull().default("EUR"),
-});
+}, () => [appRowAccess()]);
 
 // lib/domain/money.ts, puur en getest
 export function sumCents(parts: readonly bigint[]): bigint {

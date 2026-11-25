@@ -19,3 +19,11 @@ export const PROJECT_WHOLE_REPO_RULES = [];
  * Bijvoorbeeld "@/lib/finance" als daar functies staan die eerst de rol asserten.
  */
 export const PROJECT_SERVER_PREFIXES = [];
+
+/**
+ * De mappen van dit project waar de module ai gebruikt mag worden, bovenop de mappen van de module
+ * zelf. Elke plek waar iets naar het model gaat, is een besluit: noem de map hier pas als het
+ * projectplan (kopje 10) en de privacytekst zeggen wat er meegaat. Bijvoorbeeld "app/(app)/requests/"
+ * en "lib/requests/". Een map voor gasten of klanten weigert de huisregel `ai-imports` altijd.
+ */
+export const PROJECT_AI_IMPORT_ROOTS = [];

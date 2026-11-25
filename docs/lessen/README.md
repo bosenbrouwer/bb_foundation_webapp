@@ -18,15 +18,16 @@ heeft daar nooit schade gedaan; hij staat hier zodat dat zo blijft.
 
 | Bestand | Laag | Lessen |
 |---|---|---|
-| [drizzle-postgres](drizzle-postgres.md) | Drizzle en Postgres: migraties, query's, transacties, wachtrijen | L-DRZ-01 tot L-DRZ-14 |
-| [neon](neon.md) | Neon: pooled en direct, branches, kosten, rechten, de driver | L-NEON-01 tot L-NEON-08 |
-| [nextjs](nextjs.md) | Next.js 16 en React 19, inclusief e2e met Playwright | L-NEXT-01 tot L-NEXT-16 |
-| [authjs](authjs.md) | Auth.js v5: identiteit, sessies, de dev-login, tokens | L-AUTH-01 tot L-AUTH-06 |
+| [drizzle-postgres](drizzle-postgres.md) | Drizzle en Postgres: migraties, query's, transacties, wachtrijen, het slot | L-DRZ-01 tot L-DRZ-18 |
+| [neon](neon.md) | Neon: pooled en direct, branches, kosten, rechten, de rol van de app, de driver, verbinden met uitdrukkelijk recht, previews zonder echte gegevens | L-NEON-01 tot L-NEON-15 |
+| [nextjs](nextjs.md) | Next.js 16 en React 19, inclusief e2e met Playwright, de CSP en middleware, route handlers achter meer dan één adres, variabelen uit `.env.local`, hydrateren, zoekmachines, de matcher van de proxy | L-NEXT-01 tot L-NEXT-24 |
+| [authjs](authjs.md) | Auth.js v5: identiteit, sessies, de dev-login, tokens, server actions, de uitgever, accounts van buiten, `checks`, geen rol | L-AUTH-01 tot L-AUTH-11 |
 | [entra-graph](entra-graph.md) | Entra ID en Microsoft Graph: tenant, rollen, secrets, mail, gasten | L-ENTRA-01 tot L-ENTRA-09 |
-| [vercel](vercel.md) | Vercel: de build, variabelen, crons, limieten, regio, plan | L-VRC-01 tot L-VRC-08 |
-| [toolchain-windows](toolchain-windows.md) | De toolchain en Windows: pnpm, env-files, PowerShell, pins, strict | L-WIN-01 tot L-WIN-06 |
-| [http-bestanden](http-bestanden.md) | Uploads, downloads, contenttype, CSV | L-HTTP-01 tot L-HTTP-04 |
-| [werkwijze](werkwijze.md) | Werkwijze: versie, batterij, huisregels, koppelingen, fail closed | L-WERK-01 tot L-WERK-08 |
+| [vercel](vercel.md) | Vercel: de build, variabelen, crons, limieten, regio, plan | L-VRC-01 tot L-VRC-09 |
+| [toolchain-windows](toolchain-windows.md) | De toolchain en Windows: pnpm, env-files, PowerShell, pins, strict, de geheimenscan, Tailwind met een tweede app | L-WIN-01 tot L-WIN-09 |
+| [http-bestanden](http-bestanden.md) | Uploads, downloads, contenttype, CSV, UTF-8 | L-HTTP-01 tot L-HTTP-05 |
+| [ai](ai.md) | AI in de tool: het antwoord als invoer, de witte lijst en de smokkeltest, tekst van buiten, het nagemaakte model, kosten, meten, een gesprek bewaren, wat de tool onthoudt | L-AI-01 tot L-AI-12 |
+| [werkwijze](werkwijze.md) | Werkwijze: versie, batterij, huisregels, koppelingen, fail closed, checks die iets bewijzen, de supply chain, stappen met eigen opvang, foutmeldingen met oorzaak, bewakers, de checklist, de laptop, eerst de bekende gaten, de editie van een norm, tests die lezen wat een update bijwerkt, een controle op advies | L-WERK-01 tot L-WERK-22 |
 
 ## Een les toevoegen
 
@@ -35,5 +36,6 @@ oorzaak kent, niet alleen de oplossing. Kies het volgende nummer in de laag, hou
 aan, en kijk of er een goedkope check bestaat die de regel kan bewaken: een huisregel in
 `scripts/house-rules/`, een constraint, een unittest. Een afspraak zonder vangnet is een wens (zie
 L-WERK-03). Wijzig je een owned bestand in de templaterepo, dan hoort er een regel in
-`template/CHANGELOG.md` bij; in een project schrijf je projectlessen in `docs/SPEC.md` of een eigen
-bestand, want deze map wordt bij een update overschreven.
+`template/CHANGELOG.md` bij. In een project schrijf je projectlessen in `docs/lessen-project.md`
+(`## P-01`, dezelfde vier onderdelen), want deze map wordt bij een update overschreven; met
+`pnpm template:report-back` gaan ze terug naar het template (handleiding 12).

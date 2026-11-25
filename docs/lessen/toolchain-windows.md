@@ -68,7 +68,7 @@ schrijftool aanmaken en daarna draaien. Een tsx-script dat repo-pakketten import
 zetten (`scripts/tmp-*.ts`) en na afloop weghalen. Playwright vanuit een losse map laden met
 `createRequire(<repo>/package.json)`. Uitvoerpaden via een omgevingsvariabele meegeven.
 
-**Afgedwongen door.** Alleen afspraak; `docs/WERKWIJZE.md` noemt het bij "als Claude vastloopt".
+**Afgedwongen door.** Alleen afspraak.
 
 ## L-WIN-05 Toolchainversies bewust vastzetten, met de reden erbij
 
@@ -104,3 +104,52 @@ als `.test.mjs`. Een variabele mag niet `module` heten (ESLint).
 
 **Afgedwongen door.** `tsconfig.json`, `eslint.config.mjs` (`no-explicit-any` en
 `no-non-null-assertion` op error), `pnpm typecheck` in CI.
+
+## L-WIN-07 Een test die een em-dash zoekt, een script met top-level `await`, en een gestopte batterij
+
+**Symptoom.** De huisregel `no-em-dash` viel over zijn eigen test. Een `.ts`-script met top-level
+`await` faalde onder tsx. Na het halverwege stoppen van een batterij bleven Semgrep-processen
+doorlopen en liet een afgebroken e2e proefdata en een server achter.
+
+**Oorzaak.** Het teken zelf of de escape ervan in een testbestand is een em-dash in de repo. tsx
+compileert `.ts` naar CommonJS, en daar bestaat top-level `await` niet. Op Windows stoppen de
+kinderen van een gestopt proces niet mee.
+
+**Regel.** Een em-dash in een test schrijf je als `String.fromCodePoint(0x2014)`, nooit als teken en
+nooit als escape. Een script met top-level `await` heet `.mts`, of woont in een functie (zoals
+`runScript`). Een batterij stop je alleen vóór de databasechecks en de e2e, en je ruimt de
+achtergebleven processen op.
+
+**Afgedwongen door.** `scripts/house-rules/rules.test.mjs` doet het zo; `scripts/lib/run.ts` geeft
+elk script een functie; verder afspraak.
+
+## L-WIN-08 De geheimenscan keurt ook een verzonnen connectiestring in een test af
+
+**Symptoom.** De geheimenscan keurde een verzonnen connectiestring in een test af. Semgrep keurde
+een regex af die uit een variabelenaam werd gebouwd.
+
+**Oorzaak.** Een scanner kijkt naar de vorm van de tekst, niet naar of het geheim echt is. En de
+scanners van de wortel lopen over alles in de repo, ook over tests en over een tweede app.
+
+**Regel.** Bouw een verzonnen geheim in een test uit losse delen, zodat de vorm niet letterlijk in
+het bestand staat (hetzelfde idee als de em-dash uit zijn codepunt, L-WIN-07). Een valse bevinding
+die overblijft, zet je uit met de reden erbij: `secretlint-disable-next-line` op de regel erboven,
+of een regel in `.gitleaks.toml`.
+
+**Afgedwongen door.** `pnpm check:secrets` (secretlint) en de huisregel `secret-patterns`, en in de
+CI de job `security` in `.github/workflows/ci.yml`, met Gitleaks over de hele historie.
+
+## L-WIN-09 Tailwind zoekt classnamen in de hele repo; sluit een tweede app uit met `@source not`
+
+**Symptoom.** Met een tweede app in dezelfde repo zoekt Tailwind ook in die map naar classnamen voor
+de stylesheet van de eerste app.
+
+**Oorzaak.** Tailwind 4 zoekt zelf naar bronbestanden in de hele repo en houdt niet op bij de grens
+van een app.
+
+**Regel.** Sluit de map van de tweede app uit in de stylesheet van de eerste:
+`@source not "../apps";`.
+
+**Afgedwongen door.** Alleen afspraak: het template is zelf één app. Patroon
+`tweede-app-in-de-repo`. `app/globals.css` is van het template, dus de regel toevoegen vraagt
+`pnpm template:adopt app/globals.css --reason "waarom"`.
