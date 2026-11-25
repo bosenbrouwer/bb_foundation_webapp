@@ -5,6 +5,7 @@ import { dirname, join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { aiImportsRule } from "./ai-imports.mjs";
 import { checkAiOutput } from "./ai-output.mjs";
+import { checkClaudeSettings, settingsProblems } from "./claude-settings.mjs";
 import { checkClientGraph } from "./client-graph.mjs";
 import { checkNoEmDash } from "./no-em-dash.mjs";
 import { checkSameId } from "./same-id.mjs";
@@ -427,5 +428,60 @@ describe("organisation-scope", () => {
     expect(run(rule, "lib/x.ts", "await db.select().from(organisations).limit(1);\nawait db.insert(users).values(row);")).toEqual([]);
     expect(run(rule, "lib/x.test.ts", "await db.select().from(users);")).toEqual([]);
     expect(run(rule, "scripts/check-x.ts", "await db.select().from(users);")).toEqual([]);
+  });
+});
+
+describe("claude-settings", () => {
+  const settings = (value) => settingsProblems(JSON.stringify(value));
+
+  it("laat de instellingen van het template door", () => {
+    expect(
+      settings({
+        enabledPlugins: { "security-guidance@claude-plugins-official": true, "claude-security@claude-plugins-official": true },
+        permissions: { deny: ["Bash(claude plugin *)", "Bash(claude mcp add*)"] },
+      }),
+    ).toEqual([]);
+  });
+
+  it("weigert een hook en elke instelling die niet op de lijst staat", () => {
+    const found = settings({ hooks: { Stop: [] }, env: { NODE_OPTIONS: "--require ./x.js" }, apiKeyHelper: "./key.sh" });
+    expect(found).toHaveLength(3);
+    expect(found[0]).toContain('"hooks"');
+    expect(found[0]).toContain("Een hook draait een opdracht");
+  });
+
+  it("weigert een plugin of marketplace buiten de officiële, en laat uitzetten toe", () => {
+    expect(settings({ enabledPlugins: { "handig@iemand-anders": true } })[0]).toContain('"handig@iemand-anders"');
+    expect(settings({ enabledPlugins: { "handig@iemand-anders": false } })).toEqual([]);
+    expect(settings({ extraKnownMarketplaces: { "iemand-anders": { source: { source: "github", repo: "iemand/plugins" } } } })).toHaveLength(1);
+    expect(settings({ extraKnownMarketplaces: { "claude-plugins-official": { source: { source: "github", repo: "iemand/plugins" } } } })).toHaveLength(1);
+    expect(settings({ extraKnownMarketplaces: { "claude-plugins-official": { source: { source: "github", repo: "anthropics/claude-plugins-official" } } } })).toEqual([]);
+  });
+
+  it("weigert MCP-servers zonder vraag, het overslaan van elke vraag en een extra map", () => {
+    expect(settings({ enableAllProjectMcpServers: true })).toHaveLength(1);
+    expect(settings({ enableAllProjectMcpServers: false })).toEqual([]);
+    expect(settings({ permissions: { defaultMode: "bypassPermissions" } })).toHaveLength(1);
+    expect(settings({ permissions: { additionalDirectories: ["../"] } })).toHaveLength(1);
+  });
+
+  it("meldt kapotte JSON en een .mcp.json in de repo", () => {
+    expect(settingsProblems("{ kapot")).toEqual([".claude/settings.json is geen geldige JSON"]);
+    const root = mkdtempSync(join(tmpdir(), "claude-settings-"));
+    try {
+      writeFileSync(join(root, ".mcp.json"), JSON.stringify({ mcpServers: { x: { command: "npx", args: ["iets"] } } }));
+      const found = [];
+      checkClaudeSettings(root, (message) => found.push(message));
+      expect(found).toHaveLength(1);
+      expect(found[0]).toContain(".mcp.json");
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  it("de instellingen in deze repo zijn schoon", () => {
+    const found = [];
+    checkClaudeSettings(process.cwd(), (message) => found.push(message));
+    expect(found).toEqual([]);
   });
 });

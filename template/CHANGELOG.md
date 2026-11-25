@@ -15,15 +15,44 @@ versie na het bijwerken.
 
 - Nog niets.
 
-## v1.13.0 (25 november 2026)
+## v1.14.0 (25 november 2026)
 
 ### Wat verandert
 
-- Nog niets.
+- **Een nieuwe huisregel `claude-settings` (besluit D34).** Wat Claude Code in de repo meekrijgt,
+  geldt voor iedereen die hem opent, en een hook, MCP-server of plugin draait op diens laptop met
+  diens rechten. De regel laat in `.claude/settings.json` alleen een korte lijst instellingen toe:
+  - plugins en een marketplace alleen uit de officiële van Anthropic;
+  - geen hook;
+  - geen MCP-server die zonder vraag wordt goedgekeurd;
+  - geen `bypassPermissions`.
+
+  Een `.mcp.json` in de repo meldt hij altijd. Het is een lijst van wat mag, dus ook een nieuwe
+  instelling die een opdracht draait, valt erbuiten. De regel draait bij `pnpm lint` en in de CI.
+- **Claude installeert zelf niets.** De seed `.claude/settings.json` verbiedt `claude plugin` en
+  `claude mcp add`, in Bash en in PowerShell. Installeren doet een mens.
+- **Handleiding 30** heeft een deel "Plugins, hooks en MCP-servers die je installeert": wat het
+  template doet, wat je afspreekt, en het blok voor een beheerde instelling van de organisatie of de
+  laptop. Alleen zo'n instelling houdt tegen wat iemand zelf installeert.
+- **De seeds** `docs/veiligheid.md` en `docs/dreigingsmodel.md` noemen de laptop van een bouwer: twee
+  regels in de lijst, een aanvaller en een grens van vertrouwen in het model.
+- **Gerepareerd:** in v1.13.0 stond in deze CHANGELOG een tweede, lege sectie v1.13.0.
+- Bewezen zonder database: de batterij met de tests van de nieuwe regel, de gouden tests en de
+  updatetest. In een sessie van Claude Code in de repo van het template weigerde Claude Code
+  `claude plugin list`, in Bash en in PowerShell. Niet bewezen: dat de huisregel elke vorm vangt
+  die Claude Code later aan zijn instellingen toevoegt; daarom is het een lijst van wat mag.
 
 ### Let op bij bijwerken
 
-- Nog niets.
+- **Kwam je project al op v1.13.0**, dan laat de update `.claude/settings.json` staan. Zet er de
+  weigerregels zelf in:
+  `"permissions": { "deny": ["Bash(claude plugin *)", "Bash(claude mcp add*)", "PowerShell(claude plugin *)", "PowerShell(claude mcp add*)"] }`.
+- **Staat er een hook, een andere plugin of een `.mcp.json` in je repo**, dan wordt `pnpm lint` rood.
+  Zet het in je eigen instellingen (`.claude/settings.local.json`, `claude mcp add --scope local`), of
+  neem `scripts/house-rules/claude-settings.mjs` over met `pnpm template:adopt` en de reden.
+- **`docs/veiligheid.md` en `docs/dreigingsmodel.md`** zijn van het project. Neem de nieuwe regels uit
+  het template met de hand over: in de lijst onder Toegang, in het model bij de aanvallers en bij de
+  grenzen van vertrouwen.
 
 ## v1.13.0 (25 november 2026)
 

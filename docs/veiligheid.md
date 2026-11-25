@@ -32,6 +32,8 @@ Zo vul je hem in:
 | Een tweede factor op het account van de gebruiker | I | open | Bij Entra een instelling in de tenant; bij de wachtwoordlogin dwingt de tool hem af voor beheerders |
 | Een tweede factor op elk account bij Vercel, Neon en GitHub | I | open | `docs/handleiding/00-checklist.md`, Klaar voor echte gebruikers |
 | Een inlog zonder rol komt er niet in | B | open | `lib/auth/callbacks.ts` en de test ernaast (besluit D26) |
+| Geen hook, plugin of MCP-server in de repo buiten de officiële marketplace, en Claude installeert niets zelf | B | open | De huisregel `claude-settings` en de weigerregels in `.claude/settings.json` (besluit D34) |
+| Op elke laptop alleen plugins uit de officiële marketplace | I | open | Een beheerde instelling van de organisatie of de laptop; anders een afspraak. `docs/handleiding/30-beveiliging-en-kosten.md` |
 
 ## Netwerk en firewall
 

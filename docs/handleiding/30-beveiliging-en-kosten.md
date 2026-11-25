@@ -69,6 +69,8 @@ zodat je het in een kwartier kunt nalopen. Doe dat maandelijks (kosten en verval
       is de tool niet klaar voor echte gegevens. Een module die dat doet, levert het template nog niet.
 - [ ] Vóór de eerste echte gebruiker, en daarna na elke grote ronde: een scan met Claude Security,
       met `docs/dreigingsmodel.md` erbij, en elke vondst met een besluit (hieronder).
+- [ ] Op elke laptop alleen plugins uit de officiële marketplace, en waar het kan dwingt een beheerde
+      instelling dat af (hieronder, "Plugins, hooks en MCP-servers die je installeert").
 
 ## Claude Security: meekijken en scannen
 
@@ -125,6 +127,55 @@ zonder inloggen bereikbaar is, naast de lijst in `lib/auth/public-paths.ts`.
   CI en `pnpm check:public`.
 - De plugin heeft een eigen job voor GitHub Actions. Het template zet die niet aan: hij vraagt een
   API-sleutel, en in een openbare repo is zijn rapport voor iedereen te lezen (D33).
+
+## Plugins, hooks en MCP-servers die je installeert
+
+Een plugin, een hook of een MCP-server draait code op je laptop, met jouw rechten. Hij kan bij
+`.env.local`, bij je inlog van git en GitHub, en bij de Vercel CLI. Een kwaadaardige of slordige
+plugin is dus een lek, ook als de tool zelf dicht is (besluit D34).
+
+**Wat het template doet.**
+
+- De huisregel `claude-settings` houdt de instellingen van Claude Code in de repo schoon. In
+  `.claude/settings.json` staat geen hook, geen plugin en geen marketplace buiten de officiële van
+  Anthropic, geen MCP-server die zonder vraag wordt goedgekeurd en geen instelling die niet op zijn
+  lijst staat; een `.mcp.json` staat er helemaal niet. Hij draait bij `pnpm lint` en in de CI, dus
+  een pull request of een sessie van Claude die er iets bij zet, wordt rood.
+- `.claude/settings.json` verbiedt Claude om zelf een plugin of MCP-server te installeren
+  (`claude plugin` en `claude mcp add`). Installeren doet een mens. Het venster `/plugin` typ je zelf;
+  dat houdt deze regel niet tegen.
+
+**Wat jij afspreekt.**
+
+- Alleen plugins uit de officiële marketplace (`claude-plugins-official`). Een plugin van een ander
+  alleen na een besluit in `docs/veiligheid.md`, met wie hem heeft nagekeken.
+- Kijk vóór het installeren wat een plugin meebrengt: `/plugin` toont of hij hooks of MCP-servers
+  heeft. Een hook draait bij elke stap, ook als je er niet naar kijkt.
+- Installeer nooit een plugin, MCP-server of VS Code-extensie via een link uit een mail, een chat of
+  een forum, ook niet als Claude het voorstelt.
+- VS Code-extensies alleen van een geverifieerde uitgever, en zo weinig mogelijk.
+- Een MCP-server die je zelf wilt gebruiken, voeg je toe voor jezelf (`--scope local`), niet in de
+  repo.
+
+**Wat alleen de organisatie dichtzet.** Wat iemand in zijn eigen instellingen installeert, ziet een
+project niet. Dat kan alleen een beheerde instelling: in de beheeromgeving van claude.ai (Team of
+Enterprise, met de rol Owner, onder **Organization settings, Claude Code, Managed settings**), of als
+`managed-settings.json` op de laptop, waarvoor je beheerrechten nodig hebt. Dit blok staat alleen de
+officiële marketplace toe en weigert plugins uit een losse map of van een adres:
+
+```json
+{
+  "strictKnownMarketplaces": [
+    { "source": "github", "repo": "anthropics/claude-plugins-official" },
+    { "source": "skills-dir" }
+  ],
+  "disableSideloadFlags": true
+}
+```
+
+Heeft je organisatie een eigen marketplace, zet die er dan bij, bijvoorbeeld
+`{ "source": "github", "repo": "jouw-organisatie/*" }`. Met `strictPluginOnlyCustomization` mag een
+hook of MCP-server alleen nog uit een plugin komen. Dat is strenger, en raakt ook je eigen hooks.
 
 ## Het wachtwoord van de eigenaar draaien
 

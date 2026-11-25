@@ -2,5 +2,13 @@
   "enabledPlugins": {
     "security-guidance@claude-plugins-official": true,
     "claude-security@claude-plugins-official": true
+  },
+  "permissions": {
+    "deny": [
+      "Bash(claude plugin *)",
+      "Bash(claude mcp add*)",
+      "PowerShell(claude plugin *)",
+      "PowerShell(claude mcp add*)"
+    ]
   }
 }

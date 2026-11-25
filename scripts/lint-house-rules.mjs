@@ -28,6 +28,7 @@
  *   csv-export            een CSV gaat via csv-safe, anders voert Excel een cel uit als formule
  *   public-routes         wat zonder sessie bereikbaar is, staat op één lijst
  *   organisation-scope    een query filtert op de organisatie (nog advies)
+ *   claude-settings       de instellingen van Claude Code in de repo draaien geen code en halen niets van een onbekende bron
  *
  * Eigen regels van het project staan in scripts/house-rules/project-rules.mjs, dat bij een update
  * van het template blijft staan. Een regel is een functie (rel, text, report) of (root, report).
@@ -56,6 +57,7 @@ import { checkRawSql } from "./house-rules/raw-sql.mjs";
 import { checkCsvExport } from "./house-rules/csv-export.mjs";
 import { checkPublicRoutes } from "./house-rules/public-routes.mjs";
 import { checkOrganisationScope } from "./house-rules/organisation-scope.mjs";
+import { checkClaudeSettings } from "./house-rules/claude-settings.mjs";
 import { PROJECT_PER_FILE_RULES, PROJECT_WHOLE_REPO_RULES } from "./house-rules/project-rules.mjs";
 
 /** Regels die per bestand kijken, met de vorm (rel, text, report). */
@@ -80,7 +82,7 @@ const PER_FILE_RULES = [
 ];
 
 /** Regels die over de repo als geheel gaan, met de vorm (root, report); een asynchrone regel wordt afgewacht. */
-const WHOLE_REPO_RULES = [checkTokenDrift, checkEnvTemplate, checkClientGraph, checkPublicRoutes, ...PROJECT_WHOLE_REPO_RULES];
+const WHOLE_REPO_RULES = [checkTokenDrift, checkEnvTemplate, checkClientGraph, checkPublicRoutes, checkClaudeSettings, ...PROJECT_WHOLE_REPO_RULES];
 
 /**
  * Regels die nog advies zijn: ze melden, maar houden de lint niet tegen. `organisation-scope` is nieuw

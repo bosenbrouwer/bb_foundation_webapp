@@ -40,6 +40,7 @@ leverancier. Dat is vaker iemand van buiten dan je denkt.
 | Een gebruiker met de laagste rol | | |
 | Wie een document of bericht aanlevert dat de tool leest | | |
 | Een beheerder, of iemand met het account van een beheerder | | |
+| Wie een plugin, MCP-server of extensie maakt die een bouwer installeert | | |
 
 ## Grenzen van vertrouwen
 
@@ -52,6 +53,8 @@ Waar gaat iets van buiten naar binnen, en wie of wat controleert het daar? Eén 
 - Wat de tool onthoudt en later opnieuw gebruikt (correcties, voorbeelden, eerdere documenten): hoe
   ver reikt het (één persoon, één onderdeel, één klant of alle klanten), en wie keurt het voordat het
   telt (L-AI-12)?
+- De laptop van een bouwer: welke plugins, hooks, MCP-servers en extensies draaien daar, met welke
+  rechten, en wie besloot ze te installeren (handleiding 30)?
 
 ## Scenario's, in volgorde
 
