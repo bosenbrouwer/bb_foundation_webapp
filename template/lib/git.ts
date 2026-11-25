@@ -6,6 +6,8 @@
  * tijdelijke map voor template:update.
  */
 import { spawnSync } from "node:child_process";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 export interface GitResult {
   readonly status: number;
@@ -25,11 +27,57 @@ export function isGitRepository(root: string): boolean {
   return runGit(["rev-parse", "--is-inside-work-tree"], root).status === 0;
 }
 
-/** Zijn er wijzigingen die nog niet gecommit zijn? Onbekende bestanden tellen mee. */
+/**
+ * Zijn er wijzigingen die nog niet gecommit zijn? Onbekende bestanden tellen mee.
+ *
+ * Eén uitzondering: `project.config.json` is het enige gewijzigde bestand en wijkt van de laatste
+ * commit alleen af in `template.source`. Wie een project van vóór die regel bijwerkt, zet hem eerst
+ * en draait dan meteen `pnpm template:update`; Claude doet dat zo, en commit niet zelf. Apply leest
+ * de bron alleen, dus in git blijft te zien wat apply verandert.
+ */
 export function isWorkTreeDirty(root: string): boolean {
-  const result = runGit(["status", "--porcelain"], root);
+  const all = porcelain(root, []);
+  if (all.length === 0) return false;
+  const config = porcelain(root, ["--", "project.config.json"]);
+  if (config.length !== all.length || config.length !== 1 || !/^( M|M |MM)/.test(config[0] ?? "")) return true;
+  const committed = runGit(["show", "HEAD:./project.config.json"], root);
+  if (committed.status !== 0) return true;
+  return !onlyTemplateSourceChanged(committed.stdout, readFileSync(join(root, "project.config.json"), "utf8"));
+}
+
+function porcelain(root: string, pathspec: readonly string[]): string[] {
+  const result = runGit(["status", "--porcelain", ...pathspec], root);
   if (result.status !== 0) throw new Error(`git status mislukte: ${result.stderr.trim()}`);
-  return result.stdout.trim() !== "";
+  return result.stdout.split("\n").filter((line) => line.trim() !== "");
+}
+
+/**
+ * Verschillen twee versies van `project.config.json` alleen in `template.source`? Vergelijkt de
+ * inhoud, niet de opmaak. Een blok `template` dat zonder de bron leeg is, telt als afwezig. Is een
+ * van de twee geen geldige JSON, dan is het antwoord nee.
+ */
+export function onlyTemplateSourceChanged(committed: string, current: string): boolean {
+  try {
+    return canonical(withoutTemplateSource(JSON.parse(committed))) === canonical(withoutTemplateSource(JSON.parse(current)));
+  } catch {
+    return false;
+  }
+}
+
+function withoutTemplateSource(config: unknown): unknown {
+  if (typeof config !== "object" || config === null || Array.isArray(config)) return config;
+  const { template, ...rest } = config as Record<string, unknown>;
+  if (typeof template !== "object" || template === null || Array.isArray(template)) return template === undefined ? rest : { ...rest, template };
+  const { source: _source, ...others } = template as Record<string, unknown>;
+  return Object.keys(others).length === 0 ? rest : { ...rest, template: others };
+}
+
+function canonical(value: unknown): string {
+  return JSON.stringify(value, (_key, item: unknown) =>
+    typeof item === "object" && item !== null && !Array.isArray(item)
+      ? Object.fromEntries(Object.entries(item as Record<string, unknown>).sort(([x], [y]) => (x < y ? -1 : x > y ? 1 : 0)))
+      : item,
+  );
 }
 
 /** De tags uit de uitvoer van `git ls-remote --tags`, zonder de ^{}-verwijzingen. */
