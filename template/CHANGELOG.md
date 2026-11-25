@@ -15,6 +15,53 @@ versie na het bijwerken.
 
 - Nog niets.
 
+## v1.13.0 (25 november 2026)
+
+### Wat verandert
+
+- Nog niets.
+
+### Let op bij bijwerken
+
+- Nog niets.
+
+## v1.13.0 (25 november 2026)
+
+### Wat verandert
+
+- **De twee beveiligingsplugins van Anthropic staan aan in elk project (besluit D33).** Een nieuwe
+  seed `.claude/settings.json` zet `security-guidance` en `claude-security` aan. De eerste kijkt
+  mee terwijl Claude schrijft: bij elke bewerking een zoektocht naar riskante patronen, na elke
+  beurt een aparte review. De tweede is een scan op verzoek van de repo of een branch. Een plugin
+  laadt pas als je hem op je laptop installeert; tot dan doet hij niets.
+- **De regels van het template voor die review.** `.claude/claude-security-guidance.md` zet de
+  niet-onderhandelbare regels uit de CLAUDE.md om in wat een reviewer nakijkt: `can()` en
+  `organisation_id` in de query, ids via `uuidOrUndefined`, alleen feiten in het logboek, de lijst
+  van openbare paden, de rem, `fetchWithTimeout` en `errorForScreen`.
+  `.claude/security-patterns.json` voegt drie patronen per bewerking toe die de huisregels nog niet
+  dekken: een certificaatcontrole die uitgaat, een ruwe `error.message` in `app/` of `components/`,
+  en `Math.random` voor iets geheims. Allebei van het template.
+- **Handleiding 30** heeft een deel "Claude Security: meekijken en scannen": installeren, wat het
+  kost, een scan op je branch en vóór de eerste echte gebruiker, en wat je met een vondst doet.
+  De lijst "Beveiliging: wat jij doet" heeft er een regel bij.
+- **`.gitignore`** sluit de persoonlijke instellingen van Claude Code uit, en de map
+  `CLAUDE-SECURITY-*/` met het rapport van een scan.
+- Bewezen zonder database: de batterij, de gouden tests en de updatetest. Niet bewezen: de plugins
+  zelf. Ze draaien buiten het template, in Claude Code, en zijn hier niet geïnstalleerd.
+
+### Let op bij bijwerken
+
+- **Installeren is handwerk, per laptop en per kloon** (handleiding 30). Zonder installatie
+  verandert er niets. Beide plugins vragen Python (3.7 of hoger; de scan `python3` 3.9 of hoger).
+- **De review na elke beurt kost verbruik**: een extra aanroep, standaard op Opus. Kies een ander
+  model met de variabele `SECURITY_REVIEW_MODEL`, of zet hem uit met `ENABLE_STOP_REVIEW=0`.
+- **Had je project al een `.claude/settings.json`**, dan laat de update hem staan. Zet er dan zelf
+  `"enabledPlugins": { "security-guidance@claude-plugins-official": true,
+  "claude-security@claude-plugins-official": true }` in.
+- **Eigen regels voor de review**: neem `.claude/claude-security-guidance.md` over met
+  `pnpm template:adopt` en zet ze erbij. Een persoonlijke aanvulling kan in
+  `.claude/claude-security-guidance.local.md`, die niet in git komt.
+
 ## v1.12.1 (24 november 2026)
 
 ### Wat verandert

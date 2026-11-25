@@ -1,6 +1,6 @@
 {
   "manifestVersion": 1,
-  "version": "1.12.1",
+  "version": "1.13.0",
   "source": "https://github.com/bosenbrouwer/bb_foundation_webapp.git",
   "rootRenderedOn": "2026-10-02",
   "modules": {
@@ -12,6 +12,9 @@
       "schemaVersion": 2,
       "schemaFiles": ["columns", "rls", "organisations", "users", "audit-log", "user-preferences", "rate-limits", "tool-feedback"],
       "files": [
+        { "to": ".claude/claude-security-guidance.md", "class": "owned" },
+        { "to": ".claude/security-patterns.json", "class": "owned" },
+        { "to": ".claude/settings.json", "class": "seed" },
         { "to": ".gitattributes", "class": "owned" },
         { "to": ".githooks/commit-msg", "class": "owned" },
         { "to": ".github/dependabot.yml", "class": "owned" },

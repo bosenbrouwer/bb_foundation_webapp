@@ -221,6 +221,7 @@ codevoorbeeld). Lees ze wanneer het onderwerp aan de orde is:
 | een besluit omkeren | `docs/lessen/werkwijze.md` |
 | een prompt, een AI-knop of een gesprek | `docs/modules/ai.md`, `docs/lessen/ai.md`, `docs/patronen/ai-gesprek.md`, `docs/patronen/ai-meten.md` |
 | een tool klaarmaken voor echte gebruikers | `docs/veiligheid.md` (de lijst van dit project), `docs/dreigingsmodel.md` (waartegen), `docs/patronen/veiligheidschecklist.md`, `docs/handleiding/30-beveiliging-en-kosten.md` |
+| een beveiligingsscan, of een vondst van de review die per beurt meekijkt | `docs/handleiding/30-beveiliging-en-kosten.md` (Claude Security), `.claude/claude-security-guidance.md` (de regels die de review kent) |
 | rechten boven de beheerder, of iemand die over zichzelf beslist | `docs/patronen/eigenaar-boven-beheerder.md`, `docs/patronen/niemand-beslist-over-zichzelf.md` |
 | gebruikers van buiten, meer dan één adres of een tweede app | `docs/patronen/accounts-van-buiten.md`, `docs/patronen/omgeving-per-adres.md`, `docs/patronen/intrekbare-sessie.md`, `docs/patronen/tweede-app-in-de-repo.md` |
 | iets dat op Windows of met pnpm anders loopt dan verwacht | `docs/lessen/toolchain-windows.md` |

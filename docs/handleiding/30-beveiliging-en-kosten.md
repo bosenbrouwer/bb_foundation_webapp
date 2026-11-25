@@ -67,6 +67,64 @@ zodat je het in een kwartier kunt nalopen. Doe dat maandelijks (kosten en verval
 - [ ] Het herstelvenster van Neon is bekend (op Free hoogstens zes uur, stand oktober 2026), en er
       staat een tweede kopie buiten Neon, met één geprobeerde terugzet en de duur erbij. Zonder dat
       is de tool niet klaar voor echte gegevens. Een module die dat doet, levert het template nog niet.
+- [ ] Vóór de eerste echte gebruiker, en daarna na elke grote ronde: een scan met Claude Security,
+      met `docs/dreigingsmodel.md` erbij, en elke vondst met een besluit (hieronder).
+
+## Claude Security: meekijken en scannen
+
+Anthropic levert twee plugins voor Claude Code. `.claude/settings.json` zet ze allebei aan voor dit
+project, maar een plugin laadt pas als je hem op je eigen laptop installeert. Tot dan doen ze
+niets, en staat er in `/plugin`, op het tabblad **Errors**, alleen een regel dat hij hier niet is
+geïnstalleerd.
+
+| | security-guidance | claude-security |
+|---|---|---|
+| Wat | Kijkt mee terwijl Claude schrijft: bij elke bewerking een snelle zoektocht naar riskante patronen, en na elke beurt een aparte review van wat die beurt veranderde. Claude lost een vondst in dezelfde sessie op | Een scan op verzoek, van de hele repo of van een branch, met meerdere agents. Elke vondst wordt door een tweede agent nagekeken voordat hij in het rapport komt |
+| Wanneer | Altijd, vanzelf | Vóór de eerste echte gebruiker en na een grote ronde |
+| Eigen regels | `.claude/claude-security-guidance.md` en `.claude/security-patterns.json`, van het template | De bestanden die je bij de opdracht noemt |
+| Nodig | Python 3.7 of hoger; voor de diepere review 3.10 | `python3` 3.9 of hoger, en een betaald abonnement op Claude |
+| Kost | De review na elke beurt is een extra aanroep, standaard op Opus, en telt mee in je verbruik. Een andere keus: de variabele `SECURITY_REVIEW_MODEL` | Een volledige scan kost veel tokens, meer naarmate de repo groter is. Een scan van alleen je branch kost minder |
+
+**Installeren, één keer per kloon.** In een terminal in de map van het project:
+
+```text
+claude plugin install security-guidance@claude-plugins-official --scope project
+claude plugin install claude-security@claude-plugins-official --scope project
+```
+
+In VS Code kan het ook via het venster **Manage plugins** van Claude Code. Meldt Claude Code dat
+de marketplace `claude-plugins-official` onbekend is, voeg hem dan toe met
+`/plugin marketplace add anthropics/claude-plugins-official` en probeer het opnieuw.
+
+**Een scan op je branch**, op `release/next`, voordat je de pull request opent:
+
+```text
+/claude-security scan my branch, and read docs/dreigingsmodel.md and docs/veiligheid.md first
+```
+
+**Een scan van de hele repo**, vóór de eerste echte gebruiker: dezelfde opdracht met `scan this
+repository`. Doe daarbij ook één keer `/claude-security:attack-surface-analysis`: die zoekt naar wat
+zonder inloggen bereikbaar is, naast de lijst in `lib/auth/public-paths.ts`.
+
+**Wat je ermee doet.**
+
+- Het rapport staat in een map `CLAUDE-SECURITY-<tijdstip>/` in je project. Die staat in
+  `.gitignore`: een rapport kan een lek beschrijven dat nog open is, en hoort niet in de repo.
+- Elke vondst krijgt een besluit in `docs/veiligheid.md` of `docs/dreigingsmodel.md`: dichten met
+  een datum, of aanvaarden met de reden.
+- Een patch past de plugin nooit zelf toe. Lees de toelichting bij de patch, en zet elke patch als
+  eigen ronde via `release/next` (09).
+- `docs/dreigingsmodel.md` is het enige dreigingsmodel. Laat `/claude-security:threat-model` geen
+  tweede maken; noem het bestaande bij elke scan.
+
+**Wat het niet doet.**
+
+- Beide plugins lezen de code. Een draaiende site testen ze niet; daarvoor is een beveiligingsronde
+  tegen een lokale productiebuild (besluit D32).
+- Ze houden niets tegen: geen bewerking en geen commit. De harde poorten blijven de huisregels, de
+  CI en `pnpm check:public`.
+- De plugin heeft een eigen job voor GitHub Actions. Het template zet die niet aan: hij vraagt een
+  API-sleutel, en in een openbare repo is zijn rapport voor iedereen te lezen (D33).
 
 ## Het wachtwoord van de eigenaar draaien
 
