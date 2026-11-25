@@ -388,3 +388,23 @@ niet alleen naar die van de run.
 
 **Afgedwongen door.** De job Statische analyse in `.github/workflows/ci.yml` is sinds v1.14.1 een
 poort (besluit D35). Voor een nieuwe controle alleen afspraak.
+
+## L-WERK-23 Een test met een vlag die de gebruiker niet meegeeft, loopt een andere weg
+
+**Symptoom.** De updatetest was bij elke versie groen. Bij de eerste update van een echt project
+van dag 1 weigerde `pnpm template:update` toch: de werkmap had wijzigingen die nog niet gecommit
+waren. Claude had net de regel `template.source` in `project.config.json` gezet, zoals de opdracht
+vroeg, en mocht niet committen.
+
+**Oorzaak.** De updatetest draaide de update met `--allow-dirty`, omdat hij zelf een bestand
+wijzigt om het overslaan te bewijzen. Daarmee sloeg hij de controle op de werkmap over, en die
+controle was nu juist de stap waarop het echte project struikelde. Een project van vóór de regel
+`source` moet hem eerst zetten, en dat is altijd een wijziging die nog niet gecommit is.
+
+**Regel.** Geeft een test een vlag mee die de gebruiker niet meegeeft, dan bewijst hij een andere
+weg. Draai de weg van de gebruiker minstens één keer zonder die vlag, met de stappen die de
+handleiding of de opdracht ervoor zet. Een generale repetitie op een project van een oudere versie
+hoort daarbij, met de opdracht letterlijk zoals de gebruiker hem krijgt.
+
+**Afgedwongen door.** Stap 7 van `template/ci/update-test.mjs` draait apply zonder `--allow-dirty`
+met alleen een nieuwe bron, en met een wijziging erbij (v1.14.2).

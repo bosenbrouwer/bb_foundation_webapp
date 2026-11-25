@@ -49,7 +49,7 @@ projectboom, en daarom sluit `tsconfig.json` die map uit.
 
 | Opdracht | Doet |
 |---|---|
-| `template:apply [--dry-run] [--force] [--strict] [--allow-dirty]` | past het template toe: generatoren, owned en seed bestanden per module, de gedeelde bestanden via de patchers, de lock, en een slottekst met wat de mens nu doet. Een owned bestand dat het project heeft gewijzigd wordt overgeslagen; `--force` overschrijft met een kopie in `.template-backup/`; `--strict` geeft exitcode 1 bij een overgeslagen bestand (voor CI); zonder `--allow-dirty` weigert apply op een werkmap met niet-gecommitte wijzigingen |
+| `template:apply [--dry-run] [--force] [--strict] [--allow-dirty]` | past het template toe: generatoren, owned en seed bestanden per module, de gedeelde bestanden via de patchers, de lock, en een slottekst met wat de mens nu doet. Een owned bestand dat het project heeft gewijzigd wordt overgeslagen; `--force` overschrijft met een kopie in `.template-backup/`; `--strict` geeft exitcode 1 bij een overgeslagen bestand (voor CI); zonder `--allow-dirty` weigert apply op een werkmap met niet-gecommitte wijzigingen, behalve als alleen `template.source` in `project.config.json` nieuw of anders is |
 | `template:status [--changes]` | de stand: versie, modules, bestanden ongewijzigd, gewijzigd, ontbreekt, overgenomen, seeds met een nieuwere opzet |
 | `template:verify` | voor CI: de lock klopt, geen owned bestand gewijzigd, de gegenereerde bestanden actueel, de gedeelde bestanden een vast punt van hun patcher, elke kop juist |
 | `template:adopt <pad> --reason "..." [--remove]` | maakt een owned bestand blijvend van het project, of verwijdert het bewust; de reden komt in `docs/terugmeldingen.md` |

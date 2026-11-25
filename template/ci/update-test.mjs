@@ -4,8 +4,8 @@
  * versie, een "nieuwere versie" als tweede kopie met een hoger versienummer en een gewijzigd owned
  * bestand, en dan `template:update --from` vanuit het project. Bewijst dat een owned bestand wordt
  * bijgewerkt, dat een door het project gewijzigd owned bestand blijft staan, dat de lock en de
- * tooling van het project de nieuwe versie krijgen, dat verify het gewijzigde bestand aanwijst, en
- * dat adopt dat oplost.
+ * tooling van het project de nieuwe versie krijgen, dat verify het gewijzigde bestand aanwijst, dat
+ * adopt dat oplost, en dat alleen een nieuwe bron in project.config.json apply niet tegenhoudt.
  *
  *   node template/ci/update-test.mjs [--keep]
  *
@@ -116,6 +116,23 @@ if (again.status !== 0) fail(`de tweede update gaf exitcode ${again.status}:\n${
 const status = spawnSync("git", ["status", "--porcelain"], { cwd: project, encoding: "utf8" }).stdout.trim();
 if (status !== "") fail(`de tweede update liet een diff achter:\n${status}`);
 console.log("  idempotent");
+
+console.log("\n7. Een nieuwe bron in project.config.json houdt apply niet tegen, een wijziging erbij wel");
+const configPath = join(project, "project.config.json");
+const configText = readFileSync(configPath, "utf8");
+const config = JSON.parse(configText);
+config.template = { ...(config.template ?? {}), source: "https://github.com/voorbeeld/template.git" };
+writeFileSync(configPath, `${JSON.stringify(config, null, 4)}\n`);
+const withSource = tooling(project, project, ["apply"]);
+if (withSource.status !== 0) fail(`apply weigerde een werkmap met alleen een nieuwe bron:\n${withSource.output}`);
+if (JSON.parse(readFileSync(join(project, "template.lock.json"), "utf8")).source !== config.template.source) fail("de lock heeft de nieuwe bron niet overgenomen");
+git(["checkout", "--", "."]);
+writeFileSync(configPath, `${JSON.stringify(config, null, 4)}\n`);
+appendFileSync(join(project, "README.md"), "\nEen eigen regel die nog niet gecommit is.\n");
+const withMore = tooling(project, project, ["apply"]);
+if (withMore.status === 0 || !withMore.output.includes("nog niet gecommit")) fail(`apply had moeten weigeren met een wijziging naast de bron:\n${withMore.output}`);
+git(["checkout", "--", "."]);
+console.log("  alleen de bron: apply draait en de lock neemt hem over; met een wijziging erbij: apply weigert");
 
 console.log("\nUpdatetest geslaagd.");
 if (keep) console.log(`De mappen staan nog: ${base}`);

@@ -15,6 +15,27 @@ versie na het bijwerken.
 
 - Nog niets.
 
+## v1.14.2 (25 november 2026)
+
+### Wat verandert
+
+- **Een nieuwe bron houdt de update niet meer tegen.** Een project van vóór de regel
+  `template.source` zet die regel eerst in `project.config.json` en draait dan
+  `pnpm template:update`. Apply weigerde dan, want de werkmap had een wijziging die nog niet
+  gecommit was, en de foutmelding wees naar `--allow-dirty`. Nu telt de werkmap als schoon als
+  `project.config.json` het enige gewijzigde bestand is en alleen `template.source` verschilt van
+  de laatste commit (`template/lib/git.ts`). De vergelijking gaat over de inhoud, niet over de
+  opmaak. Elke andere wijziging houdt apply tegen zoals eerst.
+- Gevonden in een generale repetitie: een project van versie 0.1.0, bijgewerkt via GitHub met de
+  opdracht zoals een gebruiker hem krijgt. De updatetest zag het niet, want die draaide met
+  `--allow-dirty` (les L-WERK-23). Stap 7 van de updatetest bewijst het nu zonder die vlag.
+- De update laat de tooling van de nieuwe versie het werk doen, dus dit helpt ook een project dat
+  nog op een oudere versie staat.
+
+### Let op bij bijwerken
+
+- Niets met de hand. Commit de nieuwe bron samen met de update.
+
 ## v1.14.1 (25 november 2026)
 
 ### Wat verandert
